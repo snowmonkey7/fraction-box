@@ -134,8 +134,14 @@ const COLLECTION_NAME = "kaizheng_fraction_blindbox_v1";
       <div>
         <label class="block text-sm font-bold text-slate-700 mb-1">班級座號（共 5 碼，例如 50101）</label>
         <input id="inputStudentId" type="text" inputmode="numeric" maxlength="10" placeholder="請輸入如：50101"
-          onkeydown="if(event.key==='Enter') studentLogin()"
+          onkeydown="if(event.key==='Enter') document.getElementById('inputStudentPin').focus()"
           class="w-full text-center text-2xl font-black tracking-widest border-2 border-amber-300 focus:border-amber-500 focus:outline-none rounded-2xl py-3 bg-amber-50/40" />
+      </div>
+      <div>
+        <label class="block text-sm font-bold text-slate-700 mb-1">密碼（4 位數字，請向老師索取）</label>
+        <input id="inputStudentPin" type="password" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="off"
+          onkeydown="if(event.key==='Enter') studentLogin()"
+          class="w-full text-center text-2xl font-black tracking-[0.5em] border-2 border-amber-300 focus:border-amber-500 focus:outline-none rounded-2xl py-3 bg-amber-50/40" />
       </div>
       <button id="btnStudentLogin" onclick="studentLogin()" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-98 text-white text-lg font-black py-3.5 rounded-2xl shadow-lg shadow-amber-500/30 transition">
         🚀 進入盲盒店
@@ -334,6 +340,7 @@ const COLLECTION_NAME = "kaizheng_fraction_blindbox_v1";
           <div class="flex flex-wrap gap-2">
             <input id="newStuId" type="text" placeholder="班級座號 (如 50123)" class="flex-1 min-w-[130px] border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold" />
             <input id="newStuName" type="text" placeholder="姓名 (選填)" class="flex-1 min-w-[110px] border border-slate-300 rounded-xl px-3 py-2 text-sm" />
+            <input id="newStuPin" type="text" inputmode="numeric" maxlength="8" placeholder="密碼 (空白=自動產生)" class="flex-1 min-w-[140px] border border-slate-300 rounded-xl px-3 py-2 text-sm" />
             <button onclick="teacherAddSingleStudent()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm px-4 py-2 rounded-xl transition">新增</button>
           </div>
         </div>
@@ -348,7 +355,22 @@ const COLLECTION_NAME = "kaizheng_fraction_blindbox_v1";
             <input id="batchEndNo" type="number" value="22" min="1" max="99" class="w-16 border border-slate-300 rounded-xl px-2 py-2 text-sm font-bold text-center" />
             <button onclick="teacherBatchCreateStudents()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition">批次建立</button>
           </div>
+          <p class="text-xs text-slate-500">新帳號會自動產生 4 位數密碼，可用下方「列印密碼條」發給學生。</p>
         </div>
+      </div>
+    </div>
+
+    <!-- 貼上名單匯入（姓名＋密碼） -->
+    <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+      <h3 class="text-lg font-black text-slate-800 mb-1">📋 貼上名單，一次設定姓名與密碼</h3>
+      <p class="text-xs text-slate-500 mb-3">
+        一行一位，格式「座號 姓名 密碼」，中間用空白或 Tab 隔開（可直接從 Excel 複製三欄貼上）。<br/>
+        已存在的帳號只會更新姓名與密碼，<b>作答紀錄與公仔都會保留</b>；不存在的座號會自動建立。
+      </p>
+      <textarea id="importRosterText" rows="6" placeholder="50101 王小明 1234&#10;50102 李小華 5678"
+        class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono"></textarea>
+      <div class="flex justify-end mt-2">
+        <button onclick="teacherImportRoster()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition">📥 匯入名單</button>
       </div>
     </div>
 
@@ -356,14 +378,20 @@ const COLLECTION_NAME = "kaizheng_fraction_blindbox_v1";
     <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
       <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 class="text-lg font-black text-slate-800">📊 全班學生作答與盲盒收集狀況</h3>
-        <span class="text-xs text-slate-500">點擊「檢視明細」可查看該生擁有哪些公仔與錯題紀錄</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnTogglePins" onclick="toggleShowPins()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg">👁️ 顯示密碼</button>
+          <button onclick="fillMissingPins()" class="text-xs bg-indigo-500 hover:bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg">🔑 幫沒有密碼的學生產生密碼</button>
+          <button onclick="printPinSlips()" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-lg">🖨️ 列印密碼條</button>
+        </div>
       </div>
+      <p class="text-xs text-slate-500 -mt-2 mb-3">「檢視明細」可看公仔與錯題紀錄；「編輯」可改姓名、改密碼或刪除帳號。</p>
       <div class="overflow-x-auto">
         <table class="w-full text-sm text-left border-collapse">
           <thead>
             <tr class="bg-slate-100 text-slate-700 border-b-2 border-slate-200">
               <th class="py-3 px-3">班級座號</th>
               <th class="py-3 px-3">姓名</th>
+              <th class="py-3 px-3">密碼</th>
               <th class="py-3 px-3">已答題數</th>
               <th class="py-3 px-3">答對題數</th>
               <th class="py-3 px-3">正確率</th>
@@ -441,7 +469,35 @@ const COLLECTION_NAME = "kaizheng_fraction_blindbox_v1";
   </div>
 </div>
 
-<!-- ==================== 彈窗 4：教師檢視單一學生明細 ==================== -->
+<!-- ==================== 彈窗 4：教師編輯學生（改名／改密碼／刪除） ==================== -->
+<div id="modalEditStudent" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border-2 border-slate-200">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-xl font-black text-slate-800">✏️ 編輯學生 <span id="editStuIdLabel" class="text-amber-600"></span></h3>
+      <button onclick="closeModal('modalEditStudent')" class="text-slate-400 hover:text-slate-700 font-black text-xl">✕</button>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">姓名</label>
+        <input id="editStuName" type="text" class="w-full border-2 border-slate-300 focus:border-slate-800 focus:outline-none rounded-xl px-3 py-2 font-bold" />
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">密碼（留空 = 不需要密碼即可登入）</label>
+        <div class="flex gap-2">
+          <input id="editStuPin" type="text" inputmode="numeric" maxlength="8" class="flex-1 border-2 border-slate-300 focus:border-slate-800 focus:outline-none rounded-xl px-3 py-2 font-black tracking-widest text-center" />
+          <button onclick="document.getElementById('editStuPin').value = generatePin()" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-xs font-bold px-3 rounded-xl">🎲 隨機</button>
+        </div>
+      </div>
+      <button onclick="teacherSaveStudentEdit()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl">💾 儲存修改</button>
+    </div>
+    <div class="mt-5 pt-4 border-t border-rose-100">
+      <div class="text-xs font-bold text-rose-600 mb-2">⚠️ 危險操作</div>
+      <button onclick="teacherDeleteStudent()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold py-2 rounded-xl text-sm">🗑️ 刪除這個學生帳號（所有紀錄一併刪除）</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 彈窗 5：教師檢視單一學生明細 ==================== -->
 <div id="modalStudentDetail" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
   <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
     <div class="flex items-center justify-between border-b pb-3 mb-4">
@@ -657,6 +713,12 @@ function explainFirebaseError(e) {
   if (code.includes("permission-denied") || /permission/i.test(msg)) {
     return "Firestore 安全規則拒絕存取（permission-denied）。\n請到 Firebase 主控台 → Firestore Database → 規則，把規則改成允許讀寫此集合後按「發布」。";
   }
+  if (code.includes("not-found-account") || /No document to update/i.test(msg)) {
+    return "這個帳號已經被老師刪除了，請登出後找老師確認。";
+  }
+  if (code.includes("not-found-account") || /No document to update/i.test(msg)) {
+    return "這個學生帳號已經被老師刪除了，請重新整理頁面或找凱正老師。";
+  }
   if (code.includes("not-found") || /database .* does not exist|NOT_FOUND/i.test(msg)) {
     return "這個 Firebase 專案還沒有建立 Firestore 資料庫。\n請到 Firebase 主控台 → Firestore Database → 建立資料庫。";
   }
@@ -722,7 +784,16 @@ function normalizeStudent(raw, id) {
   if (!s.toys || typeof s.toys !== "object") s.toys = {};
   if (!Array.isArray(s.answeredIds)) s.answeredIds = [];
   if (!Array.isArray(s.recentLogs)) s.recentLogs = [];
+  s.pin = s.pin == null ? "" : String(s.pin).trim();
   return s;
+}
+
+// 產生 4 位數隨機密碼（避開 0000、1234 這種太好猜的）
+function generatePin() {
+  const weak = ["0000", "1111", "2222", "3333", "4444", "5555", "6666", "7777", "8888", "9999", "1234", "4321"];
+  let p;
+  do { p = String(Math.floor(Math.random() * 10000)).padStart(4, "0"); } while (weak.includes(p));
+  return p;
 }
 
 function setupLocalFallback(badge) {
@@ -731,10 +802,11 @@ function setupLocalFallback(badge) {
   badge.className = "text-xs px-2.5 py-1 rounded-full font-bold bg-amber-100 text-amber-800";
 }
 
-function createDefaultStudentObj(id, name = "") {
+function createDefaultStudentObj(id, name = "", pin = "") {
   return {
     id: String(id).trim(),
     name: name.trim() || `${String(id).slice(-2)}號同學`,
+    pin: String(pin).trim(), // 學生登入密碼（空字串 = 不需密碼）
     totalAnswered: 0,
     correctCount: 0,
     streakTowardBox: 0, // 0, 1, 2 (滿3變0並+1盒)
@@ -763,7 +835,7 @@ async function ensureDefaultClassExists() {
         const batch = db.batch();
         defaultIds.forEach(id => {
           const ref = db.collection(COLLECTION_NAME).doc(id);
-          batch.set(ref, createDefaultStudentObj(id));
+          batch.set(ref, createDefaultStudentObj(id, "", generatePin()));
         });
         await withTimeout(batch.commit());
       }
@@ -775,7 +847,7 @@ async function ensureDefaultClassExists() {
     let changed = false;
     defaultIds.forEach(id => {
       if (!store[id]) {
-        store[id] = createDefaultStudentObj(id);
+        store[id] = createDefaultStudentObj(id, "", generatePin());
         changed = true;
       }
     });
@@ -812,6 +884,52 @@ async function saveStudent(studentObj) {
   } else {
     const store = getLocalStore();
     store[studentObj.id] = studentObj;
+    saveLocalStore(store);
+  }
+}
+
+// 學生端專用：只更新作答/抽獎進度，不會蓋掉老師剛改的姓名或密碼；
+// 帳號若已被老師刪除，也不會被學生端「復活」
+async function saveStudentProgress(studentObj) {
+  const data = Object.assign({}, studentObj, { updatedAt: Date.now() });
+  delete data.name;
+  delete data.pin;
+  delete data.id;
+  if (isCloudMode) {
+    await withTimeout(db.collection(COLLECTION_NAME).doc(studentObj.id).update(data));
+  } else {
+    const store = getLocalStore();
+    if (!store[studentObj.id]) throw { code: "not-found-account", message: "帳號已被刪除" };
+    Object.assign(store[studentObj.id], data);
+    saveLocalStore(store);
+  }
+}
+
+// 教師端專用：只更新指定欄位（例如姓名、密碼），不會用舊資料蓋掉學生最新的作答進度
+async function saveStudentFields(studentId, fields) {
+  const data = Object.assign({}, fields, { updatedAt: Date.now() });
+  if (isCloudMode) {
+    await withTimeout(db.collection(COLLECTION_NAME).doc(studentId).update(data));
+  } else {
+    const store = getLocalStore();
+    if (!store[studentId]) throw { code: "not-found-account", message: "帳號不存在" };
+    Object.assign(store[studentId], data);
+    saveLocalStore(store);
+  }
+}
+
+// 顯示姓名前先跳脫特殊符號，避免名字裡的 < > 破壞畫面
+function escapeHtml(str) {
+  return String(str == null ? "" : str).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function deleteStudentRecord(studentId) {
+  if (isCloudMode) {
+    await withTimeout(db.collection(COLLECTION_NAME).doc(studentId).delete());
+  } else {
+    const store = getLocalStore();
+    delete store[studentId];
     saveLocalStore(store);
   }
 }
@@ -881,13 +999,16 @@ async function studentLogin() {
     if (isCloudMode && cloudError) throw cloudError;
     stu = await fetchStudent(rawId);
     if (!stu) {
-      // 若老師尚未建立該座號：5 碼格式正確就自動建檔，避免學生被擋在門外
-      if (!/^\d{5}$/.test(rawId)) {
-        alert("找不到此帳號！請確認輸入 5 碼「班級＋座號」（例如 50101），或請凱正老師在教師端建立帳號。");
-        return;
-      }
-      stu = createDefaultStudentObj(rawId);
-      await saveStudent(stu);
+      // 有了密碼機制後，帳號一律由老師建立，避免同學亂建別人的帳號
+      alert("找不到此帳號！請確認輸入 5 碼「班級＋座號」（例如 50101），或請凱正老師在教師端建立帳號。");
+      return;
+    }
+    const inputPin = document.getElementById("inputStudentPin").value.trim();
+    if (stu.pin && inputPin !== stu.pin) {
+      alert("密碼錯誤！請再試一次，忘記密碼請找凱正老師。");
+      document.getElementById("inputStudentPin").value = "";
+      document.getElementById("inputStudentPin").focus();
+      return;
     }
   } catch (e) {
     reportError("登入", e);
@@ -916,6 +1037,7 @@ function logout() {
   document.getElementById("viewLogin").classList.remove("hidden");
   document.getElementById("btnLogout").classList.add("hidden");
   document.getElementById("inputStudentId").value = "";
+  document.getElementById("inputStudentPin").value = "";
 }
 
 function switchStudentTab(tabName) {
@@ -1084,7 +1206,7 @@ async function handleAnswerSelect(opt, clickedBtn) {
   }
 
   try {
-    await saveStudent(currentStudent);
+    await saveStudentProgress(currentStudent);
   } catch (e) {
     console.error("作答紀錄上傳失敗", e);
     setBadge("⚠️ 作答未同步（點我看原因）", "bg-rose-100 text-rose-700 cursor-pointer");
@@ -1173,7 +1295,7 @@ async function triggerBlindBoxDraw(isShardAutoExchange = false) {
   }
 
   try {
-    await saveStudent(currentStudent);
+    await saveStudentProgress(currentStudent);
   } catch (e) {
     console.error("抽獎結果上傳失敗", e);
     setBadge("⚠️ 抽獎未同步（點我看原因）", "bg-rose-100 text-rose-700 cursor-pointer");
@@ -1232,7 +1354,7 @@ async function closeBlindBoxModal() {
   const owned = getOwnedUniqueCount(currentStudent);
   if (owned >= 10 && !currentStudent.clearedNotified) {
     currentStudent.clearedNotified = true;
-    await saveStudent(currentStudent);
+    try { await saveStudentProgress(currentStudent); } catch (e) { console.error("通關狀態上傳失敗", e); }
     document.getElementById("modalAllClear").classList.remove("hidden");
   }
 }
@@ -1343,7 +1465,7 @@ async function refreshTeacherData() {
     list = await fetchAllStudents();
   } catch (e) {
     document.getElementById("teacherTableBody").innerHTML =
-      `<tr><td colspan="9" class="py-8 text-center text-rose-500 font-bold whitespace-pre-line">讀取雲端資料失敗：\n${explainFirebaseError(e)}</td></tr>`;
+      `<tr><td colspan="10" class="py-8 text-center text-rose-500 font-bold whitespace-pre-line">讀取雲端資料失敗：\n${explainFirebaseError(e)}</td></tr>`;
     reportError("讀取全班資料", e);
     return;
   }
@@ -1371,7 +1493,7 @@ async function refreshTeacherData() {
   // 渲染學生列表
   const tbody = document.getElementById("teacherTableBody");
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-slate-400">目前尚無學生帳號，請從上方建立。</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-400">目前尚無學生帳號，請從上方建立。</td></tr>`;
     return;
   }
 
@@ -1384,8 +1506,13 @@ async function refreshTeacherData() {
 
     return `
       <tr class="hover:bg-slate-50">
-        <td class="py-3 px-3 font-black text-slate-800">${s.id}</td>
-        <td class="py-3 px-3 font-bold text-slate-600">${s.name || ""}</td>
+        <td class="py-3 px-3 font-black text-slate-800">${escapeHtml(s.id)}</td>
+        <td class="py-3 px-3 font-bold text-slate-600">${escapeHtml(s.name)}</td>
+        <td class="py-3 px-3 font-mono font-black tracking-widest">
+          ${s.pin
+            ? (showPins ? `<span class="text-indigo-700">${escapeHtml(s.pin)}</span>` : `<span class="text-slate-400">••••</span>`)
+            : `<span class="text-xs font-bold text-rose-500 tracking-normal">未設定</span>`}
+        </td>
         <td class="py-3 px-3 font-bold">${s.totalAnswered} 題</td>
         <td class="py-3 px-3 font-bold text-emerald-600">${s.correctCount} 題</td>
         <td class="py-3 px-3 font-black ${acc >= 80 ? "text-emerald-600" : (acc >= 60 ? "text-amber-600" : "text-slate-500")}">${acc}%</td>
@@ -1399,9 +1526,12 @@ async function refreshTeacherData() {
             ? `<span class="bg-amber-100 text-amber-800 text-xs font-black px-2.5 py-1 rounded-full">🏆 已通關</span>`
             : `<span class="bg-slate-100 text-slate-500 text-xs font-bold px-2.5 py-1 rounded-full">進行中</span>`}
         </td>
-        <td class="py-3 px-3">
-          <button onclick="openStudentDetailModal('${s.id}')" class="text-xs bg-slate-800 hover:bg-slate-700 text-white font-bold px-3 py-1.5 rounded-lg">
+        <td class="py-3 px-3 whitespace-nowrap">
+          <button onclick="openStudentDetailModal('${escapeHtml(s.id)}')" class="text-xs bg-slate-800 hover:bg-slate-700 text-white font-bold px-3 py-1.5 rounded-lg">
             檢視明細
+          </button>
+          <button onclick="openEditStudentModal('${escapeHtml(s.id)}')" class="text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg ml-1">
+            ✏️ 編輯
           </button>
         </td>
       </tr>
@@ -1412,34 +1542,33 @@ async function refreshTeacherData() {
 async function teacherAddSingleStudent() {
   const id = document.getElementById("newStuId").value.trim();
   const name = document.getElementById("newStuName").value.trim();
+  const pinInput = document.getElementById("newStuPin").value.trim();
   if (!id) {
     alert("請輸入班級座號！");
     return;
   }
+  if (pinInput && !/^\d{4,8}$/.test(pinInput)) {
+    alert("密碼請輸入 4～8 位數字！");
+    return;
+  }
+  const pin = pinInput || generatePin();
   try {
     await dbReady;
     const existing = await fetchStudent(id);
     if (existing) {
-      // 已存在但有填姓名 → 更新姓名（保留原本作答紀錄）
-      if (name && existing.name !== name) {
-        existing.name = name;
-        await saveStudent(existing);
-        await refreshTeacherData();
-        alert(`帳號 ${id} 已存在，已將姓名更新為「${name}」。`);
-      } else {
-        alert(`帳號 ${id} 已經存在囉！`);
-      }
+      alert(`帳號 ${id} 已經存在囉！要改姓名或密碼，請在下方名單按「✏️ 編輯」。`);
       return;
     }
-    await saveStudent(createDefaultStudentObj(id, name));
+    await saveStudent(createDefaultStudentObj(id, name, pin));
   } catch (e) {
     reportError("新增學生", e);
     return;
   }
   document.getElementById("newStuId").value = "";
   document.getElementById("newStuName").value = "";
+  document.getElementById("newStuPin").value = "";
   await refreshTeacherData();
-  alert(`已成功建立學生帳號：${id}`);
+  alert(`已成功建立學生帳號：${id}\n密碼：${pin}`);
 }
 
 async function teacherBatchCreateStudents() {
@@ -1459,7 +1588,7 @@ async function teacherBatchCreateStudents() {
     const toCreate = [];
     for (let i = start; i <= end; i++) {
       const id = prefix + String(i).padStart(2, "0");
-      if (!existingIds.has(id)) toCreate.push(createDefaultStudentObj(id));
+      if (!existingIds.has(id)) toCreate.push(createDefaultStudentObj(id, "", generatePin()));
     }
     await saveStudentsBulk(toCreate);
     created = toCreate.length;
@@ -1469,6 +1598,182 @@ async function teacherBatchCreateStudents() {
   }
   await refreshTeacherData();
   alert(`批次建立完成！共新增了 ${created} 個學生帳號（已存在的帳號會自動保留原紀錄）。`);
+}
+
+/* ---------- 密碼顯示／補密碼／列印密碼條 ---------- */
+let showPins = false;
+
+function toggleShowPins() {
+  showPins = !showPins;
+  document.getElementById("btnTogglePins").textContent = showPins ? "🙈 隱藏密碼" : "👁️ 顯示密碼";
+  refreshTeacherData();
+}
+
+async function fillMissingPins() {
+  const missing = cachedAllStudents.filter(s => !s.pin);
+  if (missing.length === 0) {
+    alert("所有學生都已經有密碼了！");
+    return;
+  }
+  if (!confirm(`有 ${missing.length} 位學生還沒有密碼，要幫他們各自產生一組 4 位數密碼嗎？`)) return;
+  try {
+    for (const s of missing) {
+      await saveStudentFields(s.id, { pin: generatePin() });
+    }
+  } catch (e) {
+    reportError("產生密碼", e);
+  }
+  await refreshTeacherData();
+  alert("密碼已產生！可以按「🖨️ 列印密碼條」印出來發給學生。");
+}
+
+function printPinSlips() {
+  const list = cachedAllStudents;
+  if (list.length === 0) {
+    alert("目前沒有學生資料");
+    return;
+  }
+  const slips = list.map(s => `
+    <div class="slip">
+      <div class="t">凱正老師的分數盲盒店</div>
+      <div><b>${escapeHtml(s.id)}</b>　${escapeHtml(s.name)}</div>
+      <div>密碼：<b class="pin">${s.pin ? escapeHtml(s.pin) : "（未設定）"}</b></div>
+    </div>`).join("");
+  const w = window.open("", "_blank");
+  if (!w) {
+    alert("瀏覽器擋住了新視窗，請允許此網站開啟彈出式視窗後再試一次。");
+    return;
+  }
+  w.document.write(`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8"><title>學生密碼條</title>
+    <style>
+      body{font-family:'Noto Sans TC',sans-serif;margin:12mm}
+      .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+      .slip{border:1px dashed #999;padding:10px 12px;font-size:15px;line-height:1.7;break-inside:avoid}
+      .t{font-size:11px;color:#666}
+      .pin{font-size:20px;letter-spacing:4px}
+      @media print{button{display:none}}
+    </style></head><body>
+    <button onclick="window.print()" style="font-size:16px;padding:6px 16px;margin-bottom:10px">🖨️ 列印</button>
+    <div class="grid">${slips}</div></body></html>`);
+  w.document.close();
+}
+
+/* ---------- 編輯學生：改名、改密碼、刪除 ---------- */
+let editingStudentId = null;
+
+function openEditStudentModal(studentId) {
+  const s = cachedAllStudents.find(item => item.id === studentId);
+  if (!s) return;
+  editingStudentId = studentId;
+  document.getElementById("editStuIdLabel").textContent = s.id;
+  document.getElementById("editStuName").value = s.name || "";
+  document.getElementById("editStuPin").value = s.pin || "";
+  document.getElementById("modalEditStudent").classList.remove("hidden");
+}
+
+async function teacherSaveStudentEdit() {
+  if (!editingStudentId) return;
+  const name = document.getElementById("editStuName").value.trim();
+  const pin = document.getElementById("editStuPin").value.trim();
+  if (!name) {
+    alert("姓名不能空白！");
+    return;
+  }
+  if (pin && !/^\d{4,8}$/.test(pin)) {
+    alert("密碼請輸入 4～8 位數字（留空代表不需要密碼）。");
+    return;
+  }
+  if (!pin && !confirm("密碼留空的話，任何人輸入這個座號都能直接登入。確定要這樣設定嗎？")) return;
+  try {
+    await saveStudentFields(editingStudentId, { name, pin });
+  } catch (e) {
+    reportError("儲存修改", e);
+    return;
+  }
+  closeModal("modalEditStudent");
+  await refreshTeacherData();
+}
+
+async function teacherDeleteStudent() {
+  if (!editingStudentId) return;
+  const s = cachedAllStudents.find(item => item.id === editingStudentId) || { id: editingStudentId, name: "" };
+  const typed = prompt(
+    `⚠️ 確定要刪除 ${s.id} ${s.name} 嗎？\n這位學生的作答紀錄與公仔會全部刪除，無法復原。\n\n請輸入座號「${s.id}」確認刪除：`
+  );
+  if (typed === null) return;
+  if (typed.trim() !== s.id) {
+    alert("座號不符，已取消刪除。");
+    return;
+  }
+  try {
+    await deleteStudentRecord(s.id);
+  } catch (e) {
+    reportError("刪除帳號", e);
+    return;
+  }
+  closeModal("modalEditStudent");
+  editingStudentId = null;
+  await refreshTeacherData();
+  alert(`已刪除帳號 ${s.id}。`);
+}
+
+/* ---------- 貼上名單匯入 ---------- */
+async function teacherImportRoster() {
+  const text = document.getElementById("importRosterText").value;
+  const rows = [];
+  const badLines = [];
+  text.split(/\r?\n/).forEach((line, i) => {
+    const parts = line.trim().split(/[\s,，]+/).filter(Boolean);
+    if (parts.length === 0) return;
+    const id = parts[0];
+    let pin = "";
+    let nameParts = parts.slice(1);
+    if (nameParts.length >= 2 && /^\d{4,8}$/.test(nameParts[nameParts.length - 1])) {
+      pin = nameParts.pop();
+    }
+    const name = nameParts.join(" ");
+    if (!/^\d{5}$/.test(id) || !name) {
+      badLines.push(`第 ${i + 1} 行：${line.trim()}`);
+      return;
+    }
+    rows.push({ id, name, pin });
+  });
+
+  if (badLines.length) {
+    alert("下列幾行格式不正確（需要「5 碼座號 姓名 密碼」），請修正後再匯入：\n\n" + badLines.join("\n"));
+    return;
+  }
+  if (rows.length === 0) {
+    alert("請先貼上名單！");
+    return;
+  }
+  const noPin = rows.filter(r => !r.pin).length;
+  if (!confirm(`即將匯入 ${rows.length} 位學生${noPin ? `（其中 ${noPin} 位沒有填密碼，會自動產生）` : ""}。\n已存在的帳號只更新姓名與密碼，作答紀錄會保留。確定匯入嗎？`)) return;
+
+  let updated = 0, created = 0;
+  try {
+    await dbReady;
+    const existingIds = new Set((await fetchAllStudents()).map(s => s.id));
+    const toCreate = [];
+    for (const r of rows) {
+      const pin = r.pin || generatePin();
+      if (existingIds.has(r.id)) {
+        await saveStudentFields(r.id, { name: r.name, pin });
+        updated++;
+      } else {
+        toCreate.push(createDefaultStudentObj(r.id, r.name, pin));
+      }
+    }
+    await saveStudentsBulk(toCreate);
+    created = toCreate.length;
+  } catch (e) {
+    reportError("匯入名單", e);
+    await refreshTeacherData();
+    return;
+  }
+  document.getElementById("importRosterText").value = "";
+  await refreshTeacherData();
+  alert(`匯入完成！更新 ${updated} 位、新增 ${created} 位。`);
 }
 
 function openStudentDetailModal(studentId) {
@@ -1515,13 +1820,13 @@ function exportClassCSV() {
     alert("目前沒有資料可匯出");
     return;
   }
-  const headers = ["班級座號", "姓名", "已答題數", "答對題數", "正確率(%)", "收集公仔種數(滿10)", "常規款數", "隱藏款數", "剩餘碎片", "待抽盲盒", "是否通關"];
+  const headers = ["班級座號", "姓名", "密碼", "已答題數", "答對題數", "正確率(%)", "收集公仔種數(滿10)", "常規款數", "隱藏款數", "剩餘碎片", "待抽盲盒", "是否通關"];
   const rows = cachedAllStudents.map(s => {
     const acc = s.totalAnswered > 0 ? Math.round((s.correctCount / s.totalAnswered) * 100) : 0;
     const reg = TOYS.filter(t => t.type === "regular" && (s.toys?.[t.id] || 0) > 0).length;
     const hid = TOYS.filter(t => t.type === "hidden" && (s.toys?.[t.id] || 0) > 0).length;
     const total = reg + hid;
-    return [s.id, s.name || "", s.totalAnswered, s.correctCount, acc, total, reg, hid, s.shards || 0, s.availableBoxes || 0, total >= 10 ? "是" : "否"];
+    return [s.id, s.name || "", s.pin ? "'" + s.pin : "", s.totalAnswered, s.correctCount, acc, total, reg, hid, s.shards || 0, s.availableBoxes || 0, total >= 10 ? "是" : "否"];
   });
 
   const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
