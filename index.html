@@ -152,7 +152,7 @@ const COLLECTION_NAME = "kaizheng_fraction_blindbox_v1";
       <p class="font-bold text-slate-600">📌 遊戲規則小提醒：</p>
       <p>• 每答對 <span class="text-amber-600 font-bold">3 題</span> 即可獲得 <span class="text-amber-600 font-bold">1 次</span> 抽盲盒機會。</p>
       <p>• 盲盒共有 6 款常規文具公仔（90%）與 4 款神秘隱藏公仔（10%）。</p>
-      <p>• 抽到重複公仔會變成 <span class="text-indigo-600 font-bold">1 個碎片</span>，集滿 <span class="text-indigo-600 font-bold">3 個碎片</span> 自動再抽 1 次！</p>
+      <p>• 抽到重複公仔會變成 <span class="text-indigo-600 font-bold">1 個碎片</span>，集滿 <span class="text-indigo-600 font-bold">3 個碎片</span> 自動再抽 1 次，而且<span class="text-indigo-600 font-bold">保證抽到還沒有的公仔</span>！</p>
     </div>
   </section>
 
@@ -455,6 +455,19 @@ const COLLECTION_NAME = "kaizheng_fraction_blindbox_v1";
 </div>
 
 <!-- ==================== 彈窗 3：通關慶祝獎狀 ==================== -->
+<!-- ==================== 彈窗：放大觀看公仔 ==================== -->
+<div id="modalToyZoom" onclick="closeModal('modalToyZoom')"
+  class="hidden fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-[60] flex items-center justify-center p-4 cursor-zoom-out">
+  <div class="w-full max-w-lg text-center" onclick="event.stopPropagation()">
+    <div id="zoomToyImgWrap" class="w-full aspect-square max-h-[70vh] mx-auto rounded-3xl bg-white flex items-center justify-center overflow-hidden p-4 shadow-2xl"></div>
+    <div id="zoomToyName" class="text-2xl font-black text-white mt-4"></div>
+    <div id="zoomToyInfo" class="text-sm font-bold text-white/80 mt-1"></div>
+    <button onclick="closeModal('modalToyZoom')" class="mt-4 bg-white/90 hover:bg-white text-slate-800 font-black px-8 py-3 rounded-2xl shadow">
+      關閉
+    </button>
+  </div>
+</div>
+
 <div id="modalAllClear" class="hidden fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
   <div class="bg-gradient-to-b from-amber-50 to-white rounded-3xl max-w-md w-full p-7 text-center shadow-2xl border-4 border-amber-400 animate-pop-in">
     <div class="text-6xl mb-2">🏆🎉🏆</div>
@@ -1253,6 +1266,21 @@ function rollBlindBoxToy() {
   return TOYS[0];
 }
 
+// 碎片兌換專用：只從「還沒擁有」的公仔裡抽，保證是新公仔。
+// 依照原本機率比例抽，所以隱藏款仍然比較稀有；若只剩隱藏款沒抽到，就一定會抽到隱藏款。
+// 如果 10 款都已集滿，才回到一般抽獎。
+function rollNewToyForShardExchange(student) {
+  const unowned = TOYS.filter(t => !(student.toys[t.id] > 0));
+  if (unowned.length === 0) return rollBlindBoxToy();
+  const total = unowned.reduce((sum, t) => sum + t.prob, 0);
+  let r = Math.random() * total;
+  for (const toy of unowned) {
+    r -= toy.prob;
+    if (r < 0) return toy;
+  }
+  return unowned[unowned.length - 1];
+}
+
 function getToyImageHTML(toy, sizeClass = "w-full h-full object-contain") {
   return `
     <img src="${toy.img}" alt="${toy.name}" class="${sizeClass}"
@@ -1282,10 +1310,12 @@ async function triggerBlindBoxDraw(isShardAutoExchange = false) {
   document.getElementById("boxStageOpening").classList.remove("hidden");
   document.getElementById("boxStageResult").classList.add("hidden");
   document.getElementById("boxOpeningBanner").textContent = isShardAutoExchange
-    ? "🧩 消耗 3 個碎片自動合成盲盒中..."
+    ? "🧩 消耗 3 個碎片合成保底盲盒中...（保證新公仔！）"
     : "✨ 正在開啟神秘盲盒... ✨";
 
-  const drawnToy = rollBlindBoxToy();
+  const drawnToy = isShardAutoExchange
+    ? rollNewToyForShardExchange(currentStudent)
+    : rollBlindBoxToy();
   const prevCount = currentStudent.toys[drawnToy.id] || 0;
   const isDuplicate = prevCount > 0;
 
@@ -1331,7 +1361,9 @@ async function triggerBlindBoxDraw(isShardAutoExchange = false) {
       statusEl.innerHTML = `已擁有此公仔，自動轉換為 <b class="text-indigo-900">1 個公仔碎片</b>！<br/>目前碎片累積：<b class="text-indigo-900">${currentStudent.shards} / 3</b>`;
     } else {
       statusEl.className = "text-sm font-bold mt-2 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200";
-      statusEl.textContent = "🆕 恭喜解鎖全新圖鑑公仔！";
+      statusEl.textContent = isShardAutoExchange
+        ? "🧩 碎片保底成功！解鎖全新圖鑑公仔！"
+        : "🆕 恭喜解鎖全新圖鑑公仔！";
     }
 
     // 檢查是否累積滿 3 個碎片，若滿 3 個則引導/自動觸發碎片兌換
@@ -1373,7 +1405,7 @@ function renderCollectionGrid() {
 
     const card = document.createElement("div");
     card.className = owned
-      ? `rounded-2xl p-3 border-2 text-center transition ${isHidden ? "bg-gradient-to-b from-amber-50 to-pink-50 border-amber-400 shadow-md" : "bg-white border-sky-200 shadow-sm"}`
+      ? `rounded-2xl p-3 border-2 text-center transition cursor-zoom-in hover:scale-105 active:scale-95 ${isHidden ? "bg-gradient-to-b from-amber-50 to-pink-50 border-amber-400 shadow-md" : "bg-white border-sky-200 shadow-sm"}`
       : "rounded-2xl p-3 border-2 border-dashed border-slate-200 bg-slate-50 text-center opacity-70";
 
     card.innerHTML = `
@@ -1388,9 +1420,14 @@ function renderCollectionGrid() {
         ${owned ? toy.name : (isHidden ? "？？？(隱藏款)" : toy.name)}
       </div>
       <div class="text-[11px] font-bold mt-0.5 ${owned ? (isHidden ? "text-amber-600" : "text-sky-600") : "text-slate-400"}">
-        ${owned ? "已收藏" : "尚未獲得"}
+        ${owned ? "🔍 點我放大" : "尚未獲得"}
       </div>
     `;
+
+    // 只有已經抽到的公仔可以點開放大（沒抽到的不能偷看）
+    if (owned) {
+      card.addEventListener("click", () => openToyZoom(toy.id));
+    }
 
     if (isHidden) {
       hidContainer.appendChild(card);
@@ -1398,6 +1435,21 @@ function renderCollectionGrid() {
       regContainer.appendChild(card);
     }
   });
+}
+
+function openToyZoom(toyId) {
+  const toy = TOYS.find(t => t.id === toyId);
+  if (!toy || !currentStudent || !(currentStudent.toys[toy.id] > 0)) return;
+  const wrap = document.getElementById("zoomToyImgWrap");
+  wrap.innerHTML = getToyImageHTML(toy, "w-full h-full object-contain");
+  // 圖片載入失敗時，備用表情符號放大顯示
+  const fallback = wrap.querySelector("div");
+  if (fallback) fallback.classList.replace("text-6xl", "text-[10rem]");
+  wrap.classList.toggle("hidden-glow", toy.type === "hidden");
+  document.getElementById("zoomToyName").textContent = toy.name;
+  document.getElementById("zoomToyInfo").textContent =
+    `${toy.type === "hidden" ? "✨ 神秘隱藏款" : "📦 常規款"} ｜ 已收藏 ${currentStudent.toys[toy.id]} 個`;
+  document.getElementById("modalToyZoom").classList.remove("hidden");
 }
 
 function renderHistoryTable() {
