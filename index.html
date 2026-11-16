@@ -151,7 +151,7 @@ const COLLECTION_NAME = "kaizheng_fraction_blindbox_v1";
     <div class="mt-6 pt-5 border-t border-slate-100 text-xs text-slate-500 space-y-1.5">
       <p class="font-bold text-slate-600">📌 遊戲規則小提醒：</p>
       <p>• 每答對 <span class="text-amber-600 font-bold">3 題</span> 即可獲得 <span class="text-amber-600 font-bold">1 次</span> 抽盲盒機會。</p>
-      <p>• 盲盒共有 6 款常規文具公仔（90%）與 4 款神秘隱藏公仔（10%）。</p>
+      <p>• 盲盒共有 <span class="jsRegCount">12</span> 款常規公仔（<span class="jsRegPct">90%</span>）與 <span class="jsHidCount">6</span> 款神秘隱藏公仔（<span class="jsHidPct">10%</span>）。</p>
       <p>• 抽到重複公仔會變成 <span class="text-indigo-600 font-bold">1 個碎片</span>，集滿 <span class="text-indigo-600 font-bold">3 個碎片</span> 自動再抽 1 次，而且<span class="text-indigo-600 font-bold">保證抽到還沒有的公仔</span>！</p>
     </div>
   </section>
@@ -204,7 +204,7 @@ const COLLECTION_NAME = "kaizheng_fraction_blindbox_v1";
         ✏️ 數學答題區
       </button>
       <button onclick="switchStudentTab('collection')" id="tabBtnCollection" class="px-5 py-2 rounded-xl font-black text-sm text-slate-600 hover:bg-amber-100 transition">
-        🧸 我的公仔櫃 (<span id="tabOwnedCount">0</span>/10)
+        🧸 我的公仔櫃 (<span id="tabOwnedCount">0</span>/<span class="jsTotalToys">18</span>)
       </button>
       <button onclick="switchStudentTab('history')" id="tabBtnHistory" class="px-5 py-2 rounded-xl font-black text-sm text-slate-600 hover:bg-amber-100 transition">
         📋 答題紀錄
@@ -250,22 +250,22 @@ const COLLECTION_NAME = "kaizheng_fraction_blindbox_v1";
       <div class="flex flex-wrap items-center justify-between gap-2 mb-5">
         <div>
           <h3 class="text-xl font-black text-slate-800">🧸 我的盲盒公仔收藏櫃</h3>
-          <p class="text-xs text-slate-500 mt-0.5">集滿全部 6 款常規公仔與 4 款隱藏公仔即可獲得通關認證！</p>
+          <p class="text-xs text-slate-500 mt-0.5">集滿全部 <span class="jsRegCount">12</span> 款常規公仔與 <span class="jsHidCount">6</span> 款隱藏公仔即可獲得通關認證！</p>
         </div>
         <div class="text-sm font-bold bg-amber-100 text-amber-800 px-3.5 py-1.5 rounded-xl">
-          目前收集進度：<span id="colProgressText">0 / 10</span>
+          目前收集進度：<span id="colProgressText">0 / 18</span>
         </div>
       </div>
 
       <h4 class="font-black text-sm text-slate-600 mb-3 flex items-center gap-1.5">
-        <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span> 常規款文具系列（總機率 90%，每款 15%）
+        <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span> 常規款系列（總機率 <span class="jsRegPct">90%</span>，每款 <span class="jsRegEach">7.5%</span>）
       </h4>
       <div id="gridRegularToys" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5 mb-7"></div>
 
       <h4 class="font-black text-sm text-amber-600 mb-3 flex items-center gap-1.5">
-        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> ✨ 神秘隱藏款系列（總機率 10%，每款 2.5%）
+        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> ✨ 神秘隱藏款系列（總機率 <span class="jsHidPct">10%</span>，每款 <span class="jsHidEach">1.8%／1%</span>）
       </h4>
-      <div id="gridHiddenToys" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
+      <div id="gridHiddenToys" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5"></div>
     </div>
 
     <!-- 子分頁 C：個人答題紀錄 -->
@@ -325,7 +325,7 @@ const COLLECTION_NAME = "kaizheng_fraction_blindbox_v1";
         <div id="tchStatTotalQ" class="text-2xl font-black text-amber-600 mt-1">0 題</div>
       </div>
       <div class="bg-white p-4 rounded-2xl shadow border border-slate-200">
-        <div class="text-xs font-bold text-slate-500">已通關人數 (集滿10款)</div>
+        <div class="text-xs font-bold text-slate-500">已通關人數 (集滿<span class="jsTotalToys">18</span>款)</div>
         <div id="tchStatCleared" class="text-2xl font-black text-pink-600 mt-1">0 人</div>
       </div>
     </div>
@@ -474,7 +474,7 @@ const COLLECTION_NAME = "kaizheng_fraction_blindbox_v1";
     <span class="bg-amber-500 text-white text-xs font-black px-3 py-1 rounded-full">恭喜正式通關</span>
     <h3 class="text-2xl font-black text-slate-800 mt-2">分數盲盒全圖鑑制霸！</h3>
     <p class="text-sm text-slate-600 mt-2 leading-relaxed">
-      太厲害了！你已經成功收集到凱正老師盲盒店裡全部 <b>6 款常規公仔</b> 與 <b>4 款隱藏公仔</b>，是名副其實的「異分母分數加減大師」！
+      太厲害了！你已經成功收集到凱正老師盲盒店裡全部 <b><span class="jsRegCount">12</span> 款常規公仔</b> 與 <b><span class="jsHidCount">6</span> 款隱藏公仔</b>，是名副其實的「異分母分數加減大師」！
     </p>
     <button onclick="closeModal('modalAllClear')" class="mt-6 w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black py-3 rounded-2xl shadow-lg">
       繼續挑戰更多題目！
@@ -524,21 +524,53 @@ const COLLECTION_NAME = "kaizheng_fraction_blindbox_v1";
 <script>
 /**
  * =========================================================================
- * 1. 盲盒公仔資料定義 (6 常規 = 90%, 4 隱藏 = 10%)
+ * 1. 盲盒公仔資料定義 (數量與機率見 TOYS 陣列)
  * =========================================================================
  */
 const TOYS = [
-  { id: "reg_1", name: "鉛筆盒", type: "regular", prob: 0.15, img: "鉛筆盒.jpg", fallbackEmoji: "👝" },
-  { id: "reg_2", name: "課桌椅", type: "regular", prob: 0.15, img: "桌椅.jpg", fallbackEmoji: "🪑" },
-  { id: "reg_3", name: "鉛筆", type: "regular", prob: 0.15, img: "鉛筆.jpg", fallbackEmoji: "✏️" },
-  { id: "reg_4", name: "作圖工具", type: "regular", prob: 0.15, img: "作圖工具.jpg", fallbackEmoji: "📐" },
-  { id: "reg_5", name: "數學課本", type: "regular", prob: 0.15, img: "課本.jpg", fallbackEmoji: "📘" },
-  { id: "reg_6", name: "小黑板", type: "regular", prob: 0.15, img: "黑板.jpg", fallbackEmoji: "🖍️" },
-  { id: "hid_1", name: "小小正", type: "hidden", prob: 0.025, img: "小小正.jpg", fallbackEmoji: "🌟" },
-  { id: "hid_2", name: "正小凱", type: "hidden", prob: 0.025, img: "正小凱.jpg", fallbackEmoji: "🐵" },
-  { id: "hid_3", name: "王阿凱", type: "hidden", prob: 0.025, img: "王阿凱.jpg", fallbackEmoji: "🐥" },
-  { id: "hid_4", name: "王小正", type: "hidden", prob: 0.025, img: "王小正.jpg", fallbackEmoji: "🤓" }
+  // ===== 常規款：12 款，每款 7.5%，共 90% =====
+  { id: "reg_1",  name: "鉛筆盒", type: "regular", prob: 0.075, img: "鉛筆盒.jpg", fallbackEmoji: "👝" },
+  { id: "reg_2",  name: "課桌椅", type: "regular", prob: 0.075, img: "桌椅.jpg", fallbackEmoji: "🪑" },
+  { id: "reg_3",  name: "鉛筆", type: "regular", prob: 0.075, img: "鉛筆.jpg", fallbackEmoji: "✏️" },
+  { id: "reg_4",  name: "作圖工具", type: "regular", prob: 0.075, img: "作圖工具.jpg", fallbackEmoji: "📐" },
+  { id: "reg_5",  name: "數學課本", type: "regular", prob: 0.075, img: "課本.jpg", fallbackEmoji: "📘" },
+  { id: "reg_6",  name: "小黑板", type: "regular", prob: 0.075, img: "黑板.jpg", fallbackEmoji: "🖍️" },
+  { id: "reg_7",  name: "學校裡跑不動的電腦", type: "regular", prob: 0.075, img: "學校裡跑不動的電腦.jpg", fallbackEmoji: "💻" },
+  { id: "reg_8",  name: "老師專用的椅子", type: "regular", prob: 0.075, img: "老師專用的椅子.jpg", fallbackEmoji: "💺" },
+  { id: "reg_9",  name: "掃具", type: "regular", prob: 0.075, img: "掃具.jpg", fallbackEmoji: "🧹" },
+  { id: "reg_10", name: "在教室某個角落的削鉛筆機", type: "regular", prob: 0.075, img: "在教室某個角落的削鉛筆機.jpg", fallbackEmoji: "✏️" },
+  { id: "reg_11", name: "鈴鐺", type: "regular", prob: 0.075, img: "鈴鐺.jpg", fallbackEmoji: "🔔" },
+  { id: "reg_12", name: "時鐘", type: "regular", prob: 0.075, img: "時鐘.jpg", fallbackEmoji: "🕰️" },
+  // ===== 隱藏款：5 款每款 1.8%（共 9%）＋ 吉祥物一家人 1% =====
+  { id: "hid_1", name: "小小正", type: "hidden", prob: 0.018, img: "小小正.jpg", fallbackEmoji: "🌟" },
+  { id: "hid_2", name: "正小凱", type: "hidden", prob: 0.018, img: "正小凱.jpg", fallbackEmoji: "🐵" },
+  { id: "hid_3", name: "王阿凱", type: "hidden", prob: 0.018, img: "王阿凱.jpg", fallbackEmoji: "🐥" },
+  { id: "hid_4", name: "王小正", type: "hidden", prob: 0.018, img: "王小正.jpg", fallbackEmoji: "🤓" },
+  { id: "hid_5", name: "可能是轉世的小明", type: "hidden", prob: 0.018, img: "可能是轉世的小明.jpg", fallbackEmoji: "🎈" },
+  { id: "hid_6", name: "吉祥物一家人", type: "hidden", prob: 0.01, img: "吉祥物一家人.jpg", fallbackEmoji: "👨‍👩‍👧‍👦" }
 ];
+// ⚠️ 新增公仔：在上面加一行，給「新的 id」（舊 id 不能改，否則學生收藏會對不上），
+//    並讓所有 prob 加起來 = 1。下面的數量、機率說明都會自動計算。
+
+const TOTAL_TOYS = TOYS.length;
+const REG_TOYS = TOYS.filter(t => t.type === "regular");
+const HID_TOYS = TOYS.filter(t => t.type === "hidden");
+const fmtPct = p => `${+(p * 100).toFixed(2)}%`;
+const sumProb = list => list.reduce((a, t) => a + t.prob, 0);
+
+// 把網頁上所有「幾款、幾 %」的文字依照 TOYS 自動填好
+function fillToyCountTexts() {
+  document.querySelectorAll(".jsTotalToys").forEach(el => (el.textContent = TOTAL_TOYS));
+  document.querySelectorAll(".jsRegCount").forEach(el => (el.textContent = REG_TOYS.length));
+  document.querySelectorAll(".jsHidCount").forEach(el => (el.textContent = HID_TOYS.length));
+  document.querySelectorAll(".jsRegPct").forEach(el => (el.textContent = fmtPct(sumProb(REG_TOYS))));
+  document.querySelectorAll(".jsHidPct").forEach(el => (el.textContent = fmtPct(sumProb(HID_TOYS))));
+  const regEach = [...new Set(REG_TOYS.map(t => fmtPct(t.prob)))].join("／");
+  const hidEach = [...new Set(HID_TOYS.map(t => fmtPct(t.prob)))].join("／");
+  document.querySelectorAll(".jsRegEach").forEach(el => (el.textContent = regEach));
+  document.querySelectorAll(".jsHidEach").forEach(el => (el.textContent = hidEach));
+}
+fillToyCountTexts();
 
 /**
  * =========================================================================
@@ -1100,9 +1132,9 @@ function renderStudentDashboard() {
 
   const owned = getOwnedUniqueCount(s);
   document.getElementById("tabOwnedCount").textContent = owned;
-  document.getElementById("colProgressText").textContent = `${owned} / 10`;
+  document.getElementById("colProgressText").textContent = `${owned} / ${TOTAL_TOYS}`;
 
-  if (owned >= 10) {
+  if (owned >= TOTAL_TOYS) {
     document.getElementById("stuClearBadge").classList.remove("hidden");
   } else {
     document.getElementById("stuClearBadge").classList.add("hidden");
@@ -1257,7 +1289,7 @@ async function handleAnswerSelect(opt, clickedBtn) {
  * =========================================================================
  */
 function rollBlindBoxToy() {
-  const r = Math.random();
+  const r = Math.random() * sumProb(TOYS);
   let acc = 0;
   for (const toy of TOYS) {
     acc += toy.prob;
@@ -1268,7 +1300,7 @@ function rollBlindBoxToy() {
 
 // 碎片兌換專用：只從「還沒擁有」的公仔裡抽，保證是新公仔。
 // 依照原本機率比例抽，所以隱藏款仍然比較稀有；若只剩隱藏款沒抽到，就一定會抽到隱藏款。
-// 如果 10 款都已集滿，才回到一般抽獎。
+// 如果所有公仔都已集滿，才回到一般抽獎。
 function rollNewToyForShardExchange(student) {
   const unowned = TOYS.filter(t => !(student.toys[t.id] > 0));
   if (unowned.length === 0) return rollBlindBoxToy();
@@ -1343,11 +1375,13 @@ async function triggerBlindBoxDraw(isShardAutoExchange = false) {
     const imgWrap = document.getElementById("boxToyImgWrap");
 
     if (drawnToy.type === "hidden") {
-      badge.textContent = "✨ 超稀有！神秘隱藏款 (2.5%) ✨";
+      badge.textContent = drawnToy.prob <= 0.01
+        ? `👑 傳說級！超級隱藏款 (${fmtPct(drawnToy.prob)}) 👑`
+        : `✨ 超稀有！神秘隱藏款 (${fmtPct(drawnToy.prob)}) ✨`;
       badge.className = "inline-block px-3.5 py-1 rounded-full text-xs font-black mb-3 bg-gradient-to-r from-amber-400 to-pink-500 text-white shadow";
       imgWrap.className = "w-44 h-44 mx-auto rounded-2xl bg-amber-50 border-4 border-amber-400 flex items-center justify-center overflow-hidden p-2 mb-3 hidden-glow";
     } else {
-      badge.textContent = "📦 精緻文具常規款 (15%)";
+      badge.textContent = `📦 教室常規款 (${fmtPct(drawnToy.prob)})`;
       badge.className = "inline-block px-3.5 py-1 rounded-full text-xs font-black mb-3 bg-sky-100 text-sky-800";
       imgWrap.className = "w-44 h-44 mx-auto rounded-2xl bg-slate-50 border-2 border-slate-200 flex items-center justify-center overflow-hidden p-2 mb-3";
     }
@@ -1382,10 +1416,11 @@ async function triggerBlindBoxDraw(isShardAutoExchange = false) {
 async function closeBlindBoxModal() {
   document.getElementById("modalBlindBox").classList.add("hidden");
 
-  // 檢查是否首度集滿 10 款公仔通關
+  // 檢查是否集滿目前「全部」公仔而通關。
+  // clearedNotified 記錄「當時共有幾款」：之後新增公仔，學生要再集滿才會再次通關慶祝
   const owned = getOwnedUniqueCount(currentStudent);
-  if (owned >= 10 && !currentStudent.clearedNotified) {
-    currentStudent.clearedNotified = true;
+  if (owned >= TOTAL_TOYS && currentStudent.clearedNotified !== TOTAL_TOYS) {
+    currentStudent.clearedNotified = TOTAL_TOYS;
     try { await saveStudentProgress(currentStudent); } catch (e) { console.error("通關狀態上傳失敗", e); }
     document.getElementById("modalAllClear").classList.remove("hidden");
   }
@@ -1532,7 +1567,7 @@ async function refreshTeacherData() {
   list.forEach(s => {
     sumTotalQ += s.totalAnswered || 0;
     sumCorrectQ += s.correctCount || 0;
-    if (getOwnedUniqueCount(s) >= 10) clearedCount += 1;
+    if (getOwnedUniqueCount(s) >= TOTAL_TOYS) clearedCount += 1;
   });
 
   const avgAcc = sumTotalQ > 0 ? Math.round((sumCorrectQ / sumTotalQ) * 100) : 0;
@@ -1554,7 +1589,7 @@ async function refreshTeacherData() {
     const regOwned = TOYS.filter(t => t.type === "regular" && (s.toys?.[t.id] || 0) > 0).length;
     const hidOwned = TOYS.filter(t => t.type === "hidden" && (s.toys?.[t.id] || 0) > 0).length;
     const totalOwned = regOwned + hidOwned;
-    const isCleared = totalOwned >= 10;
+    const isCleared = totalOwned >= TOTAL_TOYS;
 
     return `
       <tr class="hover:bg-slate-50">
@@ -1569,8 +1604,8 @@ async function refreshTeacherData() {
         <td class="py-3 px-3 font-bold text-emerald-600">${s.correctCount} 題</td>
         <td class="py-3 px-3 font-black ${acc >= 80 ? "text-emerald-600" : (acc >= 60 ? "text-amber-600" : "text-slate-500")}">${acc}%</td>
         <td class="py-3 px-3">
-          <span class="font-black text-slate-800">${totalOwned}/10</span>
-          <span class="text-xs text-slate-500 ml-1">(常規 ${regOwned}/6, 隱藏 ${hidOwned}/4)</span>
+          <span class="font-black text-slate-800">${totalOwned}/${TOTAL_TOYS}</span>
+          <span class="text-xs text-slate-500 ml-1">(常規 ${regOwned}/${REG_TOYS.length}, 隱藏 ${hidOwned}/${HID_TOYS.length})</span>
         </td>
         <td class="py-3 px-3 text-xs font-bold text-indigo-600">🧩 ${s.shards || 0}/3 ｜ 🎁 ${s.availableBoxes || 0}</td>
         <td class="py-3 px-3">
@@ -1856,7 +1891,7 @@ function openStudentDetailModal(studentId) {
 
   document.getElementById("detailModalBody").innerHTML = `
     <div>
-      <div class="font-black text-slate-700 mb-2">🧸 公仔收集明細（共 ${getOwnedUniqueCount(s)} / 10 款）：</div>
+      <div class="font-black text-slate-700 mb-2">🧸 公仔收集明細（共 ${getOwnedUniqueCount(s)} / ${TOTAL_TOYS} 款）：</div>
       <div class="grid grid-cols-5 gap-2">${toyBadges}</div>
     </div>
     <div>
@@ -1872,13 +1907,13 @@ function exportClassCSV() {
     alert("目前沒有資料可匯出");
     return;
   }
-  const headers = ["班級座號", "姓名", "密碼", "已答題數", "答對題數", "正確率(%)", "收集公仔種數(滿10)", "常規款數", "隱藏款數", "剩餘碎片", "待抽盲盒", "是否通關"];
+  const headers = ["班級座號", "姓名", "密碼", "已答題數", "答對題數", "正確率(%)", `收集公仔種數(滿${TOTAL_TOYS})`, "常規款數", "隱藏款數", "剩餘碎片", "待抽盲盒", "是否通關"];
   const rows = cachedAllStudents.map(s => {
     const acc = s.totalAnswered > 0 ? Math.round((s.correctCount / s.totalAnswered) * 100) : 0;
     const reg = TOYS.filter(t => t.type === "regular" && (s.toys?.[t.id] || 0) > 0).length;
     const hid = TOYS.filter(t => t.type === "hidden" && (s.toys?.[t.id] || 0) > 0).length;
     const total = reg + hid;
-    return [s.id, s.name || "", s.pin ? "'" + s.pin : "", s.totalAnswered, s.correctCount, acc, total, reg, hid, s.shards || 0, s.availableBoxes || 0, total >= 10 ? "是" : "否"];
+    return [s.id, s.name || "", s.pin ? "'" + s.pin : "", s.totalAnswered, s.correctCount, acc, total, reg, hid, s.shards || 0, s.availableBoxes || 0, total >= TOTAL_TOYS ? "是" : "否"];
   });
 
   const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
