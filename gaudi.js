@@ -5,17 +5,19 @@
 let stu = null;      // 目前登入的學生
 let G = null;        // stu.gaudi 的捷徑
 let curBld = null;   // 目前所在的建築 id
-let battle = null;   // 進行中的戰鬥
+let battle = null;   // 進行中的戰鬥（同時存在 G.active，重新整理也能接著打）
 let pendingGuardian = null;
 let teamPick = [];
 let resultCallback = null;
+let helpPage = 0;
 
 const $ = id => document.getElementById(id);
 const BLD = id => BUILDINGS.find(b => b.id === id);
 const MON = id => WILD.find(m => m.id === id) || GUARDIANS.find(m => m.id === id);
 const isGuardian = id => id.startsWith("g");
+const HOUR = 3600 * 1000;
 
-/* ---------- 進度資料 ---------- */
+/* ================= 進度資料 ================= */
 function todayKey() {
   const d = new Date();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
@@ -25,18 +27,18 @@ function ensureGaudi(s) {
   const g = (s.gaudi && typeof s.gaudi === "object") ? s.gaudi : {};
   const num = k => { g[k] = Number(g[k]) || 0; };
   ["answered", "correct", "dayCoins", "lockUntil", "lockCount"].forEach(num);
-  if (!Array.isArray(g.correctIds)) g.correctIds = [];
-  if (!g.wrongCounts || typeof g.wrongCounts !== "object") g.wrongCounts = {};
-  if (!g.caught || typeof g.caught !== "object") g.caught = {};
-  if (!g.beaten || typeof g.beaten !== "object") g.beaten = {};
+  const obj = k => { if (!g[k] || typeof g[k] !== "object" || Array.isArray(g[k])) g[k] = {}; };
+  ["wrongCounts", "caught", "beaten", "everCaught", "hurt", "restUntil"].forEach(obj);
   if (!g.balls || typeof g.balls !== "object") g.balls = { n: 0, s: 0 };
   g.balls.n = Number(g.balls.n) || 0;
   g.balls.s = Number(g.balls.s) || 0;
-  if (!Array.isArray(g.team)) g.team = [];
-  if (!Array.isArray(g.wrongTimes)) g.wrongTimes = [];
-  if (!Array.isArray(g.logs)) g.logs = [];
+  ["correctIds", "team", "wrongTimes", "logs"].forEach(k => { if (!Array.isArray(g[k])) g[k] = []; });
+  // 舊進度：收服過的怪獸也記進圖鑑
+  Object.keys(g.caught).forEach(id => { if (g.caught[id] > 0) g.everCaught[id] = true; });
   g.starterGiven = !!g.starterGiven;
+  g.helpSeen = !!g.helpSeen;
   g.cleared = !!g.cleared;
+  if (g.active && typeof g.active !== "object") g.active = null;
   if (g.dayKey !== todayKey()) { g.dayKey = todayKey(); g.dayCoins = 0; }
   s.gaudi = g;
   return g;
@@ -53,24 +55,52 @@ async function save(coinDelta = 0) {
 // 依每日上限計算這次真正能拿到幾個金幣
 function grantCoins(n) {
   if (G.dayKey !== todayKey()) { G.dayKey = todayKey(); G.dayCoins = 0; }
-  const room = Math.max(0, GAUDI_DAILY_COIN_CAP - G.dayCoins);
-  const got = Math.min(n, room);
+  const got = Math.min(n, Math.max(0, GAUDI_DAILY_COIN_CAP - G.dayCoins));
   G.dayCoins += got;
   return got;
 }
 
-const owned = id => isGuardian(id) ? !!G.beaten[id] : (G.caught[id] || 0) > 0;
+/* ---------- 夥伴狀態 ---------- */
+const everOwned = id => isGuardian(id) ? !!G.beaten[id] : !!G.everCaught[id];   // 圖鑑：曾經得到過
+const countOf = id => isGuardian(id) ? (G.beaten[id] ? 1 : 0) : (G.caught[id] || 0);
+const isResting = id => isGuardian(id) && (G.restUntil[id] || 0) > Date.now();
+const heartsLeft = id => Math.max(0, maxHeartsOf(id) - (G.hurt[id] || 0));
+const canFight = id => countOf(id) > 0 && !isResting(id);
+
+function restText(id) {
+  const mins = Math.max(1, Math.ceil(((G.restUntil[id] || 0) - Date.now()) / 60000));
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return h > 0 ? `休息中，還要 ${h} 小時 ${m} 分` : `休息中，還要 ${m} 分`;
+}
+
+// 休息時間到了的守護精靈，愛心補滿
+function refreshResting() {
+  Object.keys(G.restUntil).forEach(id => {
+    if (G.restUntil[id] && G.restUntil[id] <= Date.now()) { delete G.restUntil[id]; delete G.hurt[id]; }
+  });
+}
+
+function heartsHtml(id, small) {
+  const max = maxHeartsOf(id), left = heartsLeft(id);
+  return `<span class="${small ? "text-sm" : ""} whitespace-nowrap">` + Array.from({ length: max }, (_, i) =>
+    `<span class="k-heart ${small ? "k-heart--sm" : ""} ${i < left ? "" : "is-empty"}">♥</span>`).join("") + "</span>";
+}
+
+/* ---------- 開放條件 ---------- */
 const progressUnlocked = i => i === 0 || !!G.beaten[BUILDINGS[i - 1].guardians[2]];
 const teacherOpened = i => i < getGaudiOpen(stu);   // 老師在教師端設定開放到第幾棟
 const bldUnlocked = i => teacherOpened(i) && progressUnlocked(i);
 const bldIndex = id => BUILDINGS.findIndex(b => b.id === id);
+const caughtKinds = bId => WILD.filter(m => m.b === bId && G.everCaught[m.id]).length;
 
-/* ---------- 開始 ---------- */
+/* ================= 開始 ================= */
 window.onPageReady = async () => {
   document.querySelectorAll(".jsDailyCap").forEach(e => (e.textContent = GAUDI_DAILY_COIN_CAP));
   document.querySelectorAll(".jsPriceN").forEach(e => (e.textContent = BALL_PRICE.n));
   document.querySelectorAll(".jsPriceS").forEach(e => (e.textContent = BALL_PRICE.s));
   document.querySelectorAll(".jsGuessLimit").forEach(e => (e.textContent = GUESS_WRONG_LIMIT));
+  document.querySelectorAll(".jsRestHours").forEach(e => (e.textContent = GUARDIAN_REST_HOURS));
+  document.querySelectorAll(".jsCap").forEach(e => (e.textContent = GAUDI_DAILY_COIN_CAP));
   const s = await loadSessionStudentOrRedirect();
   if (!s) return;
   stu = s;
@@ -79,22 +109,31 @@ window.onPageReady = async () => {
     return;
   }
   G = ensureGaudi(stu);
+  refreshResting();
   $("viewGame").classList.remove("hidden");
   $("gStuId").textContent = stu.id;
   $("gStuName").textContent = stu.name || "";
   renderAll();
-  if (!G.starterGiven) {
-    G.starterGiven = true;
-    G.balls.n += STARTER_BALLS;
-    await save();
-    renderStatus();
-    showResult({
-      title: "歡迎來到巴塞隆納！",
-      text: `送你 ${STARTER_BALLS} 顆普通球。先到「米拉之家」探索，收服第一隻怪獸當夥伴，再去挑戰守護精靈吧！`
-    });
+
+  if (G.active) {                 // 上一場戰鬥還沒打完：接著打
+    resumeBattle();
+  } else if (!G.helpSeen) {       // 第一次來：先看遊戲說明
+    openHelp(true);
   }
   if (G.lockUntil > Date.now()) showGuessLock();
 };
+
+async function giveStarterIfNeeded() {
+  if (G.starterGiven) return;
+  G.starterGiven = true;
+  G.balls.n += STARTER_BALLS;
+  await save();
+  renderStatus();
+  showResult({
+    title: "送你寶貝球！",
+    text: `送你 ${STARTER_BALLS} 顆普通球。先到「米拉之家」出發探索，收服第一隻怪獸吧！`
+  });
+}
 
 function renderAll() {
   renderStatus();
@@ -111,7 +150,7 @@ function renderStatus() {
   $("gBallN").textContent = G.balls.n;
   $("gBallS").textContent = G.balls.s;
   $("gDayCoins").textContent = G.dayCoins;
-  $("gCaughtCount").textContent = WILD.filter(m => owned(m.id)).length;
+  $("gCaughtCount").textContent = WILD.filter(m => G.everCaught[m.id]).length;
 }
 
 function gTab(name) {
@@ -120,25 +159,94 @@ function gTab(name) {
     $("gPane" + cap).classList.toggle("hidden", t !== name);
     $("gTab" + cap).classList.toggle("is-active", t === name);
   });
-  if (name === "team") renderDex();
+  if (name === "team") { refreshResting(); renderDex(); }
   if (name === "rank") renderRank();
   if (name === "shop") renderStatus();
 }
 
-/* ---------- 地圖 ---------- */
+/* ================= 遊戲說明 ================= */
+const HELP_PAGES = [
+  {
+    title: "照課文的順序走",
+    art: () => `<div class="flex justify-center gap-1">${["mila", "batllo", "guell", "sagrada"].map(b => `<div class="w-16">${BUILDING_ART[b]}</div>`).join("")}</div>`,
+    text: "四棟建築照課文順序開放。打敗一棟的 3 隻守護精靈，下一棟才會打開。"
+  },
+  {
+    title: "探索：讓怪獸變虛弱",
+    art: () => `<div class="w-28 mx-auto k-mon-img border-[3px] border-[#1E2A33]"><img src="${monsterImg("w13")}" alt="" /></div>`,
+    text: "在建築裡按「出發探索」會遇到野生怪獸。答對題目讓牠變虛弱；答錯 3 次牠就逃走了。"
+  },
+  {
+    title: "虛弱後，三選一",
+    art: () => `
+      <table class="mx-auto text-sm font-bold border-collapse">
+        <tr><th></th><th class="px-2">普通</th><th class="px-2">稀有</th><th class="px-2">傳說</th></tr>
+        <tr><td class="pr-2 text-left"><span class="k-ball align-middle"></span> 初級捕捉</td><td>${pct(RARITY[0].catchN)}</td><td>${pct(RARITY[1].catchN)}</td><td class="text-[#C23A26]">抓不到</td></tr>
+        <tr><td class="pr-2 text-left"><span class="k-ball is-super align-middle"></span> 高級捕捉</td><td>${pct(RARITY[0].catchS)}</td><td>${pct(RARITY[1].catchS)}</td><td>${pct(RARITY[2].catchS)}</td></tr>
+        <tr><td class="pr-2 text-left">擊敗牠</td><td>${RARITY[0].defeatCoins} 金幣</td><td>${RARITY[1].defeatCoins} 金幣</td><td>${RARITY[2].defeatCoins} 金幣</td></tr>
+      </table>`,
+    text: "傳說怪獸只有「高級捕捉」抓得到！不想抓的話，可以擊敗牠換金幣。"
+  },
+  {
+    title: "挑戰守護精靈",
+    art: () => `<div class="w-28 mx-auto k-mon-img border-[3px] border-[#1E2A33]"><img src="${monsterImg("g12")}" alt="" /></div>`,
+    text: "先收服這棟的 2、3、4 種怪獸，才能挑戰第 1、2、3 隻守護精靈。帶 2 隻夥伴出戰，答對就攻擊。越後面的建築越強！"
+  },
+  {
+    title: "小心！答錯夥伴會受傷",
+    art: () => `<div class="text-center"><span class="k-heart">♥</span><span class="k-heart">♥</span><span class="k-heart is-empty">♥</span></div>`,
+    text: `答錯時，站在前面的夥伴少 1 顆愛心，戰鬥結束也不會回來。怪獸的愛心沒了會永遠消失；守護精靈要休息 ${GUARDIAN_REST_HOURS} 小時。不要亂猜！`
+  },
+  {
+    title: "金幣和商店",
+    art: () => `<div class="text-center"><span class="k-coin text-4xl"></span></div>`,
+    text: `答對 1 題得 1 金幣，第一次打敗守護精靈多 5 金幣，擊敗怪獸也有金幣。每天最多 ${GAUDI_DAILY_COIN_CAP} 金幣，可以到商店買寶貝球。`
+  }
+];
+const pct = x => Math.round(x * 100) + "%";
+
+function openHelp(first) {
+  helpPage = 0;
+  $("modalHelp").dataset.first = first ? "1" : "";
+  renderHelp();
+  $("modalHelp").classList.remove("hidden");
+}
+function renderHelp() {
+  const p = HELP_PAGES[helpPage];
+  $("helpArt").innerHTML = p.art();
+  $("helpTitle").textContent = p.title;
+  $("helpText").textContent = p.text;
+  $("helpDots").innerHTML = HELP_PAGES.map((_, i) =>
+    `<span class="inline-block w-2.5 h-2.5 rounded-full border-2 border-[#1E2A33] ${i === helpPage ? "bg-[#FFC83D]" : "bg-white"}"></span>`).join("");
+  $("helpPrev").style.visibility = helpPage === 0 ? "hidden" : "";
+  $("helpNext").textContent = helpPage === HELP_PAGES.length - 1 ? "開始玩！" : "下一頁";
+}
+async function helpStep(d) {
+  helpPage += d;
+  if (helpPage >= HELP_PAGES.length) {
+    closeModal("modalHelp");
+    if (!G.helpSeen) { G.helpSeen = true; await save(); }
+    await giveStarterIfNeeded();
+    return;
+  }
+  helpPage = Math.max(0, helpPage);
+  renderHelp();
+}
+
+/* ================= 地圖 ================= */
 function renderMap() {
   $("mapGrid").innerHTML = BUILDINGS.map((b, i) => {
     const open = bldUnlocked(i);
     const beatenN = b.guardians.filter(g => G.beaten[g]).length;
-    const caughtN = WILD.filter(m => m.b === b.id && owned(m.id)).length;
     const done = beatenN === 3;
     const cls = !open ? "is-locked" : (done ? "is-done" : "");
     const status = !open
       ? `<span class="k-chip mt-2">${teacherOpened(i) ? "還沒開放" : "老師還沒開放"}</span>`
-      : `<span class="k-chip ${done ? "k-chip--yellow" : "k-chip--chi"} mt-2">${done ? "完成！" : `精靈 ${beatenN}/3・怪獸 ${caughtN}/5`}</span>`;
+      : `<span class="k-chip ${done ? "k-chip--yellow" : "k-chip--chi"} mt-2">${done ? "完成！" : `精靈 ${beatenN}/3・怪獸 ${caughtKinds(b.id)}/5`}</span>`;
     return `
       <button class="k-bld ${cls}" onclick="enterBuilding('${b.id}')" aria-label="${b.name}${open ? "" : "（還沒開放）"}">
         <span class="k-bld-step">${i + 1}</span>
+        <span class="k-bld-tier">${"★".repeat(b.tier)}</span>
         ${BUILDING_ART[b.id]}
         <span class="k-display text-xl mt-1">${b.name}</span>
         ${status}
@@ -170,16 +278,23 @@ function gShowMap() {
   renderMap();
 }
 
-function monCard(id, size = "") {
+// 圖鑑小卡：沒得到過→剪影；得到過但都消失了→淡淡的
+function monCard(id) {
   const m = MON(id);
-  const have = owned(id);
-  const cnt = !isGuardian(id) && G.caught[id] > 1 ? `<span class="k-toy-count">×${G.caught[id]}</span>` : "";
+  const seen = everOwned(id);
+  const n = countOf(id);
+  const gone = seen && n === 0;
+  let sub = "";
+  if (seen && !isGuardian(id)) sub = n > 0 ? heartsHtml(id, true) : `<span class="text-[11px] font-bold text-[#8C9AA6]">都消失了</span>`;
+  if (seen && isGuardian(id)) sub = isResting(id) ? `<span class="text-[11px] font-bold text-[#C23A26]">休息中</span>` : heartsHtml(id, true);
+  const cnt = !isGuardian(id) && n > 1 ? `<span class="k-toy-count">×${n}</span>` : "";
   return `
-    <div class="text-center ${size}">
-      <div class="k-mon-img border-[2.5px] border-[#1E2A33] relative">
-        <img src="${have ? monsterImg(id) : silhouetteImg(id)}" alt="${have ? m.name : "還沒收服"}" loading="lazy" />${cnt}
+    <div class="text-center">
+      <div class="k-mon-img border-[2.5px] border-[#1E2A33] relative ${gone || isResting(id) ? "opacity-40" : ""}">
+        <img src="${seen ? monsterImg(id) : silhouetteImg(id)}" alt="${seen ? m.name : "還沒收服"}" loading="lazy" />${cnt}
       </div>
-      <div class="text-xs font-bold mt-1 leading-tight ${have ? "" : "text-[#8C9AA6]"}">${have ? m.name : "？？？"}</div>
+      <div class="text-xs font-bold mt-1 leading-tight ${seen ? "" : "text-[#8C9AA6]"}">${seen ? m.name : "？？？"}</div>
+      <div class="leading-none mt-0.5">${sub}</div>
     </div>`;
 }
 
@@ -187,36 +302,41 @@ function renderBuilding() {
   const b = BLD(curBld);
   $("bvArt").innerHTML = BUILDING_ART[b.id];
   $("bvName").textContent = b.name;
-  $("bvSub").textContent = b.sub;
+  $("bvSub").textContent = b.sub + "　" + "★".repeat(b.tier);
   const beatenN = b.guardians.filter(g => G.beaten[g]).length;
   $("bvProgress").textContent = `守護精靈 ${beatenN} / 3`;
   $("bvWild").innerHTML = WILD.filter(m => m.b === b.id).map(m => monCard(m.id)).join("");
+  $("bvCaughtKinds").textContent = caughtKinds(b.id);
+  const kinds = caughtKinds(b.id);
   $("bvGuards").innerHTML = b.guardians.map((gid, j) => {
     const g = MON(gid);
     const beaten = !!G.beaten[gid];
-    const open = j === 0 || G.beaten[b.guardians[j - 1]];
-    let btn;
-    if (beaten) btn = `<button onclick="startGuardian('${gid}')" class="k-btn k-btn--sm">再打一次</button>`;
-    else if (open) btn = `<button onclick="startGuardian('${gid}')" class="k-btn k-btn--tomato px-4 py-2">挑戰</button>`;
-    else btn = `<span class="k-chip">先打敗前一隻</span>`;
+    const prevOk = j === 0 || G.beaten[b.guardians[j - 1]];
+    const enough = kinds >= CAUGHT_NEEDED[j];
+    let btn, note;
+    if (!prevOk) { btn = `<span class="k-chip">先打敗前一隻</span>`; note = `需要收服 ${CAUGHT_NEEDED[j]} 種怪獸`; }
+    else if (!enough) { btn = `<span class="k-chip">還不能挑戰</span>`; note = `先收服這棟 ${CAUGHT_NEEDED[j]} 種怪獸（現在 ${kinds} 種）`; }
+    else if (beaten) { btn = `<button onclick="startGuardian('${gid}')" class="k-btn k-btn--sm">再打一次</button>`; note = `已打敗・招式：${SKILLS[g.skill].name}`; }
+    else { btn = `<button onclick="startGuardian('${gid}')" class="k-btn k-btn--tomato px-4 py-2">挑戰</button>`; note = `血量 ${g.hp}`; }
+    const showReal = beaten || prevOk;
     return `
       <div class="flex flex-wrap items-center gap-3 p-2 rounded-2xl border-2 ${beaten ? "border-[#1E2A33] bg-[#FFF4CC]" : "border-dashed border-[#9AA8B4] bg-white"}">
-        <div class="w-16 shrink-0 k-mon-img border-[2.5px] border-[#1E2A33]"><img src="${beaten || open ? monsterImg(gid) : silhouetteImg(gid)}" alt="" loading="lazy" /></div>
+        <div class="w-16 shrink-0 k-mon-img border-[2.5px] border-[#1E2A33]"><img src="${showReal ? monsterImg(gid) : silhouetteImg(gid)}" alt="" loading="lazy" /></div>
         <div class="flex-1 min-w-0">
-          <div class="k-display text-lg leading-tight">${beaten || open ? g.name : "？？？"}${g.final ? ' <span class="k-chip k-chip--yellow">最終魔王</span>' : ""}</div>
-          <div class="text-xs font-bold text-[#5B6B78] mt-0.5">${beaten ? "已打敗・招式：" + SKILLS[g.skill].name : "血量 " + g.hp}</div>
+          <div class="k-display text-lg leading-tight">${showReal ? g.name : "？？？"}${g.final ? ' <span class="k-chip k-chip--yellow">最終魔王</span>' : ""}</div>
+          <div class="text-xs font-bold text-[#5B6B78] mt-0.5">${note}</div>
         </div>
         ${btn}
       </div>`;
   }).join("");
 }
 
-/* ---------- 我的夥伴 ---------- */
+/* ================= 我的夥伴 ================= */
 function renderDex() {
   renderTeamNow();
   $("dexList").innerHTML = BUILDINGS.map((b, i) => `
     <div>
-      <h4 class="k-display text-lg mb-2">${i + 1}. ${b.name}</h4>
+      <h4 class="k-display text-lg mb-2">${i + 1}. ${b.name} <span class="text-sm text-[#5B6B78]">${"★".repeat(b.tier)}</span></h4>
       <div class="grid grid-cols-4 sm:grid-cols-8 gap-2">
         ${WILD.filter(m => m.b === b.id).map(m => monCard(m.id)).join("")}
         ${b.guardians.map(g => monCard(g)).join("")}
@@ -225,46 +345,48 @@ function renderDex() {
 }
 
 function renderTeamNow() {
-  const team = G.team.filter(owned);
+  const team = G.team.filter(canFight);
   $("teamNow").innerHTML = team.length
     ? team.map(id => `<span class="k-chip k-chip--yellow">${MON(id).name}</span>`).join("")
     : `<span class="k-chip">還沒選</span>`;
 }
 
-function teamBonus(id) {
-  return isGuardian(id) ? GUARDIAN_BONUS : RARITY[MON(id).rarity].bonus;
-}
 function memberLabel(id) {
-  if (isGuardian(id)) return "守護精靈・" + SKILLS[MON(id).skill].name;
-  return RARITY[MON(id).rarity].name + (RARITY[MON(id).rarity].bonus ? `・攻擊+${RARITY[MON(id).rarity].bonus}` : "");
+  const r = isGuardian(id) ? "守護精靈" : RARITY[MON(id).rarity].name;
+  return `${r}・攻擊 ${attackOf(id)}`;
 }
 
 function openTeamPicker(guardianId) {
+  refreshResting();
   pendingGuardian = guardianId;
-  const all = [...WILD, ...GUARDIANS].map(m => m.id).filter(owned);
-  if (all.length === 0) {
-    showResult({ title: "你還沒有夥伴", text: "先到建築裡「出發探索」，收服一隻怪獸當夥伴，才能挑戰守護精靈。" });
+  const all = [...WILD, ...GUARDIANS].map(m => m.id).filter(id => countOf(id) > 0);
+  const ready = all.filter(canFight);
+  if (ready.length === 0) {
+    showResult({ title: "沒有可以出戰的夥伴", text: all.length ? "你的守護精靈都在休息，先去探索收服怪獸吧。" : "先到建築裡「出發探索」，收服怪獸當夥伴。" });
     return;
   }
-  teamPick = G.team.filter(owned).slice(0, 2);
-  if (teamPick.length === 0) teamPick = all.slice(0, 2);
+  teamPick = G.team.filter(canFight).slice(0, 2);
+  if (teamPick.length === 0) teamPick = ready.slice(0, 2);
   $("btnTeamGo").textContent = guardianId ? "出戰" : "決定";
   $("teamHint").textContent = guardianId
-    ? `對手：${MON(guardianId).name}（血量 ${MON(guardianId).hp}）。點一下選擇，再點一下取消。`
-    : "點一下選擇，再點一下取消。";
-  renderTeamPick(all);
+    ? `對手：${MON(guardianId).name}（血量 ${MON(guardianId).hp}）。先選的夥伴站前面，答錯時前面的先受傷。`
+    : "先選的夥伴站前面，答錯時前面的先受傷。";
+  renderTeamPick();
   $("modalTeam").classList.remove("hidden");
 }
 
-function renderTeamPick(all) {
-  all = all || [...WILD, ...GUARDIANS].map(m => m.id).filter(owned);
+function renderTeamPick() {
+  const all = [...WILD, ...GUARDIANS].map(m => m.id).filter(id => countOf(id) > 0);
   $("teamPickGrid").innerHTML = all.map(id => {
-    const on = teamPick.includes(id);
+    const idx = teamPick.indexOf(id);
+    const ok = canFight(id);
     return `
-      <button onclick="toggleTeam('${id}')" class="text-center rounded-2xl p-1.5 border-[3px] ${on ? "border-[#1E2A33] bg-[#FFC83D]" : "border-transparent"}">
+      <button ${ok ? `onclick="toggleTeam('${id}')"` : "disabled"} class="relative text-center rounded-2xl p-1.5 border-[3px] ${idx >= 0 ? "border-[#1E2A33] bg-[#FFC83D]" : "border-transparent"} ${ok ? "" : "opacity-40"}">
+        ${idx >= 0 ? `<span class="absolute -top-1 -left-1 z-10 k-chip k-chip--yellow">${idx === 0 ? "前" : "後"}</span>` : ""}
         <div class="k-mon-img border-[2.5px] border-[#1E2A33]"><img src="${monsterImg(id)}" alt="" /></div>
-        <div class="text-sm font-bold mt-1 leading-tight">${MON(id).name}</div>
-        <div class="text-[11px] font-bold text-[#5B6B78] leading-tight">${memberLabel(id)}</div>
+        <div class="text-sm font-bold mt-1 leading-tight">${MON(id).name}${!isGuardian(id) && countOf(id) > 1 ? " ×" + countOf(id) : ""}</div>
+        <div class="leading-none">${ok ? heartsHtml(id, true) : ""}</div>
+        <div class="text-[11px] font-bold text-[#5B6B78] leading-tight">${ok ? memberLabel(id) : restText(id)}</div>
       </button>`;
   }).join("");
 }
@@ -283,11 +405,11 @@ async function confirmTeam() {
   G.team = teamPick.slice(0, 2);
   closeModal("modalTeam");
   renderTeamNow();
-  await save();
   if (pendingGuardian) beginGuardianBattle(pendingGuardian);
+  else await save();
 }
 
-/* ---------- 商店 ---------- */
+/* ================= 商店 ================= */
 async function buyBall(kind) {
   const price = BALL_PRICE[kind];
   if ((stu.coins || 0) < price) {
@@ -300,7 +422,7 @@ async function buyBall(kind) {
   showResult({ title: "買好了！", text: `${kind === "n" ? "普通球" : "超級球"} +1（剩 ${stu.coins} 金幣）` });
 }
 
-/* ---------- 排行榜 ---------- */
+/* ================= 排行榜 ================= */
 async function renderRank() {
   $("rankCount").innerHTML = $("rankAcc").innerHTML = `<li class="text-sm font-bold text-[#5B6B78]">讀取中…</li>`;
   let list;
@@ -324,7 +446,7 @@ async function renderRank() {
   $("rankAcc").innerHTML = byAcc.length ? byAcc.map((r, i) => li(r, i, Math.round(r.acc * 100) + "%")).join("") : `<li class="text-sm font-bold text-[#5B6B78]">還沒有人答滿 20 題。</li>`;
 }
 
-/* ---------- 出題 ---------- */
+/* ================= 出題 ================= */
 function pickQuestion(bId) {
   let pool = bId === "all" ? GAUDI_QUESTIONS : GAUDI_QUESTIONS.filter(q => q.b === bId);
   const fresh = pool.filter(q => !battle.asked.includes(q.id));
@@ -341,11 +463,17 @@ function shuffle(arr) {
   return a;
 }
 
-function showQuestion() {
-  const q = pickQuestion(battle.pool);
+// keepCurrent：接著打的時候，出同一題（不能靠重新整理換題目）
+function showQuestion(keepCurrent) {
+  let q = keepCurrent && battle.qid ? GAUDI_QUESTIONS.find(x => x.id === battle.qid) : null;
+  if (!q) {
+    q = pickQuestion(battle.pool);
+    battle.qid = q.id;
+    battle.asked.push(q.id);
+    battle.asked = battle.asked.slice(-60);
+  }
   battle.q = q;
   battle.answered = false;
-  battle.asked.push(q.id);
   if (q.p && PASSAGES[q.p]) {
     $("qPassage").classList.remove("hidden");
     $("qPassageTitle").textContent = "〈" + PASSAGES[q.p].title + "〉";
@@ -361,117 +489,155 @@ function showQuestion() {
       <span class="k-opt-key">${"ABCD"[i]}</span><span class="k-opt-txt">${escapeHtml(o)}</span>
     </button>`).join("");
   $("gqFeedback").classList.add("hidden");
+  $("qArea").classList.remove("hidden");
+  $("weakArea").classList.add("hidden");
   renderBattleSide();
+  if (!keepCurrent) { syncActive(); save(); }   // 記住這一題：重新整理也不能換題
 }
 
-/* ---------- 戰鬥 ---------- */
+/* ================= 戰鬥 ================= */
+// 存一份戰鬥狀態，重新整理或關掉網頁後可以接著打
+function syncActive() {
+  const b = battle;
+  G.active = b ? {
+    kind: b.kind, foe: b.foe.id, hp: b.hp, maxHp: b.maxHp, wrong: b.wrong || 0, canThrow: !!b.canThrow,
+    team: b.team || [], used: b.used || {}, shield: !!b.shield, power: !!b.power,
+    pool: b.pool, asked: b.asked, qid: b.answered ? null : b.qid, bld: curBld
+  } : null;
+}
+
 function openBattle() {
   $("battle").classList.remove("hidden");
   $("battle").scrollTop = 0;
   document.body.style.overflow = "hidden";
 }
-function closeBattle() {
+async function closeBattle() {
   battle = null;
+  G.active = null;
   $("battle").classList.add("hidden");
   document.body.style.overflow = "";
+  await save();
   renderAll();
 }
 
-function startWild() {
+function setFoeHeader() {
+  const f = battle.foe;
+  $("foeImg").src = monsterImg(f.id);
+  $("foeName").textContent = f.name;
+  if (battle.kind === "wild") {
+    $("foeTag").textContent = RARITY[f.rarity].name + "・" + "★".repeat(tierOf(f.b)) + (G.everCaught[f.id] ? "" : "・新怪獸");
+    $("foeTag").className = "k-chip " + (f.rarity === 2 ? "k-chip--yellow" : f.rarity === 1 ? "k-chip--math" : "");
+  } else {
+    $("foeTag").textContent = f.final ? "最終魔王" : "守護精靈・" + "★".repeat(tierOf(f.b));
+    $("foeTag").className = "k-chip k-chip--yellow";
+  }
+}
+
+async function startWild() {
   if (G.lockUntil > Date.now()) { showGuessLock(); return; }
   const pool = WILD.filter(m => m.b === curBld);
   let r = Math.random(), mon = pool[0];
   for (const m of pool) { r -= RARITY[m.rarity].chance; if (r < 0) { mon = m; break; } }
-  const hp = RARITY[mon.rarity].hp;
+  const hp = WEAKEN_HITS[tierOf(mon.b)][mon.rarity];
   battle = { kind: "wild", foe: mon, hp, maxHp: hp, wrong: 0, pool: curBld, asked: [], canThrow: false };
-  $("foeImg").src = monsterImg(mon.id);
-  $("foeName").textContent = mon.name;
-  $("foeTag").textContent = RARITY[mon.rarity].name + (owned(mon.id) ? "・已收服過" : "・新怪獸");
-  $("foeTag").className = "k-chip " + (mon.rarity === 2 ? "k-chip--yellow" : mon.rarity === 1 ? "k-chip--math" : "");
-  $("btnLeave").textContent = "逃跑";
+  setFoeHeader();
   openBattle();
   showQuestion();
 }
 
 function startGuardian(gid) {
   if (G.lockUntil > Date.now()) { showGuessLock(); return; }
+  const g = MON(gid), b = BLD(g.b), j = b.guardians.indexOf(gid);
+  if (!bldUnlocked(bldIndex(b.id))) return;
+  if (j > 0 && !G.beaten[b.guardians[j - 1]]) { showResult({ title: "還不能挑戰", text: "先打敗前一隻守護精靈。" }); return; }
+  if (caughtKinds(b.id) < CAUGHT_NEEDED[j]) {
+    showResult({ title: "還不能挑戰", text: `先收服「${b.name}」的 ${CAUGHT_NEEDED[j]} 種怪獸（現在 ${caughtKinds(b.id)} 種）。` });
+    return;
+  }
   openTeamPicker(gid);
 }
 
-function beginGuardianBattle(gid) {
+async function beginGuardianBattle(gid) {
   const g = MON(gid);
-  const team = G.team.filter(owned).slice(0, 2);
+  const team = G.team.filter(canFight).slice(0, 2);
   battle = {
-    kind: "guard", foe: g, hp: g.hp, maxHp: g.hp, hearts: PLAYER_HEARTS, team,
+    kind: "guard", foe: g, hp: g.hp, maxHp: g.hp, team,
     used: {}, shield: false, power: false, pool: g.final ? "all" : g.b, asked: []
   };
-  $("foeImg").src = monsterImg(g.id);
-  $("foeName").textContent = g.name;
-  $("foeTag").textContent = g.final ? "最終魔王" : "守護精靈";
-  $("foeTag").className = "k-chip k-chip--yellow";
-  $("btnLeave").textContent = "離開";
+  setFoeHeader();
   openBattle();
   showQuestion();
 }
 
+function resumeBattle() {
+  const a = G.active;
+  const foe = MON(a.foe);
+  if (!foe) { G.active = null; return; }
+  curBld = a.bld || foe.b;
+  battle = {
+    kind: a.kind, foe, hp: a.hp, maxHp: a.maxHp, wrong: a.wrong || 0, canThrow: !!a.canThrow,
+    team: (a.team || []).filter(id => countOf(id) > 0 && !isResting(id)),
+    used: a.used || {}, shield: !!a.shield, power: !!a.power,
+    pool: a.pool || foe.b, asked: Array.isArray(a.asked) ? a.asked : [], qid: a.qid
+  };
+  if (battle.kind === "guard" && battle.team.length === 0) {   // 夥伴已經都倒下
+    G.active = null; battle = null; save(); return;
+  }
+  setFoeHeader();
+  openBattle();
+  if (battle.kind === "wild" && battle.canThrow) showWeakened();
+  else showQuestion(true);
+  showResult({ title: "接著打！", text: "上一場戰鬥還沒結束，從剛剛的地方繼續。" });
+}
+
+const aliveTeam = () => battle.team.filter(id => countOf(id) > 0 && !isResting(id) && heartsLeft(id) > 0);
+
 function damagePerHit() {
-  let d = BASE_DAMAGE + battle.team.reduce((sum, id) => sum + teamBonus(id), 0);
+  let d = BASE_DAMAGE + aliveTeam().reduce((sum, id) => sum + attackOf(id), 0);
   if (battle.power) d *= 2;
   return d;
 }
 
 function renderBattleSide() {
   const b = battle;
-  const pct = Math.max(0, b.hp / b.maxHp * 100);
-  $("foeHp").style.width = pct + "%";
-  $("foeHp").classList.toggle("is-low", pct <= 34);
-  $("foeHpText").textContent = b.kind === "wild"
-    ? (b.hp > 0 ? `再答對 ${b.hp} 題，牠就會變虛弱` : "牠變虛弱了！快丟球！")
-    : `血量 ${Math.max(0, b.hp)} / ${b.maxHp}`;
+  const pct2 = Math.max(0, b.hp / b.maxHp * 100);
+  $("foeHp").style.width = pct2 + "%";
+  $("foeHp").classList.toggle("is-low", pct2 <= 34);
 
   if (b.kind === "wild") {
+    $("foeHpText").textContent = b.hp > 0 ? `再答對 ${b.hp} 題，牠就會變虛弱` : "牠變虛弱了！";
     $("myHearts").innerHTML = `<span class="text-sm font-bold">牠想逃跑：</span>` +
       [0, 1, 2].map(i => `<span class="k-heart ${i < b.wrong ? "" : "is-empty"}" style="color:${i < b.wrong ? "#8A63D2" : ""}">●</span>`).join("");
     $("myTeam").innerHTML = "";
-    $("ballBar").classList.remove("hidden");
-    $("bbN").textContent = G.balls.n;
-    $("bbS").textContent = G.balls.s;
-    $("btnThrowN").disabled = !b.canThrow || G.balls.n < 1;
-    $("btnThrowS").disabled = !b.canThrow || G.balls.s < 1;
-    $("btnThrowN").style.opacity = $("btnThrowN").disabled ? ".45" : "";
-    $("btnThrowS").style.opacity = $("btnThrowS").disabled ? ".45" : "";
-    $("btnThrowN").classList.toggle("k-ready", b.canThrow && G.balls.n > 0);
-    $("btnThrowS").classList.toggle("k-ready", b.canThrow && G.balls.s > 0);
-    $("battleHint").textContent = b.canThrow
-      ? (G.balls.n + G.balls.s > 0 ? "選一種球丟出去！" : "你沒有寶貝球了，到商店用金幣買吧。")
-      : "答錯 3 次牠就會逃走。";
+    $("battleHint").textContent = b.canThrow ? "選一個做法：" : "答錯 3 次牠就會逃走。";
   } else {
-    $("ballBar").classList.add("hidden");
-    $("myHearts").innerHTML = Array.from({ length: PLAYER_HEARTS }, (_, i) =>
-      `<span class="k-heart ${i < b.hearts ? "" : "is-empty"}">♥</span>`).join("") +
-      (b.shield ? `<span class="k-chip k-chip--math ml-2">護盾中</span>` : "") +
-      (b.power ? `<span class="k-chip k-chip--yellow ml-2">下一擊×2</span>` : "");
-    $("myTeam").innerHTML = b.team.map(id => {
+    $("foeHpText").textContent = `血量 ${Math.max(0, b.hp)} / ${b.maxHp}`;
+    $("myHearts").innerHTML =
+      (b.shield ? `<span class="k-chip k-chip--math">護盾中</span>` : "") +
+      (b.power ? `<span class="k-chip k-chip--yellow">下一擊×2</span>` : "");
+    const alive = aliveTeam();
+    $("myTeam").innerHTML = b.team.map((id, i) => {
       const m = MON(id);
+      const up = alive.includes(id);
       const skill = isGuardian(id) ? m.skill : null;
+      const front = up && alive[0] === id;
       return `
-        <div class="flex items-center gap-2 border-2 border-[#1E2A33] rounded-xl p-1.5 pr-2 bg-white">
+        <div class="flex items-center gap-2 border-2 border-[#1E2A33] rounded-xl p-1.5 pr-2 ${up ? "bg-white" : "bg-[#EEF2F6] opacity-50"}">
           <div class="w-11 k-mon-img"><img src="${monsterImg(id)}" alt="" /></div>
           <div class="leading-tight">
-            <div class="text-sm font-bold">${m.name}</div>
-            ${skill
-              ? `<button onclick="useSkill('${id}')" class="k-skill k-btn k-btn--sm mt-1 ${b.used[id] ? "is-used" : ""}" title="${SKILLS[skill].desc}">${SKILLS[skill].name}</button>`
-              : `<div class="text-[11px] font-bold text-[#5B6B78]">${memberLabel(id)}</div>`}
+            <div class="text-sm font-bold">${m.name}${front ? ' <span class="text-[10px] k-chip k-chip--yellow">前</span>' : ""}</div>
+            <div class="leading-none">${up ? heartsHtml(id, true) : '<span class="text-[11px] font-bold">倒下了</span>'}</div>
+            ${skill && up ? `<button onclick="useSkill('${id}')" class="k-skill k-btn k-btn--sm mt-1 ${b.used[id] ? "is-used" : ""}" title="${SKILLS[skill].desc}">${SKILLS[skill].name}</button>` : ""}
           </div>
         </div>`;
     }).join("");
-    $("battleHint").textContent = `每答對一題攻擊 ${damagePerHit()} 點；答錯少 1 顆愛心。`;
+    $("battleHint").textContent = `每答對一題攻擊 ${damagePerHit()} 點；答錯時，站在前面的夥伴少 1 顆愛心。`;
   }
 }
 
-function useSkill(id) {
+async function useSkill(id) {
   const b = battle;
-  if (!b || b.used[id]) return;
+  if (!b || b.used[id] || heartsLeft(id) <= 0) return;
   const skill = MON(id).skill;
   if (skill === "cut") {
     if (b.answered) { showResult({ title: "現在不能用", text: "等下一題出來再用吧！" }); return; }
@@ -483,14 +649,35 @@ function useSkill(id) {
   } else if (skill === "power") {
     b.power = true;
   } else if (skill === "heal") {
-    if (b.hearts >= PLAYER_HEARTS) { showResult({ title: "愛心是滿的", text: "等少了愛心再用吧！" }); return; }
-    b.hearts += 1;
+    const hurtOnes = aliveTeam().filter(x => (G.hurt[x] || 0) > 0).sort((x, y) => heartsLeft(x) - heartsLeft(y));
+    if (!hurtOnes.length) { showResult({ title: "大家的愛心都是滿的", text: "等有夥伴受傷再用吧！" }); return; }
+    G.hurt[hurtOnes[0]] -= 1;
+    if (G.hurt[hurtOnes[0]] <= 0) delete G.hurt[hurtOnes[0]];
   }
   b.used[id] = true;
   renderBattleSide();
+  syncActive();
+  await save();
 }
 
-/* ---------- 作答 ---------- */
+// 前面的夥伴受傷；愛心扣完：怪獸消失一隻，守護精靈去休息
+function hurtFront() {
+  const front = aliveTeam()[0];
+  if (!front) return "";
+  G.hurt[front] = (G.hurt[front] || 0) + 1;
+  const name = MON(front).name;
+  if (heartsLeft(front) > 0) return `${name} 少了 1 顆愛心。`;
+  delete G.hurt[front];
+  if (isGuardian(front)) {
+    G.restUntil[front] = Date.now() + GUARDIAN_REST_HOURS * HOUR;
+    return `${name} 倒下了，要休息 ${GUARDIAN_REST_HOURS} 小時才能再出戰。`;
+  }
+  G.caught[front] = Math.max(0, (G.caught[front] || 0) - 1);
+  if (!G.caught[front]) G.team = G.team.filter(x => x !== front);
+  return `${name} 倒下了，永遠離開了你…`;
+}
+
+/* ================= 作答 ================= */
 async function answer(btn) {
   const b = battle;
   if (!b || b.answered) return;
@@ -527,13 +714,13 @@ async function answer(btn) {
   G.logs = G.logs.slice(0, 30);
 
   // 戰鬥效果
-  let title, cls;
+  let title, extra = "";
   if (b.kind === "wild") {
     if (ok) {
-      b.hp -= 1;
-      if (b.hp <= 0) { b.hp = 0; b.canThrow = true; }
+      b.hp = Math.max(0, b.hp - 1);
+      if (b.hp === 0) b.canThrow = true;
       hitFoe();
-      title = b.canThrow ? "答對了！牠變虛弱了，快丟球！" : "答對了！";
+      title = b.canThrow ? "答對了！牠變虛弱了！" : "答對了！";
     } else {
       b.wrong += 1;
       title = b.wrong >= 3 ? "答錯了…牠要逃走了！" : "答錯了，牠想逃跑！";
@@ -549,23 +736,23 @@ async function answer(btn) {
       b.shield = false;
       title = "答錯了，但是護盾擋住了！";
     } else {
-      b.hearts -= 1;
-      title = "答錯了，少了 1 顆愛心";
+      title = "答錯了！";
+      extra = hurtFront();
     }
   }
   $("gqFbTitle").textContent = title + (coinGain ? `（+${coinGain} 金幣）` : "");
   $("gqFbTitle").className = "k-display text-xl " + (ok ? "text-[#1F7A4D]" : "text-[#C23A26]");
-  $("gqFbText").innerHTML = (ok ? "" : `<b>正確答案：</b>${escapeHtml(q.a)}<br/>`) + `<b>解析：</b>${escapeHtml(q.e)}`;
+  $("gqFbText").innerHTML = (extra ? `<b class="text-[#C23A26]">${escapeHtml(extra)}</b><br/>` : "") +
+    (ok ? "" : `<b>正確答案：</b>${escapeHtml(q.a)}<br/>`) + `<b>解析：</b>${escapeHtml(q.e)}`;
   const fb = $("gqFeedback");
   fb.classList.remove("hidden", "is-right", "is-wrong");
   fb.classList.add(ok ? "is-right" : "is-wrong");
-  // 野生怪獸變虛弱時，下一步是丟球，不用按繼續
-  $("btnNext").classList.toggle("hidden", b.kind === "wild" && b.canThrow);
-  const ending = b.kind === "wild" ? b.wrong >= 3 : (b.hp <= 0 || b.hearts <= 0);
-  $("btnNext").textContent = ending ? "看結果" : "下一題";
+  const ending = b.kind === "wild" ? (b.wrong >= 3 || b.canThrow) : (b.hp <= 0 || aliveTeam().length === 0);
+  $("btnNext").textContent = b.kind === "wild" && b.canThrow ? "要怎麼做？" : (ending ? "看結果" : "下一題");
   renderBattleSide();
   renderStatus();
   fb.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  syncActive();
   await save(coinGain);
   renderStatus();
   if (lockNow) showGuessLock();
@@ -585,48 +772,88 @@ async function afterAnswer() {
   if (b.kind === "wild") {
     if (b.wrong >= 3) {
       const name = b.foe.name;
-      closeBattle();
+      await closeBattle();
       showResult({ title: `${name} 逃走了`, text: "沒關係，再出發探索一次吧！" });
       return;
     }
+    if (b.canThrow) { showWeakened(); return; }
   } else {
     if (b.hp <= 0) { await winGuardian(); return; }
-    if (b.hearts <= 0) {
+    if (aliveTeam().length === 0) {
       const name = b.foe.name;
-      closeBattle();
-      showResult({ title: "這次輸了", text: `${name} 好強！把解析再讀一讀，換個隊伍再來挑戰。` });
+      await closeBattle();
+      showResult({ title: "這次輸了", text: `出戰的夥伴都倒下了。${name} 好強！把解析再讀一讀，收服更強的夥伴再來挑戰。` });
       return;
     }
   }
   showQuestion();
 }
 
-async function throwBall(kind) {
+/* ---------- 野生怪獸：虛弱後三選一 ---------- */
+function showWeakened() {
+  const b = battle;
+  const r = RARITY[b.foe.rarity];
+  $("qArea").classList.add("hidden");
+  $("gqFeedback").classList.add("hidden");
+  $("weakTitle").textContent = `${b.foe.name} 變虛弱了！要怎麼做？`;
+  $("actN").innerHTML = r.catchN > 0
+    ? `成功率 ${pct(r.catchN)}・你有 ${G.balls.n} 顆`
+    : `${r.name}怪獸抓不到`;
+  $("actS").innerHTML = `成功率 ${pct(r.catchS)}・你有 ${G.balls.s} 顆`;
+  $("actD").innerHTML = `得到 ${r.defeatCoins} 金幣`;
+  $("btnCatchN").disabled = r.catchN <= 0 || G.balls.n < 1;
+  $("btnCatchS").disabled = G.balls.s < 1;
+  ["btnCatchN", "btnCatchS"].forEach(id => ($(id).style.opacity = $(id).disabled ? ".45" : ""));
+  $("weakHint").textContent = (G.balls.n + G.balls.s === 0) ? "你沒有寶貝球了，可以到商店用金幣買。" : "";
+  $("weakArea").classList.remove("hidden");
+  renderBattleSide();
+}
+
+async function catchWith(kind) {
   const b = battle;
   if (!b || b.kind !== "wild" || !b.canThrow || G.balls[kind] < 1) return;
-  G.balls[kind] -= 1;
   const r = RARITY[b.foe.rarity];
   const chance = kind === "s" ? r.catchS : r.catchN;
-  const caught = Math.random() < chance;
+  if (chance <= 0) return;
+  G.balls[kind] -= 1;
   const mon = b.foe;
-  if (caught) {
-    const isNew = !owned(mon.id);
+  $("weakArea").classList.add("hidden");
+  if (Math.random() < chance) {
+    const isNew = !G.everCaught[mon.id];
     G.caught[mon.id] = (G.caught[mon.id] || 0) + 1;
-    if (G.team.length < 2 && !G.team.includes(mon.id)) G.team.push(mon.id);
-    await save();
-    closeBattle();
+    G.everCaught[mon.id] = true;
+    if (G.team.filter(canFight).length < 2 && !G.team.includes(mon.id)) G.team = G.team.filter(canFight).concat(mon.id);
+    await closeBattle();
     showResult({
       img: monsterImg(mon.id),
       title: `收服了 ${mon.name}！`,
-      text: isNew ? `新夥伴（${r.name}）加入了！到「我的夥伴」可以看到牠。` : `你已經有 ${G.caught[mon.id]} 隻 ${mon.name} 了。`
+      text: isNew ? `新夥伴（${r.name}）加入了！到「我的夥伴」可以看到牠。` : `你現在有 ${G.caught[mon.id]} 隻 ${mon.name}。`
     });
   } else {
     b.canThrow = false;
     b.hp = 1;
+    syncActive();
     await save();
-    $("gqFeedback").classList.add("hidden");
-    showResult({ title: "牠掙脫了！", text: "再答對 1 題，牠又會變虛弱，到時候再丟一次。" }, () => { if (battle) showQuestion(); });
+    showResult({ title: "牠掙脫了！", text: "再答對 1 題，牠又會變虛弱，到時候再試一次。" }, () => { if (battle) showQuestion(); });
   }
+}
+
+async function defeatWild() {
+  const b = battle;
+  if (!b || b.kind !== "wild" || !b.canThrow) return;
+  const r = RARITY[b.foe.rarity];
+  const got = grantCoins(r.defeatCoins);
+  const name = b.foe.name;
+  battle = null;
+  G.active = null;
+  $("battle").classList.add("hidden");
+  document.body.style.overflow = "";
+  await save(got);
+  renderAll();
+  showResult({
+    title: `擊敗了 ${name}！`,
+    text: got ? `得到 ${got} 金幣。` : `今天的金幣已經拿滿 ${GAUDI_DAILY_COIN_CAP} 個了，明天再來賺吧！`
+  });
 }
 
 async function winGuardian() {
@@ -635,15 +862,19 @@ async function winGuardian() {
   G.beaten[g.id] = true;
   const bonus = first ? grantCoins(5) : 0;
   if (g.final && first) G.cleared = true;
+  battle = null;
+  G.active = null;
+  $("battle").classList.add("hidden");
+  document.body.style.overflow = "";
   await save(bonus);
-  closeBattle();
+  renderAll();
   const b = BLD(g.b);
   const bIdx = bldIndex(g.b);
   let text;
   if (g.final) text = "你打敗了聖家堂守護神，完成了高第的魔法建築之旅！你是真正的高第小專家！";
   else if (!first) text = "又贏了一次，越來越厲害了！";
   else {
-    text = `${g.name} 成為你的夥伴！招式：${SKILLS[g.skill].name}（${SKILLS[g.skill].desc}）。`;
+    text = `${g.name} 成為你的夥伴！愛心 ${g.hearts} 顆，招式：${SKILLS[g.skill].name}（${SKILLS[g.skill].desc}）。`;
     if (b.guardians[2] === g.id && BUILDINGS[bIdx + 1]) {
       text += teacherOpened(bIdx + 1)
         ? `\n「${BUILDINGS[bIdx + 1].name}」開放了！`
@@ -654,13 +885,7 @@ async function winGuardian() {
   showResult({ img: monsterImg(g.id), title: g.final ? "全部通關！" : `打敗了 ${g.name}！`, text });
 }
 
-function leaveBattle() {
-  if (!battle) return;
-  const msg = battle.kind === "wild" ? "確定要逃跑嗎？" : "確定要離開這場戰鬥嗎？（不會扣任何東西）";
-  if (confirm(msg)) closeBattle();
-}
-
-/* ---------- 彈窗 ---------- */
+/* ================= 彈窗 ================= */
 function showResult({ img, title, text }, cb) {
   $("resImgWrap").classList.toggle("hidden", !img);
   if (img) $("resImg").src = img;
@@ -693,6 +918,6 @@ function showGuessLock() {
   lockTimer = setInterval(tick, 250);
 }
 
-/* ---------- 導覽 ---------- */
+/* ================= 導覽 ================= */
 function gBackToMenu() { location.href = "index.html"; }
 function gLogout() { clearSessionStudent(); location.href = "index.html"; }

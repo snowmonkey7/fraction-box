@@ -58,6 +58,10 @@
     .k-hp-fill.is-low { background: var(--tomato); }
     .k-heart { font-size: 1.6rem; line-height: 1; color: var(--tomato); -webkit-text-stroke: 1.5px var(--ink); }
     .k-heart.is-empty { color: #E3E8ED; }
+    .k-heart--sm { font-size: 1rem; -webkit-text-stroke: 1px var(--ink); }
+    .k-bld-tier { position: absolute; top: 10px; right: 10px; z-index: 2; color: var(--crayon); -webkit-text-stroke: 1px var(--ink); font-size: 1rem; letter-spacing: -1px; }
+    .k-bld.is-locked .k-bld-tier { color: #fff; }
+    #weakArea .k-btn { display: flex; }
     @keyframes k-hit { 0%,100% { transform: translateX(0) rotate(0); } 20% { transform: translateX(-10px) rotate(-4deg); } 50% { transform: translateX(8px) rotate(3deg); } 80% { transform: translateX(-4px); } }
     .k-hit { animation: k-hit .45s ease; }
     .k-passage { background: #FFFDF3; border: 2px dashed #B9A777; border-radius: 14px; }
@@ -128,16 +132,10 @@
       </div>
     </div>
 
-    <details class="k-rules k-card k-card--soft px-4 py-2.5 text-sm">
-      <summary class="k-display">遊戲規則</summary>
-      <ul class="space-y-1 mt-2 text-[#33434F] leading-relaxed">
-        <li>照課文的順序走：先打敗一棟建築的 3 隻守護精靈，下一棟才會開放。</li>
-        <li><b>探索</b>：遇到野生怪獸，答對題目讓牠變虛弱，再丟寶貝球收服牠。答錯 3 次牠會逃走。</li>
-        <li><b>挑戰守護精靈</b>：帶 2 隻夥伴出戰，答對就攻擊，答錯會少 1 顆愛心。稀有、傳說的夥伴打得比較痛。</li>
-        <li>打敗的守護精靈會變成你的夥伴，戰鬥時可以用一次牠的招式。</li>
-        <li>每答對 1 題得 1 金幣，打敗守護精靈多得 5 金幣；這個遊戲每天最多拿 <span class="jsDailyCap">20</span> 金幣。金幣可以到商店買寶貝球。</li>
-      </ul>
-    </details>
+    <div class="k-card k-card--soft px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <span class="text-sm font-bold text-[#33434F]">不知道怎麼玩？答錯夥伴會受傷，不要亂猜喔！</span>
+      <button onclick="openHelp(false)" class="k-btn k-btn--yellow k-btn--sm">怎麼玩</button>
+    </div>
 
     <div>
       <div class="k-tabs pl-3" role="tablist">
@@ -174,13 +172,13 @@
           <div class="grid md:grid-cols-2 gap-5">
             <div class="k-card k-card--flat p-5">
               <h4 class="k-display text-xl">到附近探索</h4>
-              <p class="text-sm font-bold text-[#5B6B78] mt-1">會遇到住在這裡的野生怪獸。</p>
+              <p class="text-sm font-bold text-[#5B6B78] mt-1">會遇到住在這裡的野生怪獸。已收服 <b id="bvCaughtKinds">0</b> / 5 種。</p>
               <div id="bvWild" class="grid grid-cols-5 gap-2 mt-4"></div>
               <button onclick="startWild()" class="k-btn k-btn--leaf w-full mt-4 py-3 text-lg">出發探索</button>
             </div>
             <div class="k-card k-card--flat p-5">
               <h4 class="k-display text-xl">挑戰守護精靈</h4>
-              <p class="text-sm font-bold text-[#5B6B78] mt-1">要照順序一隻一隻打敗。</p>
+              <p class="text-sm font-bold text-[#5B6B78] mt-1">照順序打；要先收服這棟 2、3、4 種怪獸才能挑戰。</p>
               <div id="bvGuards" class="space-y-3 mt-4"></div>
             </div>
           </div>
@@ -211,13 +209,13 @@
           <div class="k-card k-card--flat p-5 flex flex-col">
             <div class="flex items-center gap-3"><span class="k-ball text-5xl"></span>
               <div><div class="k-display text-2xl">普通球</div><div class="font-bold text-[#5B6B78]"><span class="jsPriceN">3</span> 金幣</div></div></div>
-            <p class="text-sm mt-3 leading-relaxed flex-1">普通怪獸很好抓，稀有、傳說的比較容易逃走。</p>
+            <p class="text-sm mt-3 leading-relaxed flex-1">用來「初級捕捉」。普通怪獸很好抓，稀有的一半機會，<b>傳說怪獸抓不到</b>。</p>
             <button onclick="buyBall('n')" class="k-btn k-btn--yellow mt-4 py-2.5 text-lg">買 1 顆</button>
           </div>
           <div class="k-card k-card--flat p-5 flex flex-col">
             <div class="flex items-center gap-3"><span class="k-ball is-super text-5xl"></span>
               <div><div class="k-display text-2xl">超級球</div><div class="font-bold text-[#5B6B78]"><span class="jsPriceS">10</span> 金幣</div></div></div>
-            <p class="text-sm mt-3 leading-relaxed flex-1">普通怪獸一定抓得到，抓稀有、傳說怪獸的機會也高很多。</p>
+            <p class="text-sm mt-3 leading-relaxed flex-1">用來「高級捕捉」。普通怪獸一定抓得到，<b>傳說怪獸只有它抓得到</b>。</p>
             <button onclick="buyBall('s')" class="k-btn k-btn--yellow mt-4 py-2.5 text-lg">買 1 顆</button>
           </div>
         </div>
@@ -259,21 +257,34 @@
       </div>
       <!-- 我方 -->
       <div class="k-card p-4">
-        <div class="flex items-center justify-between gap-2">
-          <div id="myHearts" class="flex gap-1"></div>
-          <button onclick="leaveBattle()" class="k-btn k-btn--sm" id="btnLeave">逃跑</button>
-        </div>
+        <div id="myHearts" class="flex flex-wrap items-center gap-1 min-h-[1.5rem]"></div>
         <div id="myTeam" class="flex flex-wrap gap-2 mt-3"></div>
-        <div id="ballBar" class="hidden mt-3 flex flex-wrap gap-2">
-          <button id="btnThrowN" onclick="throwBall('n')" class="k-btn px-3 py-2"><span class="k-ball"></span>丟普通球 ×<span id="bbN">0</span></button>
-          <button id="btnThrowS" onclick="throwBall('s')" class="k-btn px-3 py-2"><span class="k-ball is-super"></span>丟超級球 ×<span id="bbS">0</span></button>
-        </div>
         <p id="battleHint" class="text-sm font-bold text-[#5B6B78] mt-2"></p>
       </div>
     </div>
 
+    <!-- 怪獸變虛弱後：三選一 -->
+    <div id="weakArea" class="hidden k-card p-5 md:p-6">
+      <h3 id="weakTitle" class="k-display text-2xl"></h3>
+      <div class="grid sm:grid-cols-3 gap-3 mt-4">
+        <button id="btnCatchN" onclick="catchWith('n')" class="k-btn flex-col py-3 px-2">
+          <span class="flex items-center gap-2 text-lg"><span class="k-ball"></span>初級捕捉</span>
+          <span id="actN" class="text-xs font-bold text-[#5B6B78]" style="font-family:var(--body)"></span>
+        </button>
+        <button id="btnCatchS" onclick="catchWith('s')" class="k-btn k-btn--yellow flex-col py-3 px-2">
+          <span class="flex items-center gap-2 text-lg"><span class="k-ball is-super"></span>高級捕捉</span>
+          <span id="actS" class="text-xs font-bold" style="font-family:var(--body)"></span>
+        </button>
+        <button id="btnDefeat" onclick="defeatWild()" class="k-btn k-btn--tomato flex-col py-3 px-2">
+          <span class="text-lg">擊敗牠</span>
+          <span id="actD" class="text-xs font-bold" style="font-family:var(--body)"></span>
+        </button>
+      </div>
+      <p id="weakHint" class="text-sm font-bold text-[#5B6B78] mt-3"></p>
+    </div>
+
     <!-- 題目 -->
-    <div class="k-card p-5 md:p-6">
+    <div id="qArea" class="k-card p-5 md:p-6">
       <div id="qPassage" class="hidden k-passage p-4 mb-4">
         <div id="qPassageTitle" class="k-display text-lg mb-1"></div>
         <p id="qPassageText" class="leading-8 text-[1.05rem]"></p>
@@ -292,6 +303,20 @@
           <button id="btnNext" onclick="afterAnswer()" class="k-btn k-btn--ink px-6 py-3 text-lg">繼續</button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 彈窗：怎麼玩 ==================== -->
+<div id="modalHelp" class="hidden fixed inset-0 k-overlay z-[55] flex items-center justify-center p-4">
+  <div class="k-modal max-w-md w-full p-6 text-center">
+    <div id="helpArt" class="min-h-[7rem] flex items-center justify-center"></div>
+    <h3 id="helpTitle" class="k-display text-2xl mt-3"></h3>
+    <p id="helpText" class="font-bold text-[#33434F] mt-2 leading-relaxed"></p>
+    <div id="helpDots" class="flex justify-center gap-1.5 mt-4"></div>
+    <div class="flex gap-3 mt-5">
+      <button id="helpPrev" onclick="helpStep(-1)" class="k-btn flex-1 py-3">上一頁</button>
+      <button id="helpNext" onclick="helpStep(1)" class="k-btn k-btn--yellow flex-1 py-3 text-lg">下一頁</button>
     </div>
   </div>
 </div>

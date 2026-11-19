@@ -4,15 +4,20 @@
    { id, b: 建築, t: 題型, q: 題目, a: 正確答案, w: [3 個錯誤選項], e: 解析, p: 閱讀短文代號(可省略) }
    ========================================================= */
 
-const GAUDI_DAILY_COIN_CAP = 50;   // 這個遊戲每天最多拿幾個金幣
-const BALL_PRICE = { n: 3, s: 10 }; // 普通球、超級球的價格
-const STARTER_BALLS = 3;           // 第一次進遊戲送幾顆普通球
+/* ---------------- 可以調整的數值 ---------------- */
+const GAUDI_DAILY_COIN_CAP = 50;    // 這個遊戲每天最多拿幾個金幣
+const BALL_PRICE = { n: 3, s: 10 }; // 普通球（初級捕捉）、超級球（高級捕捉）的價格
+const STARTER_BALLS = 3;            // 第一次進遊戲送幾顆普通球
+const CAUGHT_NEEDED = [2, 3, 4];    // 要先收服這棟幾隻不同的怪獸，才能挑戰第 1、2、3 隻守護精靈
+const GUARDIAN_REST_HOURS = 20;     // 守護精靈夥伴愛心扣完後，要休息幾小時才能再出戰
+const BASE_DAMAGE = 4;              // 每次答對的基本傷害（再加上出戰夥伴的攻擊力）
 
+// 建築：tier 是星等，越後面的建築，怪獸和守護精靈都越強
 const BUILDINGS = [
-  { id: "mila",    name: "米拉之家",   sub: "像海浪一樣的房子",     guardians: ["g12", "g11", "g10"] },
-  { id: "batllo",  name: "巴特羅之家", sub: "屋頂住著一條巨龍",     guardians: ["g9", "g8", "g7"] },
-  { id: "guell",   name: "奎爾公園",   sub: "童話裡的薑餅屋",       guardians: ["g6", "g5", "g4"] },
-  { id: "sagrada", name: "聖家堂",     sub: "蓋了一百多年的教堂",   guardians: ["g3", "g2", "g1"] }
+  { id: "mila",    tier: 1, name: "米拉之家",   sub: "像海浪一樣的房子",   guardians: ["g12", "g11", "g10"] },
+  { id: "batllo",  tier: 2, name: "巴特羅之家", sub: "屋頂住著一條巨龍",   guardians: ["g9", "g8", "g7"] },
+  { id: "guell",   tier: 3, name: "奎爾公園",   sub: "童話裡的薑餅屋",     guardians: ["g6", "g5", "g4"] },
+  { id: "sagrada", tier: 4, name: "聖家堂",     sub: "蓋了一百多年的教堂", guardians: ["g3", "g2", "g1"] }
 ];
 
 // 野生怪獸：rarity 0 普通、1 稀有、2 傳說
@@ -38,36 +43,53 @@ const WILD = [
   { id: "w12", b: "sagrada", name: "光環毛", rarity: 1 },
   { id: "w1",  b: "sagrada", name: "羽毛貂", rarity: 2 }
 ];
-const RARITY = [
-  { name: "普通", chance: 0.25, hp: 2, bonus: 0, catchN: 0.9, catchS: 1.0 },
-  { name: "稀有", chance: 0.18, hp: 3, bonus: 3, catchN: 0.6, catchS: 0.9 },
-  { name: "傳說", chance: 0.07, hp: 4, bonus: 6, catchN: 0.3, catchS: 0.7 }
-];
 
-// 守護精靈：hp 是血量；打敗後會變成夥伴，帶有一個招式（每場戰鬥用一次）
+// 稀有度：出現機率、愛心、擊敗得幾金幣、兩種捕捉的成功率、攻擊加成
+const RARITY = [
+  { name: "普通", chance: 0.25, hearts: 1, defeatCoins: 2, catchN: 0.9, catchS: 1.0, atkBonus: 0 },
+  { name: "稀有", chance: 0.18, hearts: 2, defeatCoins: 3, catchN: 0.5, catchS: 0.9, atkBonus: 2 },
+  { name: "傳說", chance: 0.07, hearts: 3, defeatCoins: 5, catchN: 0,   catchS: 0.7, atkBonus: 4 }
+];
+// 野生怪獸要答對幾題才會變虛弱：[星等][稀有度]
+const WEAKEN_HITS = { 1: [2, 3, 4], 2: [3, 3, 4], 3: [3, 4, 5], 4: [4, 5, 6] };
+
+// 守護精靈：hp 是血量；打敗後變成夥伴，帶一個招式（每場戰鬥用一次）
+// 當夥伴時的愛心：每棟第 1 隻 1 顆、第 2 隻 2 顆、第 3 隻 3 顆
 const SKILLS = {
   cut:    { name: "刪去錯誤選項", desc: "拿掉一個錯的選項" },
-  shield: { name: "護盾",         desc: "下一次答錯不扣愛心" },
+  shield: { name: "護盾",         desc: "下一次答錯不會受傷" },
   power:  { name: "全力一擊",     desc: "下一次答對，傷害變兩倍" },
-  heal:   { name: "回復",         desc: "補回 1 顆愛心" }
+  heal:   { name: "回復",         desc: "幫受傷最重的夥伴補 1 顆愛心" }
 };
 const GUARDIANS = [
-  { id: "g12", b: "mila",    name: "海帶",           hp: 40,  skill: "cut" },
-  { id: "g11", b: "mila",    name: "外星人",         hp: 50,  skill: "shield" },
-  { id: "g10", b: "mila",    name: "大海怪",         hp: 60,  skill: "power" },
-  { id: "g9",  b: "batllo",  name: "恐龍骨頭",       hp: 40,  skill: "shield" },
-  { id: "g8",  b: "batllo",  name: "磁磚精靈",       hp: 50,  skill: "cut" },
-  { id: "g7",  b: "batllo",  name: "巨龍",           hp: 60,  skill: "power" },
-  { id: "g6",  b: "guell",   name: "糖霜精靈",       hp: 40,  skill: "cut" },
-  { id: "g5",  b: "guell",   name: "薑餅屋",         hp: 50,  skill: "heal" },
-  { id: "g4",  b: "guell",   name: "彩色大蜥蜴",     hp: 60,  skill: "power" },
-  { id: "g3",  b: "sagrada", name: "彩繪玻璃精靈",   hp: 40,  skill: "heal" },
-  { id: "g2",  b: "sagrada", name: "石柱樹人",       hp: 50,  skill: "shield" },
-  { id: "g1",  b: "sagrada", name: "聖家堂守護神",   hp: 100, skill: "power", final: true }
+  { id: "g12", b: "mila",    name: "海帶",         hp: 40,  hearts: 1, skill: "cut" },
+  { id: "g11", b: "mila",    name: "外星人",       hp: 50,  hearts: 2, skill: "shield" },
+  { id: "g10", b: "mila",    name: "大海怪",       hp: 60,  hearts: 3, skill: "power" },
+  { id: "g9",  b: "batllo",  name: "恐龍骨頭",     hp: 90,  hearts: 1, skill: "shield" },
+  { id: "g8",  b: "batllo",  name: "磁磚精靈",     hp: 110, hearts: 2, skill: "cut" },
+  { id: "g7",  b: "batllo",  name: "巨龍",         hp: 130, hearts: 3, skill: "power" },
+  { id: "g6",  b: "guell",   name: "糖霜精靈",     hp: 150, hearts: 1, skill: "cut" },
+  { id: "g5",  b: "guell",   name: "薑餅屋",       hp: 175, hearts: 2, skill: "heal" },
+  { id: "g4",  b: "guell",   name: "彩色大蜥蜴",   hp: 200, hearts: 3, skill: "power" },
+  { id: "g3",  b: "sagrada", name: "彩繪玻璃精靈", hp: 240, hearts: 1, skill: "heal" },
+  { id: "g2",  b: "sagrada", name: "石柱樹人",     hp: 270, hearts: 2, skill: "shield" },
+  { id: "g1",  b: "sagrada", name: "聖家堂守護神", hp: 400, hearts: 3, skill: "power", final: true }
 ];
-const GUARDIAN_BONUS = 4;   // 守護精靈當夥伴時，每次答對多打幾點
-const BASE_DAMAGE = 10;     // 每次答對的基本傷害
-const PLAYER_HEARTS = 3;
+
+const tierOf = bId => (BUILDINGS.find(b => b.id === bId) || { tier: 1 }).tier;
+// 夥伴的攻擊力：建築星等越高越強；稀有、傳說再加成；守護精靈比同棟怪獸強
+function attackOf(id) {
+  const m = WILD.find(x => x.id === id);
+  if (m) return tierOf(m.b) * 3 + RARITY[m.rarity].atkBonus;
+  const g = GUARDIANS.find(x => x.id === id);
+  return g ? tierOf(g.b) * 3 + 6 : 0;
+}
+function maxHeartsOf(id) {
+  const m = WILD.find(x => x.id === id);
+  if (m) return RARITY[m.rarity].hearts;
+  const g = GUARDIANS.find(x => x.id === id);
+  return g ? g.hearts : 1;
+}
 
 function monsterImg(id) { return "images/gaudi/" + id + ".jpg"; }
 function silhouetteImg(id) { return "images/gaudi/s_" + id + ".png"; }  // 還沒收服時顯示的剪影

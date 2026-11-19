@@ -456,7 +456,8 @@ function renderGaudiTeacher(list) {
     let at = 0;
     BUILDINGS.forEach((b, i) => { if (i === 0 || beaten[BUILDINGS[i - 1].guardians[2]]) at = i; });
     const gN = GUARDIANS.filter(x => beaten[x.id]).length;
-    const wN = WILD.filter(x => (caught[x.id] || 0) > 0).length;
+    const ever = g.everCaught || {};
+    const wN = WILD.filter(x => ever[x.id] || (caught[x.id] || 0) > 0).length;
     const acc = a ? Math.round(c / a * 100) : 0;
     const dayCoins = g.dayKey === new Date().toLocaleDateString("sv-SE") ? (g.dayCoins || 0) : 0;
     const openN = getGaudiOpen(s);
