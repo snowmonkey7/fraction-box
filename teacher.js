@@ -454,10 +454,18 @@ function renderGaudiTeacher(list) {
     const wN = WILD.filter(x => (caught[x.id] || 0) > 0).length;
     const acc = a ? Math.round(c / a * 100) : 0;
     const dayCoins = g.dayKey === new Date().toLocaleDateString("sv-SE") ? (g.dayCoins || 0) : 0;
+    const openN = getGaudiOpen(s);
     return `
-      <tr class="hover:bg-slate-50">
+      <tr class="hover:bg-slate-50 ${openN ? "" : "bg-slate-50/60"}">
+        <td class="py-2.5 px-3"><input type="checkbox" class="gdChk w-4 h-4" value="${escapeHtml(s.id)}" /></td>
         <td class="py-2.5 px-3 font-black">${escapeHtml(s.id)}</td>
         <td class="py-2.5 px-3 font-bold text-slate-600">${escapeHtml(s.name)}</td>
+        <td class="py-2.5 px-3">
+          <select onchange="setGaudiOpen('${escapeHtml(s.id)}', this.value, this)"
+            class="border-2 rounded-lg px-1.5 py-1 font-bold text-xs ${openN ? "border-emerald-400 text-emerald-700" : "border-slate-300 text-slate-500"}">
+            ${gaudiOpenOptions(openN)}
+          </select>
+        </td>
         <td class="py-2.5 px-3 font-bold">${a ? (g.cleared ? "🏆 全部通關" : BUILDINGS[at].name) : '<span class="text-slate-400">還沒玩</span>'}</td>
         <td class="py-2.5 px-3 font-bold">${gN} / ${GUARDIANS.length}</td>
         <td class="py-2.5 px-3 font-bold">${wN} / ${WILD.length}</td>
@@ -467,12 +475,14 @@ function renderGaudiTeacher(list) {
         <td class="py-2.5 px-3 font-bold text-amber-600">${dayCoins} / ${GAUDI_DAILY_COIN_CAP}</td>
       </tr>`;
   });
+  document.getElementById("gdBulkOpen").innerHTML = gaudiOpenOptions(1);
+  document.getElementById("gdCheckAll").checked = false;
   document.getElementById("gdStatPlayers").textContent = `${players} 人`;
   document.getElementById("gdStatAcc").textContent = `${sumA ? Math.round(sumC / sumA * 100) : 0}%`;
   document.getElementById("gdStatTotal").textContent = `${sumA} 題`;
   document.getElementById("gdStatCleared").textContent = `${cleared} 人`;
   document.getElementById("gdTableBody").innerHTML = rows.join("") ||
-    `<tr><td colspan="9" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
+    `<tr><td colspan="11" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
   const top = Object.entries(wrongTotals).sort((x, y) => y[1] - x[1]).slice(0, 10);
   document.getElementById("gdWrongList").innerHTML = top.length ? top.map(([id, n], i) => {
     const q = GAUDI_QUESTIONS.find(x => x.id === id);
@@ -487,4 +497,55 @@ function renderGaudiTeacher(list) {
       <span class="font-black text-rose-600 whitespace-nowrap">錯 ${n} 次</span>
     </li>`;
   }).join("") : `<li class="text-slate-400">還沒有人答錯過。</li>`;
+}
+
+// 開放範圍：0 = 不能玩，1～4 = 開放到第幾棟
+function gaudiOpenOptions(selected) {
+  const labels = ["不能玩", ...BUILDINGS.map((b, i) => i === BUILDINGS.length - 1 ? "全部開放" : `到${b.name}`)];
+  return labels.map((t, i) => `<option value="${i}" ${i === selected ? "selected" : ""}>${i ? i + ". " : ""}${t}</option>`).join("");
+}
+
+async function setGaudiOpen(id, value, selectEl) {
+  const n = Number(value);
+  try {
+    await saveStudentFields(id, { gaudiOpen: n });
+    const s = cachedAllStudents.find(x => x.id === id);
+    if (s) s.gaudiOpen = n;
+    if (selectEl) {
+      selectEl.className = "border-2 rounded-lg px-1.5 py-1 font-bold text-xs " + (n ? "border-emerald-400 text-emerald-700" : "border-slate-300 text-slate-500");
+    }
+  } catch (e) {
+    reportError("儲存開放設定", e);
+    refreshTeacherData();
+  }
+}
+
+function checkGaudiRange() {
+  const from = document.getElementById("gdRangeFrom").value.trim();
+  const to = document.getElementById("gdRangeTo").value.trim() || from;
+  if (!from) { alert("請輸入座號，例如 50122"); return; }
+  let n = 0;
+  document.querySelectorAll(".gdChk").forEach(c => {
+    const hit = c.value >= from && c.value <= to && c.value.length === from.length;
+    c.checked = hit;
+    if (hit) n += 1;
+  });
+  document.getElementById("gdBulkMsg").textContent = `已勾選 ${n} 位`;
+}
+
+async function applyGaudiOpenBulk() {
+  const ids = [...document.querySelectorAll(".gdChk:checked")].map(c => c.value);
+  if (ids.length === 0) { alert("請先勾選同學"); return; }
+  const n = Number(document.getElementById("gdBulkOpen").value);
+  const msg = document.getElementById("gdBulkMsg");
+  msg.textContent = "儲存中…";
+  try {
+    for (const id of ids) await saveStudentFields(id, { gaudiOpen: n });
+    msg.textContent = `已更新 ${ids.length} 位`;
+    await refreshTeacherData();
+    document.getElementById("gdBulkMsg").textContent = `已更新 ${ids.length} 位`;
+  } catch (e) {
+    reportError("儲存開放設定", e);
+    msg.textContent = "";
+  }
 }

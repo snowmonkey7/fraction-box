@@ -320,8 +320,8 @@ body.k-page {
   overflow: hidden;
   transition: transform .12s ease, box-shadow .12s ease;
 }
-a.k-game:hover { transform: rotate(0deg) translateY(-3px) !important; box-shadow: 8px 9px 0 var(--ink); }
-a.k-game:active { transform: translate(4px, 4px) !important; box-shadow: 2px 2px 0 var(--ink); }
+a.k-game:not(.k-game--locked):hover { transform: rotate(0deg) translateY(-3px) !important; box-shadow: 8px 9px 0 var(--ink); }
+a.k-game:not(.k-game--locked):active { transform: translate(4px, 4px) !important; box-shadow: 2px 2px 0 var(--ink); }
 .k-game--tilt-l { transform: rotate(-1.2deg); }
 .k-game--tilt-r { transform: rotate(1deg); }
 .k-game-top { border-bottom: 3px solid var(--ink); }

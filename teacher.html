@@ -134,14 +134,28 @@
       </div>
 
       <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
-        <h3 class="text-lg font-black text-slate-800">學生進度</h3>
-        <p class="text-xs text-slate-500 mt-1 mb-4">「目前在」是學生已開放的最後一棟建築。暫停次數＝因為連續亂答被暫停 30 秒的次數。</p>
+        <h3 class="text-lg font-black text-slate-800">學生進度與開放設定</h3>
+        <p class="text-xs text-slate-500 mt-1">「開放到」決定這位同學最遠能進到哪一棟；設成「不能玩」的同學，在遊戲目錄會看到上鎖的卡片。改了就會自動儲存，學生重新整理頁面後生效。</p>
+        <p class="text-xs text-slate-500 mt-1 mb-4">「目前在」是學生自己打到的最後一棟建築。暫停次數＝因為連續亂答被暫停 30 秒的次數。</p>
+        <div class="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+          <span class="text-sm font-bold text-slate-700">把勾選的同學設為</span>
+          <select id="gdBulkOpen" class="border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm"></select>
+          <button onclick="applyGaudiOpenBulk()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm px-4 py-2 rounded-xl">套用</button>
+          <span class="text-slate-300 mx-1">|</span>
+          <span class="text-sm font-bold text-slate-700">快速勾選座號</span>
+          <input id="gdRangeFrom" placeholder="50122" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <span class="font-bold text-slate-500">到</span>
+          <input id="gdRangeTo" placeholder="50125" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <button onclick="checkGaudiRange()" class="bg-white border-2 border-slate-300 hover:bg-slate-100 font-bold text-sm px-3 py-1.5 rounded-xl">勾選</button>
+          <span id="gdBulkMsg" class="text-sm font-bold text-emerald-600 ml-1"></span>
+        </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm text-left border-collapse">
             <thead>
               <tr class="bg-slate-100 text-slate-700">
+                <th class="py-2.5 px-3"><input type="checkbox" id="gdCheckAll" onchange="document.querySelectorAll('.gdChk').forEach(c => c.checked = this.checked)" class="w-4 h-4" title="全選" /></th>
                 <th class="py-2.5 px-3">座號</th><th class="py-2.5 px-3">姓名</th>
-                <th class="py-2.5 px-3">目前在</th><th class="py-2.5 px-3">守護精靈</th><th class="py-2.5 px-3">收服怪獸</th>
+                <th class="py-2.5 px-3">開放到</th><th class="py-2.5 px-3">目前在</th><th class="py-2.5 px-3">守護精靈</th><th class="py-2.5 px-3">收服怪獸</th>
                 <th class="py-2.5 px-3">答題數</th><th class="py-2.5 px-3">正確率</th><th class="py-2.5 px-3">暫停次數</th><th class="py-2.5 px-3">今日金幣</th>
               </tr>
             </thead>

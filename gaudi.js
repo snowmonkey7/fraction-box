@@ -60,7 +60,9 @@ function grantCoins(n) {
 }
 
 const owned = id => isGuardian(id) ? !!G.beaten[id] : (G.caught[id] || 0) > 0;
-const bldUnlocked = i => i === 0 || !!G.beaten[BUILDINGS[i - 1].guardians[2]];
+const progressUnlocked = i => i === 0 || !!G.beaten[BUILDINGS[i - 1].guardians[2]];
+const teacherOpened = i => i < getGaudiOpen(stu);   // 老師在教師端設定開放到第幾棟
+const bldUnlocked = i => teacherOpened(i) && progressUnlocked(i);
 const bldIndex = id => BUILDINGS.findIndex(b => b.id === id);
 
 /* ---------- 開始 ---------- */
@@ -72,6 +74,10 @@ window.onPageReady = async () => {
   const s = await loadSessionStudentOrRedirect();
   if (!s) return;
   stu = s;
+  if (getGaudiOpen(stu) < 1) {
+    showResult({ title: "老師還沒開放", text: "這個遊戲還沒開放給你，先去玩分數盲盒店吧！" }, gBackToMenu);
+    return;
+  }
   G = ensureGaudi(stu);
   $("viewGame").classList.remove("hidden");
   $("gStuId").textContent = stu.id;
@@ -128,7 +134,7 @@ function renderMap() {
     const done = beatenN === 3;
     const cls = !open ? "is-locked" : (done ? "is-done" : "");
     const status = !open
-      ? `<span class="k-chip mt-2">還沒開放</span>`
+      ? `<span class="k-chip mt-2">${teacherOpened(i) ? "還沒開放" : "老師還沒開放"}</span>`
       : `<span class="k-chip ${done ? "k-chip--yellow" : "k-chip--chi"} mt-2">${done ? "完成！" : `精靈 ${beatenN}/3・怪獸 ${caughtN}/5`}</span>`;
     return `
       <button class="k-bld ${cls}" onclick="enterBuilding('${b.id}')" aria-label="${b.name}${open ? "" : "（還沒開放）"}">
@@ -142,7 +148,11 @@ function renderMap() {
 
 function enterBuilding(id) {
   const i = bldIndex(id);
-  if (!bldUnlocked(i)) {
+  if (!teacherOpened(i)) {
+    showResult({ title: "老師還沒開放這裡", text: "等老師上完這段課文，就會開放囉！" });
+    return;
+  }
+  if (!progressUnlocked(i)) {
     showResult({ title: "這裡還沒開放", text: `先打敗「${BUILDINGS[i - 1].name}」的 3 隻守護精靈，才能來這裡喔！` });
     return;
   }
@@ -634,7 +644,11 @@ async function winGuardian() {
   else if (!first) text = "又贏了一次，越來越厲害了！";
   else {
     text = `${g.name} 成為你的夥伴！招式：${SKILLS[g.skill].name}（${SKILLS[g.skill].desc}）。`;
-    if (b.guardians[2] === g.id && BUILDINGS[bIdx + 1]) text += `\n「${BUILDINGS[bIdx + 1].name}」開放了！`;
+    if (b.guardians[2] === g.id && BUILDINGS[bIdx + 1]) {
+      text += teacherOpened(bIdx + 1)
+        ? `\n「${BUILDINGS[bIdx + 1].name}」開放了！`
+        : `\n下一站「${BUILDINGS[bIdx + 1].name}」要等老師開放喔！`;
+    }
   }
   if (bonus) text += `\n得到 ${bonus} 金幣。`;
   showResult({ img: monsterImg(g.id), title: g.final ? "全部通關！" : `打敗了 ${g.name}！`, text });

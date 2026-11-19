@@ -87,16 +87,17 @@
           <div class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
         </div>
       </a>
-      <a href="gaudi.html" class="k-game k-game--tilt-r k-slap">
+      <a href="gaudi.html" id="gaudiCard" class="k-game k-game--tilt-r k-slap">
+        <div id="gaudiTape" class="k-tape hidden">還沒開放</div>
         <div class="k-game-top k-game-top--chi px-6 pt-5 pb-4 flex items-end justify-between">
           <div class="k-game-icon p-1" aria-hidden="true" id="gaudiIcon">🏛️</div>
-          <span class="k-chip k-chip--chi">國語</span>
+          <span class="k-chip k-chip--chi mr-12">國語</span>
         </div>
         <div class="px-6 pt-4 pb-6">
           <h3 class="k-display text-3xl">高第的魔法建築</h3>
           <p class="text-sm font-bold text-[#5B6B78] mt-1">第八課</p>
           <p class="text-sm mt-3 leading-relaxed">走進高第的四棟建築，答題收服怪獸，再帶著夥伴挑戰守護精靈。</p>
-          <div class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
+          <div id="gaudiBtn" class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
         </div>
       </a>
     </div>
@@ -153,6 +154,17 @@ function showMenu(stu) {
   document.getElementById("menuStuId").textContent = stu.id;
   document.getElementById("menuStuName").textContent = stu.name || "";
   document.getElementById("menuCoins").textContent = stu.coins || 0;
+  // 高第遊戲：老師沒開放的同學看到上鎖的卡片
+  const open = getGaudiOpen(stu) > 0;
+  const card = document.getElementById("gaudiCard");
+  card.classList.toggle("k-game--locked", !open);
+  document.getElementById("gaudiTape").classList.toggle("hidden", open);
+  const btn = document.getElementById("gaudiBtn");
+  btn.textContent = open ? "進入遊戲" : "老師還沒開放";
+  btn.classList.toggle("k-btn--yellow", open);
+  btn.style.opacity = open ? "" : ".6";
+  if (open) card.setAttribute("href", "gaudi.html"); else card.removeAttribute("href");
+  card.setAttribute("aria-disabled", open ? "false" : "true");
 }
 
 function indexLogout() {

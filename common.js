@@ -207,6 +207,7 @@ async function saveStudentProgress(studentObj, coinDelta = 0) {
   delete data.id;
   delete data.coins;
   GAME_FIELDS.forEach(f => delete data[f]); // 其他遊戲的進度不歸這裡管，不要蓋掉
+  TEACHER_ONLY_FIELDS.forEach(f => delete data[f]); // 老師設定的開放範圍，學生端不能改
   if (coinDelta) studentObj.coins = (studentObj.coins || 0) + coinDelta;
   if (isCloudMode) {
     if (coinDelta) data.coins = firebase.firestore.FieldValue.increment(coinDelta);
@@ -222,6 +223,12 @@ async function saveStudentProgress(studentObj, coinDelta = 0) {
 
 // 每個遊戲各自存在學生資料裡的一個欄位（例如高第遊戲存在 gaudi）
 const GAME_FIELDS = ["gaudi"];
+// 只有老師能改的欄位：gaudiOpen = 高第遊戲開放到第幾棟（0 = 不能進入，1～4 = 開放到第幾棟）
+const TEACHER_ONLY_FIELDS = ["gaudiOpen"];
+function getGaudiOpen(stu) {
+  const n = Number(stu && stu.gaudiOpen);
+  return Number.isFinite(n) ? Math.max(0, Math.min(4, Math.floor(n))) : 0;
+}
 
 // 新遊戲專用：只寫入自己的那一格資料＋金幣增減，不會動到其他遊戲的進度
 async function saveGameData(studentObj, field, coinDelta = 0) {
