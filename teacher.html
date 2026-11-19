@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>教師管理端</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDK (Compat v10 for single-file direct browser execution) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fde68a 100%);
+      min-height: 100vh;
+    }
+    /* 直式分數排版 */
+    .frac-expr {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.35em;
+      vertical-align: middle;
+    }
+    .mixed-num {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.15em;
+    }
+    .whole-part {
+      font-weight: 800;
+      font-size: 1.15em;
+    }
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.05;
+      vertical-align: middle;
+      font-weight: 700;
+    }
+    .frac .num {
+      border-bottom: 2.5px solid currentColor;
+      padding: 0 5px 2px 5px;
+      text-align: center;
+    }
+    .frac .den {
+      padding: 2px 5px 0 5px;
+      text-align: center;
+    }
+    /* 盲盒晃動與發光動畫 */
+    @keyframes boxShake {
+      0%, 100% { transform: rotate(0deg) scale(1); }
+      20% { transform: rotate(-10deg) scale(1.06); }
+      40% { transform: rotate(10deg) scale(1.08); }
+      60% { transform: rotate(-8deg) scale(1.06); }
+      80% { transform: rotate(8deg) scale(1.04); }
+    }
+    .animate-box-shake {
+      animation: boxShake 0.75s ease-in-out infinite;
+    }
+    @keyframes popIn {
+      0% { transform: scale(0.4); opacity: 0; }
+      75% { transform: scale(1.08); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop-in {
+      animation: popIn 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    .hidden-glow {
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.75), 0 0 50px rgba(236, 72, 153, 0.45);
+    }
+  </style>
+</head>
+<body class="text-slate-800 select-none">
+<header class="bg-white/90 backdrop-blur border-b-4 border-amber-400 sticky top-0 z-30 shadow-sm">
+  <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-2.5">
+      <span class="text-3xl">👩‍🏫</span>
+      <div>
+        <h1 class="text-xl md:text-2xl font-black text-amber-700 tracking-wide">教師管理端</h1>
+        <p class="text-xs text-slate-500 font-medium"><span class="jsSiteTitle"></span></p>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <span id="syncBadge" class="text-xs px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-600">連線檢查中...</span>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 py-6">
+
+<!-- ==================== 3. 教師端管理後台 ==================== -->
+  <section id="viewTeacher" class="hidden space-y-6">
+    <div class="bg-slate-800 text-white rounded-3xl p-6 shadow-xl flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <span class="text-xs bg-amber-400 text-slate-900 font-black px-2.5 py-0.5 rounded-full">教師管理後台</span>
+        <h2 class="text-2xl font-black mt-1">凱正老師的班級學習儀表板</h2>
+        <p class="text-xs text-slate-300 mt-1">管理學生帳號，並檢視各遊戲的學習紀錄。</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button onclick="refreshTeacherData()" class="bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition">
+          🔄 重新整理資料
+        </button>
+        <button onclick="exportClassCSV()" class="bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition">
+          📥 匯出成績 Excel (CSV)
+        </button>
+        <button onclick="exitTeacherView()" class="bg-slate-600 hover:bg-slate-500 text-white text-sm font-bold px-4 py-2 rounded-xl transition">
+          🏠 回到首頁
+        </button>
+      </div>
+    </div>
+
+    <!-- 遊戲分頁 -->
+    <div class="flex flex-wrap gap-2">
+      <button id="tchTabBtn_fraction" onclick="switchTeacherTab('fraction')" class="px-4 py-2 rounded-xl font-black text-sm bg-slate-800 text-white shadow">📋 全班名單・分數盲盒店</button>
+      <button id="tchTabBtn_gaudi" onclick="switchTeacherTab('gaudi')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🏛️ 高第的魔法建築</button>
+    </div>
+
+    <div id="tchPane_gaudi" class="hidden bg-white rounded-3xl p-8 shadow border border-slate-200 text-center text-slate-500">
+      <div class="text-5xl mb-2">🏛️</div>
+      <p class="font-black text-slate-700">高第的魔法建築尚未開放</p>
+      <p class="text-sm mt-1">下一階段完成後，這裡會顯示每位學生的建築進度、答對率與最常錯的字。</p>
+    </div>
+
+    <div id="tchPane_fraction" class="space-y-6">
+    <!-- 班級總覽統計卡 -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-white p-4 rounded-2xl shadow border border-slate-200">
+        <div class="text-xs font-bold text-slate-500">班級總人數</div>
+        <div id="tchStatStudents" class="text-2xl font-black text-slate-800 mt-1">0 人</div>
+      </div>
+      <div class="bg-white p-4 rounded-2xl shadow border border-slate-200">
+        <div class="text-xs font-bold text-slate-500">全班平均正確率</div>
+        <div id="tchStatAvgAcc" class="text-2xl font-black text-emerald-600 mt-1">0%</div>
+      </div>
+      <div class="bg-white p-4 rounded-2xl shadow border border-slate-200">
+        <div class="text-xs font-bold text-slate-500">全班累計答題數</div>
+        <div id="tchStatTotalQ" class="text-2xl font-black text-amber-600 mt-1">0 題</div>
+      </div>
+      <div class="bg-white p-4 rounded-2xl shadow border border-slate-200">
+        <div class="text-xs font-bold text-slate-500">已通關人數 (集滿<span class="jsTotalToys">18</span>款)</div>
+        <div id="tchStatCleared" class="text-2xl font-black text-pink-600 mt-1">0 人</div>
+      </div>
+    </div>
+
+    <!-- 建立學生帳號區塊 -->
+    <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+      <h3 class="text-lg font-black text-slate-800 mb-3">➕ 建立學生帳號</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 單筆新增 -->
+        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+          <div class="text-sm font-black text-slate-700">單筆建立學生</div>
+          <div class="flex flex-wrap gap-2">
+            <input id="newStuId" type="text" placeholder="班級座號 (如 50123)" class="flex-1 min-w-[130px] border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold" />
+            <input id="newStuName" type="text" placeholder="姓名 (選填)" class="flex-1 min-w-[110px] border border-slate-300 rounded-xl px-3 py-2 text-sm" />
+            <input id="newStuPin" type="text" inputmode="numeric" maxlength="8" placeholder="密碼 (空白=自動產生)" class="flex-1 min-w-[140px] border border-slate-300 rounded-xl px-3 py-2 text-sm" />
+            <button onclick="teacherAddSingleStudent()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm px-4 py-2 rounded-xl transition">新增</button>
+          </div>
+        </div>
+        <!-- 批次建立 -->
+        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+          <div class="text-sm font-black text-slate-700">批次建立全班座號</div>
+          <div class="flex flex-wrap items-center gap-2">
+            <input id="batchClassPrefix" type="text" value="501" maxlength="3" placeholder="班級(501)" class="w-20 border border-slate-300 rounded-xl px-2.5 py-2 text-sm font-bold text-center" />
+            <span class="text-xs font-bold text-slate-500">座號</span>
+            <input id="batchStartNo" type="number" value="1" min="1" max="99" class="w-16 border border-slate-300 rounded-xl px-2 py-2 text-sm font-bold text-center" />
+            <span class="text-xs font-bold text-slate-500">到</span>
+            <input id="batchEndNo" type="number" value="22" min="1" max="99" class="w-16 border border-slate-300 rounded-xl px-2 py-2 text-sm font-bold text-center" />
+            <button onclick="teacherBatchCreateStudents()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition">批次建立</button>
+          </div>
+          <p class="text-xs text-slate-500">新帳號會自動產生 4 位數密碼，可用下方「列印密碼條」發給學生。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 貼上名單匯入（姓名＋密碼） -->
+    <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+      <h3 class="text-lg font-black text-slate-800 mb-1">📋 貼上名單，一次設定姓名與密碼</h3>
+      <p class="text-xs text-slate-500 mb-3">
+        一行一位，格式「座號 姓名 密碼」，中間用空白或 Tab 隔開（可直接從 Excel 複製三欄貼上）。<br/>
+        已存在的帳號只會更新姓名與密碼，<b>作答紀錄與公仔都會保留</b>；不存在的座號會自動建立。
+      </p>
+      <textarea id="importRosterText" rows="6" placeholder="50101 王小明 1234&#10;50102 李小華 5678"
+        class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono"></textarea>
+      <div class="flex justify-end mt-2">
+        <button onclick="teacherImportRoster()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition">📥 匯入名單</button>
+      </div>
+    </div>
+
+    <!-- 全班進度與公仔收藏一覽表 -->
+    <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h3 class="text-lg font-black text-slate-800">📊 全班學生作答與盲盒收集狀況</h3>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnTogglePins" onclick="toggleShowPins()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg">👁️ 顯示密碼</button>
+          <button onclick="fillMissingPins()" class="text-xs bg-indigo-500 hover:bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg">🔑 幫沒有密碼的學生產生密碼</button>
+          <button onclick="printPinSlips()" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-lg">🖨️ 列印密碼條</button>
+        </div>
+      </div>
+      <p class="text-xs text-slate-500 -mt-2 mb-3">「檢視明細」可看公仔與錯題紀錄；「編輯」可改姓名、改密碼或刪除帳號。</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-100 text-slate-700 border-b-2 border-slate-200">
+              <th class="py-3 px-3">班級座號</th>
+              <th class="py-3 px-3">姓名</th>
+              <th class="py-3 px-3">密碼</th>
+              <th class="py-3 px-3">已答題數</th>
+              <th class="py-3 px-3">答對題數</th>
+              <th class="py-3 px-3">正確率</th>
+              <th class="py-3 px-3">公仔收集 (常規/隱藏)</th>
+              <th class="py-3 px-3">碎片 / 待抽</th>
+              <th class="py-3 px-3">金幣</th>
+              <th class="py-3 px-3">通關狀態</th>
+              <th class="py-3 px-3">操作</th>
+            </tr>
+          </thead>
+          <tbody id="teacherTableBody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </section>
+</main>
+
+<!-- ==================== 彈窗 1：教師登入密碼驗證 ==================== -->
+<div id="modalTeacherLogin" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border-2 border-slate-200">
+    <h3 class="text-xl font-black text-slate-800 mb-1">👩‍🏫 教師端驗證</h3>
+    <p class="text-xs text-slate-500 mb-4">請輸入教師管理密碼以檢視全班成績與盲盒進度</p>
+    <input id="inputTeacherPwd" type="password" placeholder="請輸入密碼"
+      onkeydown="if(event.key==='Enter') verifyTeacherLogin()"
+      class="w-full border-2 border-slate-300 focus:border-slate-800 focus:outline-none rounded-xl px-4 py-2.5 text-center text-lg font-bold tracking-widest mb-4" />
+    <div class="flex gap-2">
+      <button onclick="location.href='index.html'" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl">取消</button>
+      <button onclick="verifyTeacherLogin()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl">確認進入</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 彈窗 4：教師編輯學生（改名／改密碼／刪除） ==================== -->
+<div id="modalEditStudent" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border-2 border-slate-200">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-xl font-black text-slate-800">✏️ 編輯學生 <span id="editStuIdLabel" class="text-amber-600"></span></h3>
+      <button onclick="closeModal('modalEditStudent')" class="text-slate-400 hover:text-slate-700 font-black text-xl">✕</button>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">姓名</label>
+        <input id="editStuName" type="text" class="w-full border-2 border-slate-300 focus:border-slate-800 focus:outline-none rounded-xl px-3 py-2 font-bold" />
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">密碼（留空 = 不需要密碼即可登入）</label>
+        <div class="flex gap-2">
+          <input id="editStuPin" type="text" inputmode="numeric" maxlength="8" class="flex-1 border-2 border-slate-300 focus:border-slate-800 focus:outline-none rounded-xl px-3 py-2 font-black tracking-widest text-center" />
+          <button onclick="document.getElementById('editStuPin').value = generatePin()" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-xs font-bold px-3 rounded-xl">🎲 隨機</button>
+        </div>
+      </div>
+      <button onclick="teacherSaveStudentEdit()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl">💾 儲存修改</button>
+    </div>
+    <div class="mt-5 pt-4 border-t border-rose-100">
+      <div class="text-xs font-bold text-rose-600 mb-2">⚠️ 危險操作</div>
+      <button onclick="teacherDeleteStudent()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold py-2 rounded-xl text-sm">🗑️ 刪除這個學生帳號（所有紀錄一併刪除）</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 彈窗 5：教師檢視單一學生明細 ==================== -->
+<div id="modalStudentDetail" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
+    <div class="flex items-center justify-between border-b pb-3 mb-4">
+      <h3 id="detailModalTitle" class="text-lg font-black text-slate-800">學生學習明細</h3>
+      <button onclick="closeModal('modalStudentDetail')" class="text-slate-400 hover:text-slate-700 font-black text-xl">✕</button>
+    </div>
+    <div id="detailModalBody" class="space-y-4 text-sm"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script src="fraction-data.js"></script>
+<script src="teacher.js"></script>
+</body>
+</html>
