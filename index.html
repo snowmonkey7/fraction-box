@@ -8,161 +8,97 @@
   <!-- Firebase SDK (Compat v10 for single-file direct browser execution) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
-    body {
-      font-family: 'Noto Sans TC', sans-serif;
-      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fde68a 100%);
-      min-height: 100vh;
-    }
-    /* 直式分數排版 */
-    .frac-expr {
-      display: inline-flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 0.35em;
-      vertical-align: middle;
-    }
-    .mixed-num {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.15em;
-    }
-    .whole-part {
-      font-weight: 800;
-      font-size: 1.15em;
-    }
-    .frac {
-      display: inline-flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      line-height: 1.05;
-      vertical-align: middle;
-      font-weight: 700;
-    }
-    .frac .num {
-      border-bottom: 2.5px solid currentColor;
-      padding: 0 5px 2px 5px;
-      text-align: center;
-    }
-    .frac .den {
-      padding: 2px 5px 0 5px;
-      text-align: center;
-    }
-    /* 盲盒晃動與發光動畫 */
-    @keyframes boxShake {
-      0%, 100% { transform: rotate(0deg) scale(1); }
-      20% { transform: rotate(-10deg) scale(1.06); }
-      40% { transform: rotate(10deg) scale(1.08); }
-      60% { transform: rotate(-8deg) scale(1.06); }
-      80% { transform: rotate(8deg) scale(1.04); }
-    }
-    .animate-box-shake {
-      animation: boxShake 0.75s ease-in-out infinite;
-    }
-    @keyframes popIn {
-      0% { transform: scale(0.4); opacity: 0; }
-      75% { transform: scale(1.08); opacity: 1; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    .animate-pop-in {
-      animation: popIn 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    }
-    .hidden-glow {
-      box-shadow: 0 0 25px rgba(245, 158, 11, 0.75), 0 0 50px rgba(236, 72, 153, 0.45);
-    }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="theme.css" />
 </head>
-<body class="text-slate-800 select-none">
-<header class="bg-white/90 backdrop-blur border-b-4 border-amber-400 sticky top-0 z-30 shadow-sm">
+<body class="k-page select-none">
+<header class="k-board sticky top-0 z-30">
   <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-    <div class="flex items-center gap-2.5">
-      <span class="text-3xl">🏫</span>
-      <div>
-        <h1 class="text-xl md:text-2xl font-black text-amber-700 tracking-wide"><span class="jsSiteTitle"></span></h1>
-        <p class="text-xs text-slate-500 font-medium">五年級 數學・國語 學習遊戲</p>
-      </div>
+    <div>
+      <h1 class="k-board-title text-2xl md:text-3xl"><span class="jsSiteTitle"></span></h1>
+      <p class="k-board-sub text-xs font-medium mt-0.5">五年級 數學・國語 學習遊戲</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <span id="syncBadge" class="text-xs px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-600">連線檢查中...</span>
-      <a href="teacher.html" id="btnHeaderTeacher" class="text-sm bg-slate-800 hover:bg-slate-700 text-white font-bold px-3.5 py-1.5 rounded-xl transition shadow">👩‍🏫 教師管理端</a>
-      <button id="btnLogout" onclick="indexLogout()" class="hidden text-sm bg-rose-500 hover:bg-rose-600 text-white font-bold px-3.5 py-1.5 rounded-xl transition shadow">登出切換</button>
+      <span id="syncBadge" class="k-chip bg-slate-100 text-slate-600">連線檢查中...</span>
+      <a href="teacher.html" id="btnHeaderTeacher" class="k-btn k-btn--chalk k-btn--sm">教師管理端</a>
+      <button id="btnLogout" onclick="indexLogout()" class="hidden k-btn k-btn--tomato k-btn--sm">登出</button>
     </div>
   </div>
 </header>
 
-<main class="max-w-5xl mx-auto px-4 py-6">
+<main class="max-w-5xl mx-auto px-4 py-8">
 
 <!-- ==================== 1. 登入畫面 ==================== -->
-  <section id="viewLogin" class="max-w-md mx-auto mt-6 bg-white rounded-3xl shadow-xl border-4 border-amber-300 p-7">
-    <div class="text-center mb-6">
-      <div class="inline-block bg-amber-100 text-amber-800 font-extrabold px-4 py-1 rounded-full text-sm mb-2">五年級學習遊戲</div>
-      <h2 class="text-2xl font-black text-slate-800">歡迎來到<span class="jsSiteTitle"></span>！</h2>
-      <p class="text-slate-500 text-sm mt-1">請輸入「班級＋座號」和密碼登入</p>
-    </div>
-
-    <div class="space-y-4">
-      <div>
-        <label class="block text-sm font-bold text-slate-700 mb-1">班級座號（共 5 碼，例如 50101）</label>
-        <input id="inputStudentId" type="text" inputmode="numeric" maxlength="10" placeholder="請輸入如：50101"
-          onkeydown="if(event.key==='Enter') document.getElementById('inputStudentPin').focus()"
-          class="w-full text-center text-2xl font-black tracking-widest border-2 border-amber-300 focus:border-amber-500 focus:outline-none rounded-2xl py-3 bg-amber-50/40" />
+  <section id="viewLogin" class="max-w-md mx-auto mt-2">
+    <div class="k-card overflow-hidden">
+      <div class="bg-[#FFC83D] border-b-[3px] border-[#1E2A33] px-6 py-4 flex items-center justify-between">
+        <div>
+          <div class="k-display text-2xl">學生登入</div>
+          <div class="text-sm font-bold opacity-80">輸入座號和密碼，就能開始玩</div>
+        </div>
+        <div class="w-14 h-14 rounded-full border-[3px] border-[#1E2A33] bg-white flex items-center justify-center text-3xl" aria-hidden="true">✏️</div>
       </div>
-      <div>
-        <label class="block text-sm font-bold text-slate-700 mb-1">密碼（4 位數字，請向老師索取）</label>
-        <input id="inputStudentPin" type="password" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="off"
-          onkeydown="if(event.key==='Enter') studentLogin()"
-          class="w-full text-center text-2xl font-black tracking-[0.5em] border-2 border-amber-300 focus:border-amber-500 focus:outline-none rounded-2xl py-3 bg-amber-50/40" />
+      <div class="p-6 space-y-5">
+        <div>
+          <label for="inputStudentId" class="k-display block text-base mb-1.5">班級座號</label>
+          <input id="inputStudentId" type="text" inputmode="numeric" maxlength="10" placeholder="50101"
+            onkeydown="if(event.key==='Enter') document.getElementById('inputStudentPin').focus()"
+            class="k-input text-center text-3xl tracking-[0.25em] py-3" />
+          <p class="text-xs text-[#5B6B78] font-bold mt-1">共 5 碼：班級 501 ＋ 座號 01</p>
+        </div>
+        <div>
+          <label for="inputStudentPin" class="k-display block text-base mb-1.5">密碼</label>
+          <input id="inputStudentPin" type="password" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="off"
+            onkeydown="if(event.key==='Enter') studentLogin()"
+            class="k-input text-center text-3xl tracking-[0.5em] py-3" />
+          <p class="text-xs text-[#5B6B78] font-bold mt-1">4 位數字，忘記了請問老師</p>
+        </div>
+        <button id="btnStudentLogin" onclick="studentLogin()" class="k-btn k-btn--yellow w-full text-xl py-3.5">登入</button>
       </div>
-      <button id="btnStudentLogin" onclick="studentLogin()" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-98 text-white text-lg font-black py-3.5 rounded-2xl shadow-lg shadow-amber-500/30 transition">
-        🚀 登入
-      </button>
     </div>
-
-    </section>
+  </section>
 
   <!-- ==================== 遊戲目錄 ==================== -->
-  <section id="viewMenu" class="hidden space-y-5">
-    <div class="bg-white rounded-3xl p-5 shadow-md border-2 border-amber-200 flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <div class="w-12 h-12 rounded-2xl bg-amber-400 text-white text-2xl flex items-center justify-center shadow">🎓</div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span id="menuStuId" class="text-xl font-black text-slate-800"></span>
-            <span id="menuStuName" class="text-sm font-bold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-lg"></span>
-          </div>
-          <p class="text-xs text-slate-500 mt-0.5">選一個遊戲開始吧！</p>
+  <section id="viewMenu" class="hidden">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-7">
+      <div>
+        <div class="k-nametag text-lg">
+          <span id="menuStuId" class="k-nt-id"></span><span id="menuStuName" class="k-nt-name"></span>
         </div>
+        <p class="k-display text-xl mt-3">今天想玩哪一個？</p>
       </div>
-      <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl px-5 py-2 text-center">
-        <div class="text-xs font-bold text-amber-700">我的金幣（所有遊戲共用）</div>
-        <div class="text-2xl font-black text-amber-600">💰 <span id="menuCoins">0</span></div>
+      <div class="text-right">
+        <div class="k-wallet text-2xl"><span class="k-coin text-xl"></span><span id="menuCoins">0</span></div>
+        <p class="text-xs font-bold text-[#5B6B78] mt-1.5">金幣在所有遊戲都能用</p>
       </div>
     </div>
 
-    <div class="grid md:grid-cols-2 gap-5">
-      <a href="fraction.html" class="block bg-white rounded-3xl p-6 shadow-md border-4 border-amber-300 hover:border-amber-500 hover:-translate-y-1 transition">
-        <div class="flex items-center justify-between">
-          <span class="text-5xl">🎁</span>
-          <span class="text-xs font-black bg-sky-100 text-sky-800 px-2.5 py-1 rounded-full">數學</span>
+    <div class="grid md:grid-cols-2 gap-8 md:gap-10">
+      <a href="fraction.html" class="k-game k-game--tilt-l k-slap">
+        <div class="k-game-top k-game-top--math px-6 pt-5 pb-4 flex items-end justify-between">
+          <div class="k-game-icon" aria-hidden="true">🎁</div>
+          <span class="k-chip k-chip--math">數學</span>
         </div>
-        <h3 class="text-2xl font-black text-slate-800 mt-3">分數盲盒店</h3>
-        <p class="text-sm text-slate-500 mt-1">異分母分數的加減</p>
-        <ul class="text-xs text-slate-600 mt-3 space-y-1">
-          <li>• 每答對 3 題就能抽 1 次盲盒，收集全部公仔</li>
-          <li>• 抽到重複的公仔，會換成碎片和金幣</li>
-        </ul>
-        <div class="mt-4 inline-block bg-amber-500 text-white font-black px-5 py-2 rounded-xl shadow">進入遊戲 ➜</div>
+        <div class="px-6 pt-4 pb-6">
+          <h3 class="k-display text-3xl">分數盲盒店</h3>
+          <p class="text-sm font-bold text-[#5B6B78] mt-1">異分母分數的加減</p>
+          <p class="text-sm mt-3 leading-relaxed">答對 3 題抽 1 個盲盒，把 18 款公仔全部收集起來。抽到重複的會變成碎片和金幣。</p>
+          <div class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
+        </div>
       </a>
-      <div class="block bg-white/70 rounded-3xl p-6 shadow border-4 border-dashed border-slate-300">
-        <div class="flex items-center justify-between">
-          <span class="text-5xl grayscale">🏛️</span>
-          <span class="text-xs font-black bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full">國語</span>
+      <div class="k-game k-game--locked k-game--tilt-r k-slap" aria-disabled="true">
+        <div class="k-tape">施工中</div>
+        <div class="k-game-top k-game-top--chi px-6 pt-5 pb-4 flex items-end justify-between">
+          <div class="k-game-icon grayscale-[.3]" aria-hidden="true">🏛️</div>
+          <span class="k-chip k-chip--chi mr-12">國語</span>
         </div>
-        <h3 class="text-2xl font-black text-slate-500 mt-3">高第的魔法建築</h3>
-        <p class="text-sm text-slate-400 mt-1">第七課｜收集妖怪、挑戰守護精靈</p>
-        <div class="mt-4 inline-block bg-slate-200 text-slate-500 font-black px-5 py-2 rounded-xl">🔒 即將開放</div>
+        <div class="px-6 pt-4 pb-6">
+          <h3 class="k-display text-3xl text-[#5B6B78]">高第的魔法建築</h3>
+          <p class="text-sm font-bold text-[#5B6B78] mt-1">第八課</p>
+          <p class="text-sm mt-3 leading-relaxed text-[#5B6B78]">走進高第的四棟建築，用國語答題收服怪獸、挑戰守護精靈。</p>
+          <div class="mt-5 k-btn px-6 py-2.5 text-lg opacity-60 pointer-events-none">還沒開放</div>
+        </div>
       </div>
     </div>
   </section>
@@ -180,7 +116,7 @@ async function studentLogin() {
   }
   const loginBtn = document.getElementById("btnStudentLogin");
   loginBtn.disabled = true;
-  loginBtn.textContent = "⏳ 連線中...";
+  loginBtn.textContent = "連線中…";
   let stu;
   try {
     await dbReady;
@@ -202,7 +138,7 @@ async function studentLogin() {
     return;
   } finally {
     loginBtn.disabled = false;
-    loginBtn.textContent = "🚀 登入";
+    loginBtn.textContent = "登入";
   }
   setSessionStudent(stu.id);
   showMenu(stu);

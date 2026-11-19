@@ -30,7 +30,7 @@ async function convertExistingDuplicatesToCoins() {
       coins += gain;
       extraCount += extra;
       s.toys[t.id] = 1;
-      lines.push(`<div class="flex justify-between gap-3"><span>${escapeHtml(t.name)} ×${extra}</span><b class="text-amber-700">+${gain} 金幣</b></div>`);
+      lines.push(`<div class="flex justify-between gap-3"><span>${escapeHtml(t.name)} ×${extra}</span><b>+${gain} 金幣</b></div>`);
     }
   });
   s.dupCoinsConverted = true;
@@ -70,11 +70,7 @@ function switchStudentTab(tabName) {
     const cap = t.charAt(0).toUpperCase() + t.slice(1);
     document.getElementById("stuTab" + cap).classList.toggle("hidden", t !== tabName);
     const btn = document.getElementById("tabBtn" + cap);
-    if (t === tabName) {
-      btn.className = "px-5 py-2 rounded-xl font-black text-sm bg-amber-500 text-white shadow transition";
-    } else {
-      btn.className = "px-5 py-2 rounded-xl font-black text-sm text-slate-600 hover:bg-amber-100 transition";
-    }
+    btn.classList.toggle("is-active", t === tabName);
   });
   if (tabName === "collection") renderCollectionGrid();
   if (tabName === "history") renderHistoryTable();
@@ -91,18 +87,20 @@ function renderStudentDashboard() {
   document.getElementById("stuCoins").textContent = s.coins || 0;
 
   // 集點進度 (滿3抽1)
-  const dots = [1, 2, 3].map(i => (i <= s.streakTowardBox ? "🟢" : "⚪")).join(" ");
-  document.getElementById("stuStreakDots").textContent = dots;
+  document.getElementById("stuStreakDots").innerHTML = [1, 2, 3]
+    .map(i => `<span class="k-stamp${i <= s.streakTowardBox ? " is-on" : ""}"></span>`).join("");
 
   // 碎片與可抽盲盒數
-  document.getElementById("stuShardsDisplay").textContent = `🧩 ${s.shards} / 3`;
+  document.getElementById("stuShardsDisplay").textContent = `${s.shards} / 3`;
   document.getElementById("stuBoxesCount").textContent = s.availableBoxes;
 
   const btnBox = document.getElementById("btnOpenBox");
   if (s.availableBoxes > 0) {
-    btnBox.classList.add("ring-4", "ring-amber-300", "animate-pulse");
+    btnBox.classList.add("k-wiggle");
+    btnBox.disabled = false; btnBox.style.opacity = "";
   } else {
-    btnBox.classList.remove("ring-4", "ring-amber-300", "animate-pulse");
+    btnBox.classList.remove("k-wiggle");
+    btnBox.style.opacity = ".6";
   }
 
   const owned = getOwnedUniqueCount(s);
@@ -140,10 +138,10 @@ function loadNextQuestion() {
   document.getElementById("qExpression").innerHTML = `
     <div class="frac-expr">
       ${formatFracHTML(chosen.a)}
-      <span class="mx-2 text-amber-600">${opSymbol}</span>
+      <span class="mx-2 text-[#FFC83D]">${opSymbol}</span>
       ${formatFracHTML(chosen.b)}
-      <span class="mx-2 text-slate-400">＝</span>
-      <span class="inline-block w-14 h-12 rounded-xl border-2 border-dashed border-amber-400 bg-white text-amber-500 flex items-center justify-center text-2xl">?</span>
+      <span class="mx-2 opacity-70">＝</span>
+      <span class="k-blank text-2xl">?</span>
     </div>
   `;
 
@@ -164,11 +162,12 @@ function loadNextQuestion() {
 
   allOptions.forEach((opt, idx) => {
     const btn = document.createElement("button");
-    btn.className = "opt-btn flex items-center gap-4 p-4 rounded-2xl border-2 border-slate-200 hover:border-amber-400 hover:bg-amber-50/60 bg-white transition text-left shadow-sm";
+    btn.className = "opt-btn k-opt";
     btn.innerHTML = `
-      <span class="w-9 h-9 rounded-xl bg-slate-100 font-black text-slate-600 flex items-center justify-center shrink-0">${labels[idx]}</span>
+      <span class="k-opt-key">${labels[idx]}</span>
       <div class="text-2xl font-black text-slate-800">${formatFracHTML(opt.frac)}</div>
     `;
+    if (opt.isCorrect) btn.dataset.correct = "1";
     btn.onclick = () => handleAnswerSelect(opt, btn);
     grid.appendChild(btn);
   });
@@ -187,11 +186,11 @@ async function handleAnswerSelect(opt, clickedBtn) {
   allBtns.forEach(b => b.disabled = true);
 
   if (isCorrect) {
-    clickedBtn.classList.remove("border-slate-200", "bg-white");
-    clickedBtn.classList.add("border-emerald-500", "bg-emerald-50", "ring-2", "ring-emerald-300");
+    clickedBtn.classList.add("is-right");
   } else {
-    clickedBtn.classList.remove("border-slate-200", "bg-white");
-    clickedBtn.classList.add("border-rose-500", "bg-rose-50");
+    clickedBtn.classList.add("is-wrong");
+    const rightBtn = document.querySelector('.opt-btn[data-correct="1"]');
+    if (rightBtn) rightBtn.classList.add("is-right");
   }
 
   // 更新學生數據
@@ -258,22 +257,22 @@ async function handleAnswerSelect(opt, clickedBtn) {
   const fbBox = document.getElementById("qFeedbackBox");
   const fbTitle = document.getElementById("qFeedbackTitle");
   const fbDetail = document.getElementById("qFeedbackDetail");
-  fbBox.classList.remove("hidden", "bg-emerald-50", "border-emerald-300", "bg-rose-50", "border-rose-300");
+  fbBox.classList.remove("hidden", "is-right", "is-wrong");
 
   if (isCorrect) {
-    fbBox.classList.add("bg-emerald-50", "border-emerald-300");
-    fbTitle.className = "text-lg font-black text-emerald-700";
+    fbBox.classList.add("is-right");
+    fbTitle.className = "k-display text-xl text-[#1F7A4D]";
     fbTitle.textContent = earnedBoxNow
-      ? "🎉 答對了！累積滿 3 題，獲得 1 個盲盒抽獎機會！"
-      : `⭕ 答對了！再答對 ${3 - currentStudent.streakTowardBox} 題就能抽盲盒囉！`;
-    fbDetail.innerHTML = `<span class="text-emerald-800">💡 解題小提示：${q.hint}</span>`;
+      ? "答對了！集滿 3 題，拿到 1 個盲盒！"
+      : `答對了！再對 ${3 - currentStudent.streakTowardBox} 題就能抽盲盒`;
+    fbDetail.innerHTML = `<span class="font-bold">小提示：</span>${q.hint}`;
   } else {
-    fbBox.classList.add("bg-rose-50", "border-rose-300");
-    fbTitle.className = "text-lg font-black text-rose-700";
-    fbTitle.textContent = "❌ 哎呀，算錯囉！看看正確答案與解析：";
+    fbBox.classList.add("is-wrong");
+    fbTitle.className = "k-display text-xl text-[#C23A26]";
+    fbTitle.textContent = "差一點！看看正確答案怎麼算";
     fbDetail.innerHTML = `
-      <div class="text-rose-900 font-bold mb-1">正確答案是：<span class="inline-block bg-white px-2.5 py-1 rounded-lg border border-rose-200 text-base">${formatFracHTML(q.ans)}</span></div>
-      <div class="text-rose-800">💡 凱正老師解析：${q.hint}</div>
+      <div class="font-bold mb-1.5">正確答案：<span class="inline-block bg-white px-2.5 py-1 rounded-lg border-2 border-[#1E2A33] text-base align-middle">${formatFracHTML(q.ans)}</span></div>
+      <div><span class="font-bold">凱正老師解析：</span>${q.hint}</div>
     `;
   }
 
@@ -348,7 +347,7 @@ function getToyImageHTML(toy, sizeClass = "w-full h-full object-contain") {
   return `
     <img src="${toy.img}" alt="${toy.name}" class="${sizeClass}"
       onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-    <div style="display:none;" class="w-full h-full items-center justify-center text-6xl bg-amber-50 rounded-xl">
+    <div style="display:none;" class="w-full h-full items-center justify-center text-6xl bg-[#FFF4CC] rounded-xl">
       ${toy.fallbackEmoji}
     </div>
   `;
@@ -373,8 +372,8 @@ async function triggerBlindBoxDraw(isShardAutoExchange = false) {
   document.getElementById("boxStageOpening").classList.remove("hidden");
   document.getElementById("boxStageResult").classList.add("hidden");
   document.getElementById("boxOpeningBanner").textContent = isShardAutoExchange
-    ? "🧩 消耗 3 個碎片合成保底盲盒中...（保證新公仔！）"
-    : "✨ 正在開啟神秘盲盒... ✨";
+    ? "用 3 個碎片換一個保底盲盒…一定是新公仔"
+    : "盲盒打開中…";
 
   const drawnToy = isShardAutoExchange
     ? rollNewToyForShardExchange(currentStudent)
@@ -411,14 +410,14 @@ async function triggerBlindBoxDraw(isShardAutoExchange = false) {
 
     if (drawnToy.type === "hidden") {
       badge.textContent = drawnToy.prob <= 0.01
-        ? `👑 傳說級！超級隱藏款 (${fmtPct(drawnToy.prob)}) 👑`
-        : `✨ 超稀有！神秘隱藏款 (${fmtPct(drawnToy.prob)}) ✨`;
-      badge.className = "inline-block px-3.5 py-1 rounded-full text-xs font-black mb-3 bg-gradient-to-r from-amber-400 to-pink-500 text-white shadow";
-      imgWrap.className = "w-44 h-44 mx-auto rounded-2xl bg-amber-50 border-4 border-amber-400 flex items-center justify-center overflow-hidden p-2 mb-3 hidden-glow";
+        ? `傳說級超級隱藏款（${fmtPct(drawnToy.prob)}）`
+        : `隱藏款（${fmtPct(drawnToy.prob)}）`;
+      badge.className = "k-chip k-chip--yellow text-sm mb-3";
+      imgWrap.className = "w-44 h-44 mx-auto rounded-2xl bg-[#FFF4CC] border-[3px] border-[#1E2A33] flex items-center justify-center overflow-hidden p-2 mb-3 hidden-glow";
     } else {
-      badge.textContent = `📦 教室常規款 (${fmtPct(drawnToy.prob)})`;
-      badge.className = "inline-block px-3.5 py-1 rounded-full text-xs font-black mb-3 bg-sky-100 text-sky-800";
-      imgWrap.className = "w-44 h-44 mx-auto rounded-2xl bg-slate-50 border-2 border-slate-200 flex items-center justify-center overflow-hidden p-2 mb-3";
+      badge.textContent = `常規款（${fmtPct(drawnToy.prob)}）`;
+      badge.className = "k-chip k-chip--math text-sm mb-3";
+      imgWrap.className = "w-44 h-44 mx-auto rounded-2xl bg-white border-[3px] border-[#1E2A33] flex items-center justify-center overflow-hidden p-2 mb-3";
     }
 
     imgWrap.innerHTML = getToyImageHTML(drawnToy);
@@ -426,13 +425,13 @@ async function triggerBlindBoxDraw(isShardAutoExchange = false) {
 
     const statusEl = document.getElementById("boxResultStatus");
     if (isDuplicate) {
-      statusEl.className = "text-sm font-bold mt-2 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200";
-      statusEl.innerHTML = `已擁有此公仔，自動換成 <b class="text-indigo-900">1 個碎片</b>＋<b class="text-amber-600">💰 ${coinGain} 金幣</b>！<br/>目前碎片累積：<b class="text-indigo-900">${currentStudent.shards} / 3</b>`;
+      statusEl.className = "text-sm font-bold mt-3 px-3 py-2 rounded-xl bg-[#EAF1F7] border-2 border-[#1E2A33]";
+      statusEl.innerHTML = `這隻你已經有了，換成 <b>1 個碎片</b>＋<b>${coinGain} 金幣</b><br/>碎片：<b>${currentStudent.shards} / 3</b>`;
     } else {
-      statusEl.className = "text-sm font-bold mt-2 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200";
+      statusEl.className = "text-sm font-bold mt-3 px-3 py-2 rounded-xl bg-[#DDF5E7] border-2 border-[#1E2A33]";
       statusEl.textContent = isShardAutoExchange
-        ? "🧩 碎片保底成功！解鎖全新圖鑑公仔！"
-        : "🆕 恭喜解鎖全新圖鑑公仔！";
+        ? "碎片保底成功，拿到新公仔！"
+        : "新公仔！已經放進公仔櫃";
     }
 
     // 檢查是否累積滿 3 個碎片，若滿 3 個則引導/自動觸發碎片兌換
@@ -474,24 +473,20 @@ function renderCollectionGrid() {
     const isHidden = toy.type === "hidden";
 
     const card = document.createElement("div");
-    card.className = owned
-      ? `rounded-2xl p-3 border-2 text-center transition cursor-zoom-in hover:scale-105 active:scale-95 ${isHidden ? "bg-gradient-to-b from-amber-50 to-pink-50 border-amber-400 shadow-md" : "bg-white border-sky-200 shadow-sm"}`
-      : "rounded-2xl p-3 border-2 border-dashed border-slate-200 bg-slate-50 text-center opacity-70";
+    card.className = "k-toy " + (owned ? "is-owned" + (isHidden ? " is-hidden" : "") : "is-empty");
 
     card.innerHTML = `
-      <div class="w-full aspect-square rounded-xl bg-white/80 flex items-center justify-center overflow-hidden p-1.5 mb-2 relative">
+      <div class="k-toy-img mb-1.5">
         ${owned
           ? getToyImageHTML(toy)
-          : `<span class="text-4xl text-slate-300 font-black">?</span>`
+          : `<span class="k-toy-q">?</span>`
         }
-        ${owned ? `<span class="absolute top-1 right-1 bg-slate-800/80 text-white text-[11px] font-black px-2 py-0.5 rounded-full">×${count}</span>` : ""}
+        ${owned ? `<span class="k-toy-count">×${count}</span>` : ""}
       </div>
-      <div class="font-black text-sm ${owned ? "text-slate-800" : "text-slate-400"}">
-        ${owned ? toy.name : (isHidden ? "？？？(隱藏款)" : toy.name)}
+      <div class="font-bold text-[13px] leading-snug ${owned ? "" : "text-[#8C9AA6]"}">
+        ${owned ? toy.name : (isHidden ? "？？？" : toy.name)}
       </div>
-      <div class="text-[11px] font-bold mt-0.5 ${owned ? (isHidden ? "text-amber-600" : "text-sky-600") : "text-slate-400"}">
-        ${owned ? "🔍 點我放大" : "尚未獲得"}
-      </div>
+
     `;
 
     // 只有已經抽到的公仔可以點開放大（沒抽到的不能偷看）
@@ -518,7 +513,7 @@ function openToyZoom(toyId) {
   wrap.classList.toggle("hidden-glow", toy.type === "hidden");
   document.getElementById("zoomToyName").textContent = toy.name;
   document.getElementById("zoomToyInfo").textContent =
-    `${toy.type === "hidden" ? "✨ 神秘隱藏款" : "📦 常規款"} ｜ 已收藏`;
+    `${toy.type === "hidden" ? "隱藏款" : "常規款"}｜點旁邊空白處關閉`;
   document.getElementById("modalToyZoom").classList.remove("hidden");
 }
 
@@ -527,16 +522,16 @@ function renderHistoryTable() {
   const tbody = document.getElementById("stuHistoryBody");
   const logs = currentStudent.recentLogs || [];
   if (logs.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400 font-bold">目前還沒有作答紀錄，快去挑戰題目吧！</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-[#5B6B78] font-bold">還沒有紀錄。到「算一算」做第一題吧！</td></tr>`;
     return;
   }
   tbody.innerHTML = logs.map(l => `
-    <tr class="hover:bg-amber-50/40">
+    <tr>
       <td class="py-2.5 px-3 font-bold text-slate-500">#${l.qId}</td>
-      <td class="py-2.5 px-3"><span class="text-xs bg-slate-100 px-2 py-0.5 rounded font-bold">${l.cat}</span></td>
+      <td class="py-2.5 px-3"><span class="k-chip">${l.cat}</span></td>
       <td class="py-2.5 px-3 font-black text-slate-800">${l.expr}</td>
-      <td class="py-2.5 px-3 font-bold ${l.isCorrect ? "text-emerald-600" : "text-rose-600"}">${l.userAns}</td>
-      <td class="py-2.5 px-3 font-black">${l.isCorrect ? "⭕ 正確" : `❌ 錯誤 (正解: ${l.correctAns})`}</td>
+      <td class="py-2.5 px-3 font-bold ${l.isCorrect ? "text-[#1F7A4D]" : "text-[#C23A26]"}">${l.userAns}</td>
+      <td class="py-2.5 px-3 font-black">${l.isCorrect ? "答對" : `答錯（正解 ${l.correctAns}）`}</td>
     </tr>
   `).join("");
 }

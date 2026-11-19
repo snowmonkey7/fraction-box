@@ -44,7 +44,7 @@ function withTimeout(promise, ms = 12000) {
 function setBadge(text, cls) {
   const badge = document.getElementById("syncBadge");
   badge.textContent = text;
-  badge.className = "text-xs px-2.5 py-1 rounded-full font-bold " + cls;
+  badge.className = "k-chip " + cls;
 }
 
 async function initDatabase() {

@@ -1,0 +1,402 @@
+/* =========================================================
+   凱正老師的遊戲教室｜共用外觀
+   主題：教室黑板＋作業簿格子紙＋貼紙
+   改顏色只要改最上面的 :root 這幾行
+   ========================================================= */
+:root {
+  --ink: #1E2A33;        /* 線條、文字（像簽字筆） */
+  --paper: #F3F7FB;      /* 作業簿底色 */
+  --grid: #DCE7F2;       /* 作業簿格線 */
+  --board: #24584A;      /* 黑板綠 */
+  --board-dark: #1B4539;
+  --wood: #B98A57;       /* 黑板下緣的木頭粉筆槽 */
+  --crayon: #FFC83D;     /* 蠟筆黃（金幣、主要按鈕） */
+  --tomato: #F2644E;     /* 番茄紅（登出、答錯） */
+  --sky: #5BB8F0;        /* 天空藍（數學） */
+  --leaf: #4CB782;       /* 葉子綠（國語、答對） */
+  --muted: #5B6B78;
+  --display: "Huninn", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+
+body.k-page {
+  font-family: var(--body);
+  color: var(--ink);
+  min-height: 100vh;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+  -webkit-tap-highlight-color: transparent;
+}
+.k-display { font-family: var(--display); letter-spacing: 0.02em; }
+
+/* ---------- 黑板頁首 ---------- */
+.k-board {
+  background: var(--board);
+  background-image: radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px);
+  background-size: 6px 6px;
+  border-bottom: 10px solid var(--wood);
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.18), 0 3px 0 var(--ink);
+  color: #F4F1E6;
+}
+.k-board-title {
+  font-family: var(--display);
+  color: #FFF7DA;
+  text-shadow: 0 0 1px rgba(255,255,255,.5);
+  letter-spacing: 0.06em;
+}
+.k-board-sub { color: rgba(244,241,230,.72); }
+
+/* ---------- 貼紙卡片 ---------- */
+.k-card {
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.k-card--flat { box-shadow: 3px 3px 0 var(--ink); }
+.k-card--soft { border-width: 2px; box-shadow: none; }
+
+/* ---------- 按鈕：按下去會「壓扁」 ---------- */
+.k-btn {
+  font-family: var(--display);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4em;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--ink);
+  transition: transform .06s ease, box-shadow .06s ease, background-color .15s;
+  cursor: pointer;
+  user-select: none;
+}
+.k-btn:hover { filter: brightness(1.03); }
+.k-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 0 0 var(--ink); }
+.k-btn:disabled { cursor: default; }
+.k-btn:focus-visible, .k-input:focus-visible, .k-tab:focus-visible {
+  outline: 3px dashed var(--sky);
+  outline-offset: 3px;
+}
+.k-btn--yellow { background: var(--crayon); }
+.k-btn--tomato { background: var(--tomato); color: #fff; }
+.k-btn--sky    { background: var(--sky); color: #fff; }
+.k-btn--leaf   { background: var(--leaf); color: #fff; }
+.k-btn--ink    { background: var(--ink); color: #fff; box-shadow: 0 4px 0 #000; }
+.k-btn--chalk  { background: transparent; color: #FFF7DA; border-color: rgba(255,247,218,.85); box-shadow: 0 3px 0 rgba(0,0,0,.35); }
+.k-btn--sm { font-size: .85rem; padding: .3rem .8rem; border-width: 2px; border-radius: 11px; box-shadow: 0 3px 0 var(--ink); }
+.k-btn--sm:active:not(:disabled) { transform: translateY(3px); }
+.k-btn--chalk.k-btn--sm { box-shadow: 0 3px 0 rgba(0,0,0,.35); }
+
+/* ---------- 輸入框 ---------- */
+.k-input {
+  font-family: var(--display);
+  width: 100%;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: #FFFDF3;
+  color: var(--ink);
+  transition: box-shadow .15s;
+}
+.k-input::placeholder { color: #A9B4BD; }
+.k-input:focus { outline: none; box-shadow: 0 0 0 4px var(--crayon); }
+
+/* ---------- 小標籤 ---------- */
+.k-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .3em;
+  font-weight: 800;
+  font-size: .78rem;
+  padding: .15rem .65rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+  white-space: nowrap;
+}
+.k-chip--math  { background: #D7EEFC; }
+.k-chip--chi   { background: #D6F1E2; }
+.k-chip--yellow{ background: #FFE9A8; }
+
+/* ---------- 金幣 ---------- */
+.k-coin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: var(--crayon);
+  border: 2px solid var(--ink);
+  box-shadow: inset -2px -2px 0 #E0A519;
+  font-family: var(--display);
+  font-size: .8em;
+  font-weight: 900;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+.k-coin::after { content: "金"; font-size: .72em; line-height: 1; }
+.k-wallet {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  background: #FFF4CC;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: .2rem .9rem .2rem .3rem;
+  font-family: var(--display);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ---------- 分頁（像資料夾標籤） ---------- */
+.k-tabs { display: flex; gap: .4rem; flex-wrap: wrap; align-items: flex-end; }
+.k-tab {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: .95rem;
+  padding: .55rem 1.1rem .45rem;
+  border: 3px solid var(--ink);
+  border-bottom-width: 0;
+  border-radius: 14px 14px 0 0;
+  background: #E7EEF5;
+  color: var(--muted);
+  cursor: pointer;
+  transform: translateY(3px);
+  transition: transform .1s, background .1s;
+}
+.k-tab:hover { background: #F1F5F9; }
+.k-tab.is-active {
+  background: var(--crayon);
+  color: var(--ink);
+  transform: translateY(0);
+  padding-bottom: .65rem;
+}
+.k-tab-panel { border-top-left-radius: 0; }
+
+/* ---------- 集點印章 ---------- */
+.k-stamps { display: inline-flex; gap: .35rem; }
+.k-stamp {
+  width: 1.55rem; height: 1.55rem;
+  border-radius: 50%;
+  border: 2.5px dashed #9AA8B4;
+  background: #fff;
+}
+.k-stamp.is-on {
+  border: 2.5px solid var(--ink);
+  background: var(--leaf);
+  position: relative;
+}
+.k-stamp.is-on::after {
+  content: "";
+  position: absolute; left: 50%; top: 45%;
+  width: 7px; height: 12px;
+  border: solid #fff; border-width: 0 3px 3px 0;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* ---------- 選項按鈕 ---------- */
+.k-opt {
+  display: flex; align-items: center; gap: 1rem;
+  width: 100%;
+  padding: .9rem 1rem;
+  text-align: left;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 4px 0 var(--ink);
+  transition: transform .06s, box-shadow .06s, background .15s;
+}
+.k-opt:hover:not(:disabled) { background: #FFFBEA; }
+.k-opt:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 0 0 var(--ink); }
+.k-opt .k-opt-key {
+  width: 2.3rem; height: 2.3rem;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 2.5px solid var(--ink);
+  border-radius: 10px;
+  background: #EAF1F7;
+  font-family: var(--display);
+  font-weight: 700;
+}
+.k-opt.is-right { background: #DDF5E7; }
+.k-opt.is-right .k-opt-key { background: var(--leaf); color: #fff; }
+.k-opt.is-wrong { background: #FFE3DE; animation: k-shake .35s ease; }
+.k-opt.is-wrong .k-opt-key { background: var(--tomato); color: #fff; }
+.k-opt:disabled:not(.is-right):not(.is-wrong) { opacity: .55; }
+
+@keyframes k-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+/* ---------- 題目黑板 ---------- */
+.k-question {
+  background: var(--board);
+  color: #FFF7DA;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 6px var(--board-dark);
+}
+.k-question .frac .num { border-bottom-color: #FFF7DA; }
+.k-blank {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 3.3rem; height: 3rem;
+  border: 3px dashed var(--crayon);
+  border-radius: 12px;
+  color: var(--crayon);
+  font-family: var(--display);
+}
+
+/* ---------- 回饋區 ---------- */
+.k-feedback { border: 3px solid var(--ink); border-radius: 16px; }
+.k-feedback.is-right { background: #DDF5E7; }
+.k-feedback.is-wrong { background: #FFE3DE; }
+
+/* ---------- 公仔格 ---------- */
+.k-toy {
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: #fff;
+  padding: .55rem;
+  text-align: center;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition: transform .1s;
+}
+.k-toy.is-owned { cursor: zoom-in; }
+.k-toy.is-owned:active { transform: scale(.96); }
+.k-toy.is-hidden { background: #FFF1C2; }
+.k-toy.is-empty {
+  border-style: dashed;
+  border-color: #9AA8B4;
+  background: rgba(255,255,255,.6);
+  box-shadow: none;
+}
+.k-toy-img {
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  background: #F4F8FB;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  position: relative;
+  padding: 4px;
+}
+.k-toy.is-hidden .k-toy-img { background: #fff; }
+.k-toy-count {
+  position: absolute; top: 4px; right: 4px;
+  background: var(--ink); color: #fff;
+  font-size: 11px; font-weight: 800;
+  padding: 1px 7px; border-radius: 999px;
+}
+.k-toy-q {
+  font-family: var(--display);
+  font-size: 2.2rem;
+  color: #B7C3CD;
+}
+
+/* ---------- 彈窗 ---------- */
+.k-overlay { background: rgba(30, 42, 51, .72); }
+.k-modal {
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 24px;
+  box-shadow: 8px 8px 0 var(--ink);
+}
+
+/* ---------- 遊戲目錄卡片（唯一的進場動畫） ---------- */
+.k-game {
+  display: block;
+  position: relative;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  box-shadow: 6px 6px 0 var(--ink);
+  overflow: hidden;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+a.k-game:hover { transform: rotate(0deg) translateY(-3px) !important; box-shadow: 8px 9px 0 var(--ink); }
+a.k-game:active { transform: translate(4px, 4px) !important; box-shadow: 2px 2px 0 var(--ink); }
+.k-game--tilt-l { transform: rotate(-1.2deg); }
+.k-game--tilt-r { transform: rotate(1deg); }
+.k-game-top { border-bottom: 3px solid var(--ink); }
+.k-game-top--math { background: var(--sky); }
+.k-game-top--chi  { background: var(--leaf); }
+.k-game--locked { background: #F7F9FB; }
+.k-tape {
+  position: absolute;
+  top: 18px; right: -46px;
+  width: 190px;
+  transform: rotate(32deg);
+  text-align: center;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: .8rem;
+  letter-spacing: .15em;
+  padding: .3rem 0;
+  color: var(--ink);
+  border-top: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  background: repeating-linear-gradient(-45deg, var(--crayon) 0 14px, #fff 14px 28px);
+}
+.k-game-icon {
+  width: 84px; height: 84px;
+  border-radius: 20px;
+  border: 3px solid var(--ink);
+  background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.8rem;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+@keyframes k-slap {
+  0%   { opacity: 0; transform: translateY(-18px) rotate(var(--r, 0deg)) scale(1.06); }
+  70%  { opacity: 1; transform: translateY(2px) rotate(var(--r, 0deg)) scale(.99); }
+  100% { opacity: 1; transform: translateY(0) rotate(var(--r, 0deg)) scale(1); }
+}
+.k-slap { animation: k-slap .38s cubic-bezier(.2,.9,.3,1.2) both; }
+.k-slap:nth-child(2) { animation-delay: .09s; }
+.k-slap:nth-child(3) { animation-delay: .18s; }
+.k-game--tilt-l.k-slap { --r: -1.2deg; }
+.k-game--tilt-r.k-slap { --r: 1deg; }
+
+/* ---------- 學生名牌 ---------- */
+.k-nametag {
+  display: inline-flex; align-items: stretch;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  font-family: var(--display);
+}
+.k-nametag .k-nt-id { background: var(--crayon); padding: .2rem .7rem; border-right: 3px solid var(--ink); font-weight: 700; }
+.k-nametag .k-nt-name { padding: .2rem .8rem; font-weight: 700; }
+
+/* ---------- 規則摺疊 ---------- */
+.k-rules summary { list-style: none; cursor: pointer; }
+.k-rules summary::-webkit-details-marker { display: none; }
+.k-rules summary::before { content: "▸ "; }
+.k-rules[open] summary::before { content: "▾ "; }
+
+/* ---------- 表格 ---------- */
+.k-table th { font-family: var(--display); font-weight: 700; background: #EAF1F7; border-bottom: 3px solid var(--ink); }
+.k-table td { border-bottom: 1.5px dashed #C9D5DF; }
+
+/* 有盲盒可以抽時，按鈕會輕輕晃一下提醒 */
+@keyframes k-wiggle {
+  0%, 82%, 100% { transform: rotate(0); }
+  86% { transform: rotate(-4deg); }
+  90% { transform: rotate(4deg); }
+  94% { transform: rotate(-2deg); }
+}
+.k-wiggle { animation: k-wiggle 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .k-wiggle, .k-slap, .k-opt.is-wrong, .animate-box-shake, .animate-pop-in, .animate-bounce, .animate-pulse { animation: none !important; }
+  .k-btn, .k-opt, .k-game { transition: none; }
+}

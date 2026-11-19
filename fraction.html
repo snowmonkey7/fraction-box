@@ -8,13 +8,10 @@
   <!-- Firebase SDK (Compat v10 for single-file direct browser execution) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="theme.css" />
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
-    body {
-      font-family: 'Noto Sans TC', sans-serif;
-      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fde68a 100%);
-      min-height: 100vh;
-    }
     /* 直式分數排版 */
     .frac-expr {
       display: inline-flex;
@@ -70,260 +67,232 @@
       animation: popIn 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     }
     .hidden-glow {
-      box-shadow: 0 0 25px rgba(245, 158, 11, 0.75), 0 0 50px rgba(236, 72, 153, 0.45);
+      box-shadow: 0 0 0 4px #FFC83D, 0 0 28px 6px rgba(255, 200, 61, .85);
+    }
+    /* 盲盒：紙盒造型 */
+    .k-box {
+      width: 120px; height: 104px; position: relative; margin: 0 auto;
+    }
+    .k-box-body {
+      position: absolute; left: 6px; right: 6px; bottom: 0; height: 70px;
+      background: #F2644E; border: 3px solid #1E2A33; border-radius: 8px;
+    }
+    .k-box-lid {
+      position: absolute; left: 0; right: 0; top: 18px; height: 26px;
+      background: #F2644E; border: 3px solid #1E2A33; border-radius: 8px;
+    }
+    .k-box-ribbon-v { position: absolute; left: 50%; top: 18px; bottom: 0; width: 18px; transform: translateX(-50%); background: #FFC83D; border-left: 3px solid #1E2A33; border-right: 3px solid #1E2A33; }
+    .k-box-q {
+      position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+      width: 34px; height: 34px; line-height: 28px; text-align: center; background: #fff; border: 3px solid #1E2A33; border-radius: 50%;
+      font-family: var(--display); font-size: 1.2rem; color: #1E2A33;
     }
   </style>
 </head>
-<body class="text-slate-800 select-none">
-<header class="bg-white/90 backdrop-blur border-b-4 border-amber-400 sticky top-0 z-30 shadow-sm">
+<body class="k-page select-none">
+<header class="k-board sticky top-0 z-30">
   <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-    <div class="flex items-center gap-2.5">
-      <span class="text-3xl">🎁</span>
-      <div>
-        <h1 class="text-xl md:text-2xl font-black text-amber-700 tracking-wide">分數盲盒店</h1>
-        <p class="text-xs text-slate-500 font-medium">康軒五上第六單元：異分母分數的加減</p>
-      </div>
+    <div>
+      <h1 class="k-board-title text-2xl md:text-3xl">分數盲盒店</h1>
+      <p class="k-board-sub text-xs font-medium mt-0.5">康軒五上第六單元｜異分母分數的加減</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <span class="text-sm font-black bg-amber-100 text-amber-700 border border-amber-300 px-3 py-1 rounded-full">💰 <span id="stuCoins">0</span></span>
-      <span id="syncBadge" class="text-xs px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-600">連線檢查中...</span>
-      <button onclick="backToMenu()" class="text-sm bg-sky-500 hover:bg-sky-600 text-white font-bold px-3.5 py-1.5 rounded-xl transition shadow">🏠 遊戲目錄</button>
-      <button id="btnLogout" onclick="logout()" class="text-sm bg-rose-500 hover:bg-rose-600 text-white font-bold px-3.5 py-1.5 rounded-xl transition shadow">登出</button>
+      <span class="k-wallet text-base bg-white"><span class="k-coin"></span><span id="stuCoins">0</span></span>
+      <span id="syncBadge" class="k-chip bg-slate-100 text-slate-600">連線檢查中...</span>
+      <button onclick="backToMenu()" class="k-btn k-btn--chalk k-btn--sm">遊戲目錄</button>
+      <button id="btnLogout" onclick="logout()" class="k-btn k-btn--tomato k-btn--sm">登出</button>
     </div>
   </div>
 </header>
 
 <main class="max-w-5xl mx-auto px-4 py-6">
 
-<!-- ==================== 2. 學生端主畫面 ==================== -->
   <section id="viewStudent" class="hidden space-y-5">
-    <!-- 學生個人狀態列 -->
-    <div class="bg-white rounded-3xl p-4 md:p-5 shadow-md border-2 border-amber-200 flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <div class="w-12 h-12 rounded-2xl bg-amber-400 text-white font-black text-lg flex items-center justify-center shadow">
-          🎓
+
+    <!-- 學生狀態列 -->
+    <div class="k-card p-4 md:p-5 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="k-nametag text-lg"><span id="stuDisplayId" class="k-nt-id">50101</span><span id="stuDisplayName" class="k-nt-name">同學</span></span>
+          <span id="stuClearBadge" class="hidden k-chip k-chip--yellow">全圖鑑通關大師</span>
         </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span id="stuDisplayId" class="text-xl font-black text-slate-800">50101</span>
-            <span id="stuDisplayName" class="text-sm font-bold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-lg">同學</span>
-            <span id="stuClearBadge" class="hidden text-xs font-black bg-gradient-to-r from-amber-500 to-pink-500 text-white px-2.5 py-0.5 rounded-full shadow">🏆 全圖鑑通關大師</span>
-          </div>
-          <p class="text-xs text-slate-500 mt-0.5">
-            已作答 <b id="stuTotalCount" class="text-slate-700">0</b> 題 ｜ 
-            答對 <b id="stuCorrectCount" class="text-emerald-600">0</b> 題 ｜ 
-            正確率 <b id="stuAccuracy" class="text-amber-600">0%</b>
-          </p>
-        </div>
+        <p class="text-sm text-[#5B6B78] font-bold mt-2">
+          作答 <b id="stuTotalCount" class="text-[#1E2A33]">0</b> 題　答對 <b id="stuCorrectCount" class="text-[#1E2A33]">0</b> 題　正確率 <b id="stuAccuracy" class="text-[#1E2A33]">0%</b>
+        </p>
       </div>
 
-      <!-- 抽獎進度與碎片儀表板 -->
       <div class="flex flex-wrap items-center gap-3">
-        <div class="bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-2xl text-center">
-          <div class="text-xs text-emerald-700 font-bold">集點進度 (滿3抽1)</div>
-          <div id="stuStreakDots" class="text-lg font-black text-emerald-600 tracking-wider mt-0.5">⚪ ⚪ ⚪</div>
+        <div class="px-3 py-1.5 rounded-xl border-2 border-dashed border-[#9AA8B4] text-center bg-white">
+          <div class="text-xs font-bold text-[#5B6B78]">答對 3 題抽 1 盒</div>
+          <div id="stuStreakDots" class="k-stamps mt-1"></div>
         </div>
-        <div class="bg-indigo-50 border border-indigo-200 px-3.5 py-2 rounded-2xl text-center">
-          <div class="text-xs text-indigo-700 font-bold">公仔碎片 (滿3自動抽)</div>
-          <div id="stuShardsDisplay" class="text-lg font-black text-indigo-600 mt-0.5">🧩 0 / 3</div>
+        <div class="px-3 py-1.5 rounded-xl border-2 border-dashed border-[#9AA8B4] text-center bg-white">
+          <div class="text-xs font-bold text-[#5B6B78]">公仔碎片</div>
+          <div class="k-display text-xl mt-0.5">🧩 <span id="stuShardsDisplay">0 / 3</span></div>
         </div>
-        <button id="btnOpenBox" onclick="triggerBlindBoxDraw(false)" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black px-4 py-2.5 rounded-2xl shadow-lg transition flex items-center gap-2">
-          <span class="text-xl">🎁</span>
-          <div class="text-left leading-tight">
-            <div class="text-xs opacity-90">可抽盲盒</div>
-            <div class="text-base"><span id="stuBoxesCount">0</span> 個</div>
-          </div>
+        <button id="btnOpenBox" onclick="triggerBlindBoxDraw(false)" class="k-btn k-btn--tomato px-4 py-2 text-left">
+          <span class="text-2xl" aria-hidden="true">🎁</span>
+          <span class="leading-tight">
+            <span class="block text-xs opacity-90">開盲盒</span>
+            <span class="block text-lg">剩 <span id="stuBoxesCount">0</span> 個</span>
+          </span>
         </button>
       </div>
     </div>
 
-    <details class="bg-white/80 rounded-2xl border border-amber-200 px-4 py-2.5 text-xs text-slate-600">
-      <summary class="font-bold text-slate-700 cursor-pointer">📌 遊戲規則</summary>
-      <div class="space-y-1 mt-2">
-        <p>• 每答對 <span class="text-amber-600 font-bold">3 題</span> 即可獲得 <span class="text-amber-600 font-bold">1 次</span> 抽盲盒機會。</p>
-        <p>• 盲盒共有 <span class="jsRegCount">12</span> 款常規公仔（<span class="jsRegPct">90%</span>）與 <span class="jsHidCount">6</span> 款神秘隱藏公仔（<span class="jsHidPct">10%</span>）。</p>
-        <p>• 抽到重複的公仔會換成 <span class="text-indigo-600 font-bold">1 個碎片</span>＋<span class="text-amber-600 font-bold">金幣</span>（常規款 1、隱藏款 3、吉祥物一家人 5）。</p>
-        <p>• 集滿 <span class="text-indigo-600 font-bold">3 個碎片</span> 自動再抽 1 次，而且<span class="text-indigo-600 font-bold">保證抽到還沒有的公仔</span>！</p>
-      </div>
+    <details class="k-rules k-card k-card--soft px-4 py-2.5 text-sm">
+      <summary class="k-display">遊戲規則</summary>
+      <ul class="space-y-1 mt-2 text-[#33434F] leading-relaxed">
+        <li>每答對 <b>3 題</b>，就能抽 <b>1 個</b>盲盒。</li>
+        <li>盲盒有 <span class="jsRegCount">12</span> 款常規公仔（<span class="jsRegPct">90%</span>）和 <span class="jsHidCount">6</span> 款隱藏公仔（<span class="jsHidPct">10%</span>）。</li>
+        <li>抽到重複的公仔，會換成 <b>1 個碎片</b>＋<b>金幣</b>（常規款 1、隱藏款 3、吉祥物一家人 5）。</li>
+        <li>集滿 <b>3 個碎片</b>會自動再抽 1 次，而且<b>一定是你還沒有的公仔</b>。</li>
+      </ul>
     </details>
 
-    <!-- 學生分頁切換 -->
-    <div class="flex gap-2 bg-white/70 p-1.5 rounded-2xl border border-amber-200 w-fit">
-      <button onclick="switchStudentTab('quiz')" id="tabBtnQuiz" class="px-5 py-2 rounded-xl font-black text-sm bg-amber-500 text-white shadow transition">
-        ✏️ 數學答題區
-      </button>
-      <button onclick="switchStudentTab('collection')" id="tabBtnCollection" class="px-5 py-2 rounded-xl font-black text-sm text-slate-600 hover:bg-amber-100 transition">
-        🧸 我的公仔櫃 (<span id="tabOwnedCount">0</span>/<span class="jsTotalToys">18</span>)
-      </button>
-      <button onclick="switchStudentTab('history')" id="tabBtnHistory" class="px-5 py-2 rounded-xl font-black text-sm text-slate-600 hover:bg-amber-100 transition">
-        📋 答題紀錄
-      </button>
-    </div>
-
-    <!-- 子分頁 A：數學答題區 -->
-    <div id="stuTabQuiz" class="bg-white rounded-3xl p-6 md:p-8 shadow-lg border-2 border-amber-200">
-      <div class="flex items-center justify-between mb-4">
-        <span id="qCategoryTag" class="bg-sky-100 text-sky-800 text-xs font-extrabold px-3 py-1 rounded-full">真分數加減</span>
-        <span id="qNumberTag" class="text-xs font-bold text-slate-400">題號 #1</span>
+    <!-- 分頁 -->
+    <div>
+      <div class="k-tabs pl-3" role="tablist">
+        <button onclick="switchStudentTab('quiz')" id="tabBtnQuiz" class="k-tab is-active">算一算</button>
+        <button onclick="switchStudentTab('collection')" id="tabBtnCollection" class="k-tab">公仔櫃 <span id="tabOwnedCount">0</span>/<span class="jsTotalToys">18</span></button>
+        <button onclick="switchStudentTab('history')" id="tabBtnHistory" class="k-tab">答題紀錄</button>
       </div>
 
-      <!-- 題目顯示框 -->
-      <div class="bg-amber-50/70 border-2 border-amber-200 rounded-2xl p-6 md:p-8 text-center my-4">
-        <p class="text-sm font-bold text-slate-500 mb-3">請計算下列異分母分數的結果：</p>
-        <div id="qExpression" class="text-3xl md:text-4xl font-black text-slate-800 flex justify-center items-center py-2">
-          <!-- JS 動態填入 -->
+      <!-- A：答題區 -->
+      <div id="stuTabQuiz" class="k-card k-tab-panel p-5 md:p-7">
+        <div class="flex items-center justify-between mb-3">
+          <span id="qCategoryTag" class="k-chip k-chip--math">真分數加減</span>
+          <span id="qNumberTag" class="text-sm font-bold text-[#5B6B78]">題號 #1</span>
         </div>
-      </div>
+        <div class="k-question px-5 py-7 md:py-9 text-center">
+          <p class="text-sm font-bold opacity-80 mb-3">算算看，答案是多少？</p>
+          <div id="qExpression" class="text-3xl md:text-4xl font-black flex justify-center items-center py-1"></div>
+        </div>
+        <div id="qOptionsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6"></div>
 
-      <!-- 4 個選項 -->
-      <div id="qOptionsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-6">
-        <!-- JS 動態填入 -->
-      </div>
-
-      <!-- 作答回饋區 -->
-      <div id="qFeedbackBox" class="hidden mt-6 p-5 rounded-2xl border-2">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h4 id="qFeedbackTitle" class="text-lg font-black"></h4>
-            <p id="qFeedbackDetail" class="text-sm mt-1 leading-relaxed"></p>
+        <div id="qFeedbackBox" class="hidden k-feedback mt-6 p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="min-w-0">
+              <h4 id="qFeedbackTitle" class="k-display text-xl"></h4>
+              <div id="qFeedbackDetail" class="text-sm mt-1.5 leading-relaxed"></div>
+            </div>
+            <button onclick="loadNextQuestion()" class="k-btn k-btn--ink px-6 py-3 text-lg">下一題</button>
           </div>
-          <button onclick="loadNextQuestion()" class="bg-slate-800 hover:bg-slate-700 text-white font-black px-6 py-3 rounded-xl shadow transition">
-            下一題 ➡️
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 子分頁 B：我的公仔櫃 -->
-    <div id="stuTabCollection" class="hidden bg-white rounded-3xl p-6 shadow-lg border-2 border-amber-200">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-5">
-        <div>
-          <h3 class="text-xl font-black text-slate-800">🧸 我的盲盒公仔收藏櫃</h3>
-          <p class="text-xs text-slate-500 mt-0.5">集滿全部 <span class="jsRegCount">12</span> 款常規公仔與 <span class="jsHidCount">6</span> 款隱藏公仔即可獲得通關認證！</p>
-        </div>
-        <div class="text-sm font-bold bg-amber-100 text-amber-800 px-3.5 py-1.5 rounded-xl">
-          目前收集進度：<span id="colProgressText">0 / 18</span>
         </div>
       </div>
 
-      <h4 class="font-black text-sm text-slate-600 mb-3 flex items-center gap-1.5">
-        <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span> 常規款系列（總機率 <span class="jsRegPct">90%</span>，每款 <span class="jsRegEach">7.5%</span>）
-      </h4>
-      <div id="gridRegularToys" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5 mb-7"></div>
+      <!-- B：公仔櫃 -->
+      <div id="stuTabCollection" class="hidden k-card k-tab-panel p-5 md:p-6">
+        <div class="flex flex-wrap items-end justify-between gap-2 mb-5">
+          <div>
+            <h3 class="k-display text-2xl">我的公仔櫃</h3>
+            <p class="text-sm text-[#5B6B78] font-bold mt-0.5">把 <span class="jsRegCount">12</span> 款常規和 <span class="jsHidCount">6</span> 款隱藏公仔全部收齊，就通關了！</p>
+          </div>
+          <div class="k-chip k-chip--yellow text-sm">已收集 <span id="colProgressText">0 / 18</span></div>
+        </div>
 
-      <h4 class="font-black text-sm text-amber-600 mb-3 flex items-center gap-1.5">
-        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> ✨ 神秘隱藏款系列（總機率 <span class="jsHidPct">10%</span>，每款 <span class="jsHidEach">1.8%／1%</span>）
-      </h4>
-      <div id="gridHiddenToys" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5"></div>
-    </div>
+        <h4 class="k-display text-base mb-3">常規款 <span class="text-sm font-bold text-[#5B6B78] font-sans">總機率 <span class="jsRegPct">90%</span>，每款 <span class="jsRegEach">7.5%</span></span></h4>
+        <div id="gridRegularToys" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-8"></div>
 
-    <!-- 子分頁 C：個人答題紀錄 -->
-    <div id="stuTabHistory" class="hidden bg-white rounded-3xl p-6 shadow-lg border-2 border-amber-200">
-      <h3 class="text-xl font-black text-slate-800 mb-1">📋 最近作答紀錄</h3>
-      <p class="text-xs text-slate-500 mb-4">系統會自動避開你已經答過的題目，優先提供新題目練習。</p>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm text-left border-collapse">
-          <thead>
-            <tr class="bg-amber-50 text-slate-700 border-b-2 border-amber-200">
-              <th class="py-2.5 px-3">題號</th>
-              <th class="py-2.5 px-3">題型</th>
-              <th class="py-2.5 px-3">題目算式</th>
-              <th class="py-2.5 px-3">你的答案</th>
-              <th class="py-2.5 px-3">結果</th>
-            </tr>
-          </thead>
-          <tbody id="stuHistoryBody" class="divide-y divide-slate-100"></tbody>
-        </table>
+        <h4 class="k-display text-base mb-3">隱藏款 <span class="text-sm font-bold text-[#5B6B78] font-sans">總機率 <span class="jsHidPct">10%</span>，每款 <span class="jsHidEach">1.8%／1%</span></span></h4>
+        <div id="gridHiddenToys" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3"></div>
+      </div>
+
+      <!-- C：答題紀錄 -->
+      <div id="stuTabHistory" class="hidden k-card k-tab-panel p-5 md:p-6">
+        <h3 class="k-display text-2xl">最近的答題紀錄</h3>
+        <p class="text-sm text-[#5B6B78] font-bold mb-4 mt-0.5">會優先出你還沒做過的題目。</p>
+        <div class="overflow-x-auto rounded-xl border-[3px] border-[#1E2A33]">
+          <table class="k-table w-full text-sm text-left border-collapse bg-white">
+            <thead>
+              <tr>
+                <th class="py-2.5 px-3">題號</th>
+                <th class="py-2.5 px-3">題型</th>
+                <th class="py-2.5 px-3">算式</th>
+                <th class="py-2.5 px-3">你的答案</th>
+                <th class="py-2.5 px-3">結果</th>
+              </tr>
+            </thead>
+            <tbody id="stuHistoryBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </section>
+</main>
 
-  </main>
-
-<!-- ==================== 彈窗 2：開盲盒動畫與結果 ==================== -->
-<div id="modalBlindBox" class="hidden fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-white rounded-3xl max-w-md w-full p-7 text-center shadow-2xl border-4 border-amber-400 relative overflow-hidden">
-    <!-- 搖晃開箱階段 -->
-    <div id="boxStageOpening" class="py-6">
-      <div id="boxOpeningBanner" class="text-sm font-black text-amber-600 mb-2">✨ 正在開啟盲盒... ✨</div>
-      <div class="text-8xl my-6 inline-block animate-box-shake">🎁</div>
-      <p class="text-slate-500 font-bold text-sm">好緊張！裡面會是哪一款公仔呢？</p>
+<!-- ==================== 彈窗：開盲盒 ==================== -->
+<div id="modalBlindBox" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-4">
+  <div class="k-modal max-w-md w-full p-7 text-center relative overflow-hidden">
+    <div id="boxStageOpening" class="py-4">
+      <div id="boxOpeningBanner" class="k-display text-lg mb-4">盲盒打開中…</div>
+      <div class="k-box animate-box-shake" aria-hidden="true">
+        <div class="k-box-body"></div><div class="k-box-ribbon-v"></div><div class="k-box-lid"></div><div class="k-box-q">?</div>
+      </div>
+      <p class="text-[#5B6B78] font-bold text-sm mt-6">裡面會是哪一款呢？</p>
     </div>
 
-    <!-- 開獎揭曉階段 -->
     <div id="boxStageResult" class="hidden animate-pop-in">
-      <div id="boxRarityBadge" class="inline-block px-3.5 py-1 rounded-full text-xs font-black mb-3"></div>
-      <div id="boxToyImgWrap" class="w-44 h-44 mx-auto rounded-2xl bg-slate-50 border-2 border-slate-200 flex items-center justify-center overflow-hidden p-2 mb-3">
-        <!-- 圖片或 SVG -->
-      </div>
-      <h3 id="boxToyName" class="text-2xl font-black text-slate-800"></h3>
-      <p id="boxResultStatus" class="text-sm font-bold mt-2 px-3 py-2 rounded-xl"></p>
-
+      <div id="boxRarityBadge" class="k-chip mb-3"></div>
+      <div id="boxToyImgWrap" class="w-44 h-44 mx-auto rounded-2xl bg-white border-[3px] border-[#1E2A33] flex items-center justify-center overflow-hidden p-2 mb-3"></div>
+      <h3 id="boxToyName" class="k-display text-3xl"></h3>
+      <p id="boxResultStatus" class="text-sm font-bold mt-3 px-3 py-2 rounded-xl"></p>
       <div class="mt-5 flex flex-col gap-2">
-        <button id="btnAutoShardDraw" onclick="triggerBlindBoxDraw(true)" class="hidden w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-black py-3 rounded-2xl shadow-lg animate-bounce">
-          🧩 已集滿 3 個碎片！立即自動合成抽 1 次
-        </button>
-        <button id="btnCloseBoxModal" onclick="closeBlindBoxModal()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-2xl shadow">
-          太棒了！收進公仔櫃
-        </button>
+        <button id="btnAutoShardDraw" onclick="triggerBlindBoxDraw(true)" class="hidden k-btn k-btn--sky w-full py-3 text-lg">集滿 3 個碎片了！再抽 1 次</button>
+        <button id="btnCloseBoxModal" onclick="closeBlindBoxModal()" class="k-btn k-btn--yellow w-full py-3 text-lg">收進公仔櫃</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ==================== 彈窗 3：通關慶祝獎狀 ==================== -->
 <!-- ==================== 彈窗：亂猜警告（暫停作答） ==================== -->
-<div id="modalGuessLock" class="hidden fixed inset-0 bg-rose-950/85 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-  <div class="bg-white rounded-3xl max-w-md w-full p-7 text-center shadow-2xl border-4 border-rose-400">
-    <div class="text-6xl mb-2">⚠️</div>
-    <h3 class="text-2xl font-black text-rose-600 mb-2">請停下來想一想！</h3>
-    <p class="text-slate-700 font-bold leading-relaxed">
-      你在短時間內<span class="text-rose-600">連續答錯 <span class="jsGuessLimit">3</span> 題</span>，<br/>看起來像是在亂猜喔！
+<div id="modalGuessLock" class="hidden fixed inset-0 bg-[#1E2A33]/85 z-[70] flex items-center justify-center p-4">
+  <div class="k-modal max-w-md w-full p-7 text-center" style="background:#FFF4CC">
+    <div class="k-display text-3xl">先停一下，想一想</div>
+    <p class="font-bold leading-relaxed mt-3">
+      你在很短的時間裡<span class="text-[#D9442F]">連錯了 <span class="jsGuessLimit">3</span> 題</span>，<br/>看起來有點像在猜答案。
     </p>
-    <p class="text-sm text-slate-500 mt-2">先拿出紙筆，把剛剛的解析看清楚，<br/>時間到之後再仔細作答。</p>
-    <div class="mt-5 mb-1 text-xs font-bold text-slate-500">暫停作答倒數</div>
-    <div id="guessLockCountdown" class="text-6xl font-black text-rose-600 tabular-nums">30</div>
-    <div class="text-xs font-bold text-slate-400 mt-1">秒</div>
+    <p class="text-sm text-[#5B6B78] font-bold mt-2">拿出紙筆，把剛剛的解析看清楚，<br/>時間到了再慢慢算。</p>
+    <div class="mx-auto mt-5 w-32 h-32 rounded-full border-[4px] border-[#1E2A33] bg-white flex flex-col items-center justify-center">
+      <div id="guessLockCountdown" class="k-display text-5xl tabular-nums leading-none">30</div>
+      <div class="text-xs font-bold text-[#5B6B78] mt-1">秒</div>
+    </div>
   </div>
 </div>
 
 <!-- ==================== 彈窗：放大觀看公仔 ==================== -->
 <div id="modalToyZoom" onclick="closeModal('modalToyZoom')"
-  class="hidden fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-[60] flex items-center justify-center p-4 cursor-zoom-out">
+  class="hidden fixed inset-0 bg-[#1E2A33]/90 z-[60] flex items-center justify-center p-4 cursor-zoom-out">
   <div class="w-full max-w-lg text-center" onclick="event.stopPropagation()">
-    <div id="zoomToyImgWrap" class="w-full aspect-square max-h-[70vh] mx-auto rounded-3xl bg-white flex items-center justify-center overflow-hidden p-4 shadow-2xl"></div>
-    <div id="zoomToyName" class="text-2xl font-black text-white mt-4"></div>
+    <div id="zoomToyImgWrap" class="w-full aspect-square max-h-[70vh] mx-auto rounded-3xl bg-white border-[3px] border-[#1E2A33] flex items-center justify-center overflow-hidden p-4"></div>
+    <div id="zoomToyName" class="k-display text-3xl text-white mt-4"></div>
     <div id="zoomToyInfo" class="text-sm font-bold text-white/80 mt-1"></div>
-    <button onclick="closeModal('modalToyZoom')" class="mt-4 bg-white/90 hover:bg-white text-slate-800 font-black px-8 py-3 rounded-2xl shadow">
-      關閉
-    </button>
+    <button onclick="closeModal('modalToyZoom')" class="mt-4 k-btn px-8 py-3 text-lg">關閉</button>
   </div>
 </div>
 
-<div id="modalAllClear" class="hidden fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-gradient-to-b from-amber-50 to-white rounded-3xl max-w-md w-full p-7 text-center shadow-2xl border-4 border-amber-400 animate-pop-in">
-    <div class="text-6xl mb-2">🏆🎉🏆</div>
-    <span class="bg-amber-500 text-white text-xs font-black px-3 py-1 rounded-full">恭喜正式通關</span>
-    <h3 class="text-2xl font-black text-slate-800 mt-2">分數盲盒全圖鑑制霸！</h3>
-    <p class="text-sm text-slate-600 mt-2 leading-relaxed">
-      太厲害了！你已經成功收集到凱正老師盲盒店裡全部 <b><span class="jsRegCount">12</span> 款常規公仔</b> 與 <b><span class="jsHidCount">6</span> 款隱藏公仔</b>，是名副其實的「異分母分數加減大師」！
+<!-- ==================== 彈窗：通關 ==================== -->
+<div id="modalAllClear" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-4">
+  <div class="k-modal max-w-md w-full p-7 text-center animate-pop-in" style="background:#FFF4CC">
+    <div class="text-6xl" aria-hidden="true">🏆</div>
+    <h3 class="k-display text-3xl mt-2">全圖鑑收集完成！</h3>
+    <p class="text-sm font-bold text-[#33434F] mt-3 leading-relaxed">
+      你把盲盒店裡 <span class="jsRegCount">12</span> 款常規公仔和 <span class="jsHidCount">6</span> 款隱藏公仔全部收齊了，是真正的「異分母分數加減大師」！
     </p>
-    <button onclick="closeModal('modalAllClear')" class="mt-6 w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black py-3 rounded-2xl shadow-lg">
-      繼續挑戰更多題目！
-    </button>
+    <button onclick="closeModal('modalAllClear')" class="mt-6 k-btn k-btn--yellow w-full py-3 text-lg">繼續挑戰</button>
   </div>
 </div>
 
 <!-- ==================== 彈窗：重複公仔兌換金幣 ==================== -->
-<div id="modalCoinConvert" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border-4 border-amber-300">
-    <div class="text-5xl">💰</div>
-    <h3 class="text-xl font-black text-amber-700 mt-2">重複公仔換金幣！</h3>
-    <p class="text-sm text-slate-600 mt-1">盲盒店更新囉！你之前抽到的 <b id="coinConvertCount">0</b> 個重複公仔，已經自動換成金幣：</p>
-    <div id="coinConvertList" class="text-sm text-left bg-amber-50 border border-amber-200 rounded-xl p-3 mt-3 space-y-1 max-h-48 overflow-y-auto"></div>
-    <div class="mt-3 text-lg font-black text-slate-800">共獲得 <span id="coinConvertTotal" class="text-amber-600">0</span> 金幣</div>
-    <p class="text-xs text-slate-500 mt-1">金幣是所有遊戲共用的，之後的遊戲可以用到喔！</p>
-    <button onclick="closeModal('modalCoinConvert')" class="mt-4 w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-2xl shadow">太棒了！</button>
+<div id="modalCoinConvert" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-4">
+  <div class="k-modal max-w-sm w-full p-6 text-center">
+    <div class="k-coin text-5xl mx-auto"></div>
+    <h3 class="k-display text-2xl mt-3">重複公仔換成金幣了</h3>
+    <p class="text-sm font-bold text-[#33434F] mt-1">你之前抽到的 <b id="coinConvertCount">0</b> 個重複公仔，已經自動換成金幣：</p>
+    <div id="coinConvertList" class="text-sm text-left bg-[#FFF4CC] border-2 border-[#1E2A33] rounded-xl p-3 mt-3 space-y-1 max-h-48 overflow-y-auto"></div>
+    <div class="mt-3 k-display text-xl">一共 <span id="coinConvertTotal">0</span> 金幣</div>
+    <p class="text-xs font-bold text-[#5B6B78] mt-1">金幣是所有遊戲共用的。</p>
+    <button onclick="closeModal('modalCoinConvert')" class="mt-4 k-btn k-btn--yellow w-full py-3 text-lg">好</button>
   </div>
 </div>
 
