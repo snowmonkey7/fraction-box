@@ -400,3 +400,4 @@ a.k-game:active { transform: translate(4px, 4px) !important; box-shadow: 2px 2px
   .k-wiggle, .k-slap, .k-opt.is-wrong, .animate-box-shake, .animate-pop-in, .animate-bounce, .animate-pulse { animation: none !important; }
   .k-btn, .k-opt, .k-game { transition: none; }
 }
+.k-game-icon svg { width: 100%; height: 100%; }

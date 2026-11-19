@@ -113,10 +113,48 @@
       <button id="tchTabBtn_gaudi" onclick="switchTeacherTab('gaudi')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🏛️ 高第的魔法建築</button>
     </div>
 
-    <div id="tchPane_gaudi" class="hidden bg-white rounded-3xl p-8 shadow border border-slate-200 text-center text-slate-500">
-      <div class="text-5xl mb-2">🏛️</div>
-      <p class="font-black text-slate-700">高第的魔法建築尚未開放</p>
-      <p class="text-sm mt-1">下一階段完成後，這裡會顯示每位學生的建築進度、答對率與最常錯的字。</p>
+    <div id="tchPane_gaudi" class="hidden space-y-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200">
+          <div class="text-xs font-bold text-slate-500">玩過的人數</div>
+          <div id="gdStatPlayers" class="text-2xl font-black text-slate-800 mt-1">0 人</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200">
+          <div class="text-xs font-bold text-slate-500">全班平均正確率</div>
+          <div id="gdStatAcc" class="text-2xl font-black text-emerald-600 mt-1">0%</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200">
+          <div class="text-xs font-bold text-slate-500">全班累計答題數</div>
+          <div id="gdStatTotal" class="text-2xl font-black text-amber-600 mt-1">0 題</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200">
+          <div class="text-xs font-bold text-slate-500">全部通關人數</div>
+          <div id="gdStatCleared" class="text-2xl font-black text-pink-600 mt-1">0 人</div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+        <h3 class="text-lg font-black text-slate-800">學生進度</h3>
+        <p class="text-xs text-slate-500 mt-1 mb-4">「目前在」是學生已開放的最後一棟建築。暫停次數＝因為連續亂答被暫停 30 秒的次數。</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700">
+                <th class="py-2.5 px-3">座號</th><th class="py-2.5 px-3">姓名</th>
+                <th class="py-2.5 px-3">目前在</th><th class="py-2.5 px-3">守護精靈</th><th class="py-2.5 px-3">收服怪獸</th>
+                <th class="py-2.5 px-3">答題數</th><th class="py-2.5 px-3">正確率</th><th class="py-2.5 px-3">暫停次數</th><th class="py-2.5 px-3">今日金幣</th>
+              </tr>
+            </thead>
+            <tbody id="gdTableBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+        <h3 class="text-lg font-black text-slate-800">全班最常錯的 10 題</h3>
+        <p class="text-xs text-slate-500 mt-1 mb-4">適合上課時拿出來再講一次。</p>
+        <ol id="gdWrongList" class="space-y-2 text-sm"></ol>
+      </div>
     </div>
 
     <div id="tchPane_fraction" class="space-y-6">
@@ -277,6 +315,7 @@
 <script src="config.js"></script>
 <script src="common.js"></script>
 <script src="fraction-data.js"></script>
+<script src="gaudi-data.js"></script>
 <script src="teacher.js"></script>
 </body>
 </html>

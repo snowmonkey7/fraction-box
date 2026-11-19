@@ -57,6 +57,7 @@ async function refreshTeacherData() {
     return;
   }
   cachedAllStudents = list;
+  renderGaudiTeacher(list);
 
   // 統計數據
   const totalStudents = list.length;
@@ -430,4 +431,60 @@ function exportClassCSV() {
   link.href = url;
   link.download = `凱正老師分數盲盒店_班級成績_${new Date().toISOString().slice(0,10)}.csv`;
   link.click();
+}
+
+
+/* ---------- 高第的魔法建築 ---------- */
+function renderGaudiTeacher(list) {
+  if (typeof GAUDI_QUESTIONS === "undefined") return;
+  let players = 0, sumA = 0, sumC = 0, cleared = 0;
+  const wrongTotals = {};
+  const rows = list.map(s => {
+    const g = s.gaudi || {};
+    const a = Number(g.answered) || 0, c = Number(g.correct) || 0;
+    const beaten = g.beaten || {};
+    const caught = g.caught || {};
+    if (a > 0) players += 1;
+    sumA += a; sumC += c;
+    if (g.cleared) cleared += 1;
+    Object.entries(g.wrongCounts || {}).forEach(([id, n]) => { wrongTotals[id] = (wrongTotals[id] || 0) + (Number(n) || 0); });
+    let at = 0;
+    BUILDINGS.forEach((b, i) => { if (i === 0 || beaten[BUILDINGS[i - 1].guardians[2]]) at = i; });
+    const gN = GUARDIANS.filter(x => beaten[x.id]).length;
+    const wN = WILD.filter(x => (caught[x.id] || 0) > 0).length;
+    const acc = a ? Math.round(c / a * 100) : 0;
+    const dayCoins = g.dayKey === new Date().toLocaleDateString("sv-SE") ? (g.dayCoins || 0) : 0;
+    return `
+      <tr class="hover:bg-slate-50">
+        <td class="py-2.5 px-3 font-black">${escapeHtml(s.id)}</td>
+        <td class="py-2.5 px-3 font-bold text-slate-600">${escapeHtml(s.name)}</td>
+        <td class="py-2.5 px-3 font-bold">${a ? (g.cleared ? "🏆 全部通關" : BUILDINGS[at].name) : '<span class="text-slate-400">還沒玩</span>'}</td>
+        <td class="py-2.5 px-3 font-bold">${gN} / ${GUARDIANS.length}</td>
+        <td class="py-2.5 px-3 font-bold">${wN} / ${WILD.length}</td>
+        <td class="py-2.5 px-3 font-bold">${a} 題</td>
+        <td class="py-2.5 px-3 font-black ${acc >= 80 ? "text-emerald-600" : (acc >= 60 ? "text-amber-600" : "text-slate-500")}">${a ? acc + "%" : "—"}</td>
+        <td class="py-2.5 px-3 font-bold ${g.lockCount ? "text-rose-600" : "text-slate-400"}">${g.lockCount || 0}</td>
+        <td class="py-2.5 px-3 font-bold text-amber-600">${dayCoins} / ${GAUDI_DAILY_COIN_CAP}</td>
+      </tr>`;
+  });
+  document.getElementById("gdStatPlayers").textContent = `${players} 人`;
+  document.getElementById("gdStatAcc").textContent = `${sumA ? Math.round(sumC / sumA * 100) : 0}%`;
+  document.getElementById("gdStatTotal").textContent = `${sumA} 題`;
+  document.getElementById("gdStatCleared").textContent = `${cleared} 人`;
+  document.getElementById("gdTableBody").innerHTML = rows.join("") ||
+    `<tr><td colspan="9" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
+  const top = Object.entries(wrongTotals).sort((x, y) => y[1] - x[1]).slice(0, 10);
+  document.getElementById("gdWrongList").innerHTML = top.length ? top.map(([id, n], i) => {
+    const q = GAUDI_QUESTIONS.find(x => x.id === id);
+    if (!q) return "";
+    const bName = (BUILDINGS.find(b => b.id === q.b) || {}).name || "";
+    return `<li class="flex gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+      <span class="font-black text-slate-400 w-6">${i + 1}</span>
+      <div class="flex-1">
+        <div class="font-bold text-slate-800">${escapeHtml(q.q)}</div>
+        <div class="text-xs text-slate-500 mt-1">${bName}・${escapeHtml(q.t)}・答案：<b class="text-emerald-700">${escapeHtml(q.a)}</b></div>
+      </div>
+      <span class="font-black text-rose-600 whitespace-nowrap">錯 ${n} 次</span>
+    </li>`;
+  }).join("") : `<li class="text-slate-400">還沒有人答錯過。</li>`;
 }

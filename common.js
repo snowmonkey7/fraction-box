@@ -102,7 +102,7 @@ function generatePin() {
 function setupLocalFallback(badge) {
   isCloudMode = false;
   badge.textContent = "💻 本機測試模式 (未填Firebase金鑰)";
-  badge.className = "text-xs px-2.5 py-1 rounded-full font-bold bg-amber-100 text-amber-800";
+  badge.className = "k-chip bg-amber-100 text-amber-800";
 }
 
 function createDefaultStudentObj(id, name = "", pin = "") {
@@ -206,6 +206,7 @@ async function saveStudentProgress(studentObj, coinDelta = 0) {
   delete data.pin;
   delete data.id;
   delete data.coins;
+  GAME_FIELDS.forEach(f => delete data[f]); // 其他遊戲的進度不歸這裡管，不要蓋掉
   if (coinDelta) studentObj.coins = (studentObj.coins || 0) + coinDelta;
   if (isCloudMode) {
     if (coinDelta) data.coins = firebase.firestore.FieldValue.increment(coinDelta);
@@ -214,6 +215,26 @@ async function saveStudentProgress(studentObj, coinDelta = 0) {
     const store = getLocalStore();
     if (!store[studentObj.id]) throw { code: "not-found-account", message: "帳號已被刪除" };
     Object.assign(store[studentObj.id], data);
+    if (coinDelta) store[studentObj.id].coins = (store[studentObj.id].coins || 0) + coinDelta;
+    saveLocalStore(store);
+  }
+}
+
+// 每個遊戲各自存在學生資料裡的一個欄位（例如高第遊戲存在 gaudi）
+const GAME_FIELDS = ["gaudi"];
+
+// 新遊戲專用：只寫入自己的那一格資料＋金幣增減，不會動到其他遊戲的進度
+async function saveGameData(studentObj, field, coinDelta = 0) {
+  const data = { [field]: studentObj[field], updatedAt: Date.now() };
+  if (coinDelta) studentObj.coins = (studentObj.coins || 0) + coinDelta;
+  if (isCloudMode) {
+    if (coinDelta) data.coins = firebase.firestore.FieldValue.increment(coinDelta);
+    await withTimeout(db.collection(COLLECTION_NAME).doc(studentObj.id).update(data));
+  } else {
+    const store = getLocalStore();
+    if (!store[studentObj.id]) throw { code: "not-found-account", message: "帳號已被刪除" };
+    store[studentObj.id][field] = data[field];
+    store[studentObj.id].updatedAt = data.updatedAt;
     if (coinDelta) store[studentObj.id].coins = (store[studentObj.id].coins || 0) + coinDelta;
     saveLocalStore(store);
   }
