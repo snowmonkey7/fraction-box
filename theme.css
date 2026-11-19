@@ -401,3 +401,29 @@ a.k-game:not(.k-game--locked):active { transform: translate(4px, 4px) !important
   .k-btn, .k-opt, .k-game { transition: none; }
 }
 .k-game-icon svg { width: 100%; height: 100%; }
+
+/* =========================================================
+   手機（窄螢幕）版面
+   ========================================================= */
+@media (max-width: 640px) {
+  .k-board-title { font-size: 1.3rem !important; letter-spacing: .02em; }
+  .k-board-sub { display: none; }
+  .k-board #syncBadge { display: none; }
+  .k-board > div { padding-top: .55rem; padding-bottom: .55rem; flex-wrap: nowrap; }
+  .k-board .k-btn--sm { font-size: .78rem; padding: .25rem .55rem; }
+  .k-board .k-wallet { font-size: .85rem; padding: .1rem .55rem .1rem .2rem; border-width: 2px; }
+  .k-board { border-bottom-width: 7px; }
+  .k-tabs { gap: .25rem; padding-left: .25rem !important; }
+  .k-tab { font-size: .82rem; padding: .45rem .7rem .35rem; border-width: 2.5px; border-bottom-width: 0; }
+  .k-tab.is-active { padding-bottom: .5rem; }
+  .k-card { border-radius: 16px; box-shadow: 4px 4px 0 var(--ink); }
+  .k-opt { padding: .7rem .8rem; gap: .7rem; }
+  .k-opt .k-opt-key { width: 2rem; height: 2rem; }
+  .k-game { box-shadow: 4px 4px 0 var(--ink); }
+  .k-game--tilt-l, .k-game--tilt-r { transform: none; }
+  .k-game--tilt-l.k-slap, .k-game--tilt-r.k-slap { --r: 0deg; }
+}
+@media (max-width: 360px) {
+  .k-board-title { font-size: 1.1rem !important; }
+  .k-tab { padding: .4rem .5rem .3rem; font-size: .78rem; }
+}

@@ -60,12 +60,14 @@ async function refreshTeacherData() {
   renderGaudiTeacher(list);
 
   // 統計數據
-  const totalStudents = list.length;
+  // 測試帳號不列入班級統計
+  const statList = list.filter(s => !isTestAccount(s.id));
+  const totalStudents = statList.length;
   let sumTotalQ = 0;
   let sumCorrectQ = 0;
   let clearedCount = 0;
 
-  list.forEach(s => {
+  statList.forEach(s => {
     sumTotalQ += s.totalAnswered || 0;
     sumCorrectQ += s.correctCount || 0;
     if (getOwnedUniqueCount(s) >= TOTAL_TOYS) clearedCount += 1;
@@ -444,10 +446,13 @@ function renderGaudiTeacher(list) {
     const a = Number(g.answered) || 0, c = Number(g.correct) || 0;
     const beaten = g.beaten || {};
     const caught = g.caught || {};
-    if (a > 0) players += 1;
-    sumA += a; sumC += c;
-    if (g.cleared) cleared += 1;
-    Object.entries(g.wrongCounts || {}).forEach(([id, n]) => { wrongTotals[id] = (wrongTotals[id] || 0) + (Number(n) || 0); });
+    const isTest = isTestAccount(s.id);
+    if (!isTest) {   // 測試帳號不列入班級統計和最常錯的題目
+      if (a > 0) players += 1;
+      sumA += a; sumC += c;
+      if (g.cleared) cleared += 1;
+      Object.entries(g.wrongCounts || {}).forEach(([id, n]) => { wrongTotals[id] = (wrongTotals[id] || 0) + (Number(n) || 0); });
+    }
     let at = 0;
     BUILDINGS.forEach((b, i) => { if (i === 0 || beaten[BUILDINGS[i - 1].guardians[2]]) at = i; });
     const gN = GUARDIANS.filter(x => beaten[x.id]).length;
@@ -459,7 +464,7 @@ function renderGaudiTeacher(list) {
       <tr class="hover:bg-slate-50 ${openN ? "" : "bg-slate-50/60"}">
         <td class="py-2.5 px-3"><input type="checkbox" class="gdChk w-4 h-4" value="${escapeHtml(s.id)}" /></td>
         <td class="py-2.5 px-3 font-black">${escapeHtml(s.id)}</td>
-        <td class="py-2.5 px-3 font-bold text-slate-600">${escapeHtml(s.name)}</td>
+        <td class="py-2.5 px-3 font-bold text-slate-600">${escapeHtml(s.name)}${isTest ? ' <span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">測試</span>' : ""}<div class="text-[11px] text-amber-600 font-bold">金幣 ${s.coins || 0}</div></td>
         <td class="py-2.5 px-3">
           <select onchange="setGaudiOpen('${escapeHtml(s.id)}', this.value, this)"
             class="border-2 rounded-lg px-1.5 py-1 font-bold text-xs ${openN ? "border-emerald-400 text-emerald-700" : "border-slate-300 text-slate-500"}">
@@ -534,7 +539,7 @@ function checkGaudiRange() {
 }
 
 async function applyGaudiOpenBulk() {
-  const ids = [...document.querySelectorAll(".gdChk:checked")].map(c => c.value);
+  const ids = gdCheckedIds();
   if (ids.length === 0) { alert("請先勾選同學"); return; }
   const n = Number(document.getElementById("gdBulkOpen").value);
   const msg = document.getElementById("gdBulkMsg");
@@ -546,6 +551,51 @@ async function applyGaudiOpenBulk() {
     document.getElementById("gdBulkMsg").textContent = `已更新 ${ids.length} 位`;
   } catch (e) {
     reportError("儲存開放設定", e);
+    msg.textContent = "";
+  }
+}
+
+// 勾選的同學
+function gdCheckedIds() { return [...document.querySelectorAll(".gdChk:checked")].map(c => c.value); }
+
+// 重置高第進度：清空怪獸、守護精靈、球、答題紀錄，金幣歸零；保留老師設定的開放範圍
+async function resetGaudiProgress() {
+  const ids = gdCheckedIds();
+  if (ids.length === 0) { alert("請先勾選要重置的同學"); return; }
+  const names = ids.map(id => (cachedAllStudents.find(s => s.id === id) || {}).name || id).join("、");
+  if (!confirm(`確定要重置這 ${ids.length} 位同學的高第進度嗎？\n${names}\n\n會清空：怪獸、守護精靈、寶貝球、答題紀錄，金幣也會歸零。\n開放範圍會保留。這個動作不能復原。`)) return;
+  const msg = document.getElementById("gdBulkMsg");
+  msg.textContent = "重置中…";
+  try {
+    for (const id of ids) await saveStudentFields(id, { gaudi: null, coins: 0 });
+    await refreshTeacherData();
+    document.getElementById("gdBulkMsg").textContent = `已重置 ${ids.length} 位`;
+  } catch (e) {
+    reportError("重置進度", e);
+    msg.textContent = "";
+  }
+}
+
+// 幫勾選的同學加（或扣）金幣
+async function giveCoinsBulk() {
+  const ids = gdCheckedIds();
+  if (ids.length === 0) { alert("請先勾選同學"); return; }
+  const n = parseInt(document.getElementById("gdCoinAmount").value, 10);
+  if (!Number.isFinite(n) || n === 0) { alert("請輸入金幣數量，例如 10（要扣金幣就輸入 -10）"); return; }
+  if (!confirm(`確定要幫 ${ids.length} 位同學每人${n > 0 ? "加" : "扣"} ${Math.abs(n)} 金幣嗎？`)) return;
+  const msg = document.getElementById("gdBulkMsg");
+  msg.textContent = "儲存中…";
+  try {
+    for (const id of ids) {
+      const s = cachedAllStudents.find(x => x.id === id);
+      // 扣金幣時不讓金幣變成負數
+      const delta = n < 0 && s ? Math.max(n, -(s.coins || 0)) : n;
+      if (delta) await addCoinsToStudent(id, delta);
+    }
+    await refreshTeacherData();
+    document.getElementById("gdBulkMsg").textContent = `已${n > 0 ? "加" : "扣"}金幣給 ${ids.length} 位`;
+  } catch (e) {
+    reportError("調整金幣", e);
     msg.textContent = "";
   }
 }

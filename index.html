@@ -15,11 +15,11 @@
 <body class="k-page select-none">
 <header class="k-board sticky top-0 z-30">
   <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-    <div>
-      <h1 class="k-board-title text-2xl md:text-3xl"><span class="jsSiteTitle"></span></h1>
+    <div class="min-w-0">
+      <h1 class="k-board-title text-2xl md:text-3xl truncate"><span class="jsSiteTitle"></span></h1>
       <p class="k-board-sub text-xs font-medium mt-0.5">五年級 數學・國語 學習遊戲</p>
     </div>
-    <div class="flex flex-wrap items-center gap-2">
+    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
       <span id="syncBadge" class="k-chip bg-slate-100 text-slate-600">連線檢查中...</span>
       <a href="teacher.html" id="btnHeaderTeacher" class="k-btn k-btn--chalk k-btn--sm">教師管理端</a>
       <button id="btnLogout" onclick="indexLogout()" class="hidden k-btn k-btn--tomato k-btn--sm">登出</button>
@@ -27,7 +27,7 @@
   </div>
 </header>
 
-<main class="max-w-5xl mx-auto px-4 py-8">
+<main class="max-w-5xl mx-auto px-3 sm:px-4 py-5 sm:py-8">
 
 <!-- ==================== 1. 登入畫面 ==================== -->
   <section id="viewLogin" class="max-w-md mx-auto mt-2">

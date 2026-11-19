@@ -74,11 +74,11 @@
 <body class="k-page text-slate-800 select-none">
 <header class="k-board sticky top-0 z-30">
   <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-    <div>
-      <h1 class="k-board-title text-2xl md:text-3xl">教師管理端</h1>
+    <div class="min-w-0">
+      <h1 class="k-board-title text-2xl md:text-3xl truncate">教師管理端</h1>
       <p class="k-board-sub text-xs font-medium mt-0.5"><span class="jsSiteTitle"></span></p>
     </div>
-    <div class="flex flex-wrap items-center gap-2">
+    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
       <span id="syncBadge" class="k-chip bg-slate-100 text-slate-600">連線檢查中...</span>
     </div>
   </div>
@@ -136,7 +136,7 @@
       <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
         <h3 class="text-lg font-black text-slate-800">學生進度與開放設定</h3>
         <p class="text-xs text-slate-500 mt-1">「開放到」決定這位同學最遠能進到哪一棟；設成「不能玩」的同學，在遊戲目錄會看到上鎖的卡片。改了就會自動儲存，學生重新整理頁面後生效。</p>
-        <p class="text-xs text-slate-500 mt-1 mb-4">「目前在」是學生自己打到的最後一棟建築。暫停次數＝因為連續亂答被暫停 30 秒的次數。</p>
+        <p class="text-xs text-slate-500 mt-1 mb-4">「目前在」是學生自己打到的最後一棟建築。暫停次數＝因為連續亂答被暫停 30 秒的次數。標示「測試」的帳號不列入上方統計、排行榜和最常錯的題目。</p>
         <div class="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-2xl bg-slate-50 border border-slate-200">
           <span class="text-sm font-bold text-slate-700">把勾選的同學設為</span>
           <select id="gdBulkOpen" class="border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm"></select>
@@ -147,8 +147,17 @@
           <span class="font-bold text-slate-500">到</span>
           <input id="gdRangeTo" placeholder="50125" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
           <button onclick="checkGaudiRange()" class="bg-white border-2 border-slate-300 hover:bg-slate-100 font-bold text-sm px-3 py-1.5 rounded-xl">勾選</button>
-          <span id="gdBulkMsg" class="text-sm font-bold text-emerald-600 ml-1"></span>
         </div>
+        <div class="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200">
+          <span class="text-sm font-bold text-slate-700">勾選的同學每人</span>
+          <input id="gdCoinAmount" type="number" placeholder="10" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <span class="text-sm font-bold text-slate-700">金幣</span>
+          <button onclick="giveCoinsBulk()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm px-4 py-2 rounded-xl">發金幣</button>
+          <span class="text-xs text-slate-500">（輸入負數就是扣金幣）</span>
+          <span class="flex-1"></span>
+          <button onclick="resetGaudiProgress()" class="bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm px-4 py-2 rounded-xl">重置勾選同學的高第進度</button>
+        </div>
+        <div id="gdBulkMsg" class="text-sm font-bold text-emerald-600 mb-2 min-h-[1.25rem]"></div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm text-left border-collapse">
             <thead>

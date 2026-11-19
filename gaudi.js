@@ -200,7 +200,7 @@ function renderBuilding() {
     else if (open) btn = `<button onclick="startGuardian('${gid}')" class="k-btn k-btn--tomato px-4 py-2">挑戰</button>`;
     else btn = `<span class="k-chip">先打敗前一隻</span>`;
     return `
-      <div class="flex items-center gap-3 p-2 rounded-2xl border-2 ${beaten ? "border-[#1E2A33] bg-[#FFF4CC]" : "border-dashed border-[#9AA8B4] bg-white"}">
+      <div class="flex flex-wrap items-center gap-3 p-2 rounded-2xl border-2 ${beaten ? "border-[#1E2A33] bg-[#FFF4CC]" : "border-dashed border-[#9AA8B4] bg-white"}">
         <div class="w-16 shrink-0 k-mon-img border-[2.5px] border-[#1E2A33]"><img src="${beaten || open ? monsterImg(gid) : silhouetteImg(gid)}" alt="" loading="lazy" /></div>
         <div class="flex-1 min-w-0">
           <div class="k-display text-lg leading-tight">${beaten || open ? g.name : "？？？"}${g.final ? ' <span class="k-chip k-chip--yellow">最終魔王</span>' : ""}</div>
@@ -307,10 +307,10 @@ async function renderRank() {
   try {
     list = await fetchAllStudents();
   } catch (e) { reportError("讀取排行榜", e); return; }
-  const rows = list.map(s => {
+  const rows = list.filter(s => !isTestAccount(s.id)).map(s => {
     const g = s.gaudi || {};
     const a = Number(g.answered) || 0, c = Number(g.correct) || 0;
-    return { id: s.id, name: s.name, a, acc: a ? c / a : 0 };
+    return { id: s.id, name: s.name, a, c, acc: a ? c / a : 0 };
   });
   const li = (r, i, val) => `
     <li class="flex items-center gap-3 px-3 py-2 rounded-xl border-2 ${r.id === stu.id ? "border-[#1E2A33] bg-[#FFF4CC]" : "border-[#DCE7F2] bg-white"}">
@@ -318,9 +318,9 @@ async function renderRank() {
       <span class="flex-1 font-bold">${escapeHtml(r.name)}</span>
       <span class="k-display">${val}</span>
     </li>`;
-  const byCount = rows.filter(r => r.a > 0).sort((x, y) => y.a - x.a).slice(0, 10);
+  const byCount = rows.filter(r => r.c > 0).sort((x, y) => y.c - x.c || y.acc - x.acc).slice(0, 10);
   const byAcc = rows.filter(r => r.a >= 20).sort((x, y) => y.acc - x.acc || y.a - x.a).slice(0, 10);
-  $("rankCount").innerHTML = byCount.length ? byCount.map((r, i) => li(r, i, r.a + " 題")).join("") : `<li class="text-sm font-bold text-[#5B6B78]">還沒有人作答。</li>`;
+  $("rankCount").innerHTML = byCount.length ? byCount.map((r, i) => li(r, i, r.c + " 題")).join("") : `<li class="text-sm font-bold text-[#5B6B78]">還沒有人答對。</li>`;
   $("rankAcc").innerHTML = byAcc.length ? byAcc.map((r, i) => li(r, i, Math.round(r.acc * 100) + "%")).join("") : `<li class="text-sm font-bold text-[#5B6B78]">還沒有人答滿 20 題。</li>`;
 }
 

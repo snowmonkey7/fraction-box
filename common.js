@@ -225,6 +225,27 @@ async function saveStudentProgress(studentObj, coinDelta = 0) {
 const GAME_FIELDS = ["gaudi"];
 // 只有老師能改的欄位：gaudiOpen = 高第遊戲開放到第幾棟（0 = 不能進入，1～4 = 開放到第幾棟）
 const TEACHER_ONLY_FIELDS = ["gaudiOpen"];
+function isTestAccount(id) {
+  if (typeof TEST_ACCOUNT_FROM === "undefined" || !TEST_ACCOUNT_FROM) return false;
+  id = String(id || "");
+  return id.length === TEST_ACCOUNT_FROM.length && id >= TEST_ACCOUNT_FROM;
+}
+
+// 教師端：增減金幣（雲端用 increment，不會蓋掉學生同時賺到的金幣）
+async function addCoinsToStudent(studentId, delta) {
+  if (isCloudMode) {
+    await withTimeout(db.collection(COLLECTION_NAME).doc(studentId).update({
+      coins: firebase.firestore.FieldValue.increment(delta), updatedAt: Date.now()
+    }));
+  } else {
+    const store = getLocalStore();
+    if (!store[studentId]) throw { code: "not-found-account", message: "帳號不存在" };
+    store[studentId].coins = (store[studentId].coins || 0) + delta;
+    store[studentId].updatedAt = Date.now();
+    saveLocalStore(store);
+  }
+}
+
 function getGaudiOpen(stu) {
   const n = Number(stu && stu.gaudiOpen);
   return Number.isFinite(n) ? Math.max(0, Math.min(4, Math.floor(n))) : 0;
