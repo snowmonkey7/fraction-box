@@ -1,25 +1,79 @@
 /* 教師端：名單管理、成績、匯出 */
 
+/* ---------- 老師登入（選老師＋密碼） ---------- */
+let currentTeacher = null;
+
 function openTeacherLoginModal() {
+  const sel = document.getElementById("selTeacher");
+  sel.innerHTML = SITE.teachers.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join("");
+  try { const last = localStorage.getItem("kz_last_teacher"); if (last && SITE.teachers.some(t => t.id === last)) sel.value = last; } catch (e) {}
   document.getElementById("inputTeacherPwd").value = "";
   document.getElementById("modalTeacherLogin").classList.remove("hidden");
   setTimeout(() => document.getElementById("inputTeacherPwd").focus(), 100);
 }
 
 async function verifyTeacherLogin() {
+  const t = SITE.teachers.find(x => x.id === document.getElementById("selTeacher").value);
   const pwd = document.getElementById("inputTeacherPwd").value.trim();
-  if (pwd !== TEACHER_PASSWORD) {
+  if (!t || hashPassword(pwd) !== t.hash) {
     alert("密碼錯誤，請重新輸入！");
     return;
   }
-  try { sessionStorage.setItem("kz_teacher_ok", "1"); } catch (e) {}
+  try { sessionStorage.setItem("kz_teacher_id", t.id); localStorage.setItem("kz_last_teacher", t.id); } catch (e) {}
   closeModal("modalTeacherLogin");
+  await enterTeacher(t);
+  if (t.mustChange) openChangePassword(true);
+}
+
+async function enterTeacher(t) {
+  currentTeacher = t;
+  document.getElementById("tchTitle").textContent = `${t.name}的班級學習儀表板`;
+  document.getElementById("tchClassInfo").textContent =
+    `管理座號開頭為 ${t.prefixes.join("、") || "（未設定）"} 的學生` + (t.testFrom ? `；${t.testFrom} 以後是測試帳號` : "");
   document.getElementById("viewTeacher").classList.remove("hidden");
   await refreshTeacherData();
 }
 
+// 這個座號是不是我班上的（只能新增、匯入自己班的學生）
+function ownsStudentId(id) {
+  const t = teacherOfStudent(id);
+  return !!t && !!currentTeacher && t.id === currentTeacher.id;
+}
+function notMineMsg(ids) {
+  return `下面這些座號不是你的班級（你的學生座號開頭是 ${currentTeacher.prefixes.join("、") || "未設定"}）：\n${ids.join("、")}\n\n如果需要調整，請找管理員。`;
+}
+
+/* ---------- 修改密碼 ---------- */
+function openChangePassword(forced) {
+  ["pwdOld", "pwdNew", "pwdNew2"].forEach(id => (document.getElementById(id).value = ""));
+  document.getElementById("pwdForcedNote").classList.toggle("hidden", !forced);
+  document.getElementById("btnPwdCancel").classList.toggle("hidden", !!forced);
+  document.getElementById("modalChangePwd").classList.remove("hidden");
+}
+
+async function submitChangePassword() {
+  const oldP = document.getElementById("pwdOld").value.trim();
+  const p1 = document.getElementById("pwdNew").value.trim();
+  const p2 = document.getElementById("pwdNew2").value.trim();
+  await loadSettings();   // 先拿最新的老師名單，避免蓋掉別人的修改
+  const t = SITE.teachers.find(x => x.id === currentTeacher.id);
+  if (!t) { alert("找不到你的老師帳號，請找管理員。"); return; }
+  if (hashPassword(oldP) !== t.hash) { alert("原本的密碼不對"); return; }
+  if (p1.length < 4) { alert("新密碼至少 4 個字"); return; }
+  if (p1 !== p2) { alert("兩次輸入的新密碼不一樣"); return; }
+  if (p1 === oldP) { alert("新密碼不能和原本的一樣"); return; }
+  t.hash = hashPassword(p1);
+  t.mustChange = false;
+  try {
+    await saveSettings();
+  } catch (e) { reportError("修改密碼", e); return; }
+  currentTeacher = t;
+  closeModal("modalChangePwd");
+  alert("密碼已經改好了！下次登入請用新密碼。");
+}
+
 function exitTeacherView() {
-  try { sessionStorage.removeItem("kz_teacher_ok"); } catch (e) {}
+  try { sessionStorage.removeItem("kz_teacher_id"); } catch (e) {}
   location.href = "index.html";
 }
 
@@ -33,14 +87,11 @@ function switchTeacherTab(name) {
 }
 
 window.onPageReady = async () => {
-  let ok = false;
-  try { ok = sessionStorage.getItem("kz_teacher_ok") === "1"; } catch (e) {}
-  if (ok) {
-    document.getElementById("viewTeacher").classList.remove("hidden");
-    await refreshTeacherData();
-  } else {
-    openTeacherLoginModal();
-  }
+  let tid = null;
+  try { tid = sessionStorage.getItem("kz_teacher_id"); } catch (e) {}
+  const t = tid && SITE.teachers.find(x => x.id === tid);
+  if (t && !t.mustChange) await enterTeacher(t);
+  else openTeacherLoginModal();
 };
 
 let cachedAllStudents = [];
@@ -49,7 +100,7 @@ async function refreshTeacherData() {
   let list;
   try {
     await dbReady;
-    list = await fetchAllStudents();
+    list = (await fetchAllStudents()).filter(s => ownsStudentId(s.id));   // 只看自己班
   } catch (e) {
     document.getElementById("teacherTableBody").innerHTML =
       `<tr><td colspan="11" class="py-8 text-center text-rose-500 font-bold whitespace-pre-line">讀取雲端資料失敗：\n${explainFirebaseError(e)}</td></tr>`;
@@ -142,6 +193,7 @@ async function teacherAddSingleStudent() {
     alert("密碼請輸入 4～8 位數字！");
     return;
   }
+  if (!ownsStudentId(id)) { alert(notMineMsg([id])); return; }
   const pin = pinInput || generatePin();
   try {
     await dbReady;
@@ -172,6 +224,9 @@ async function teacherBatchCreateStudents() {
     return;
   }
 
+  const notMine = [];
+  for (let i = start; i <= end; i++) { const id = prefix + String(i).padStart(2, "0"); if (!ownsStudentId(id)) notMine.push(id); }
+  if (notMine.length) { alert(notMineMsg(notMine)); return; }
   let created = 0;
   try {
     await dbReady;
@@ -226,7 +281,7 @@ function printPinSlips() {
   }
   const slips = list.map(s => `
     <div class="slip">
-      <div class="t">凱正老師的分數盲盒店</div>
+      <div class="t">${escapeHtml((SITE && SITE.siteTitle) || "遊戲教室")}</div>
       <div><b>${escapeHtml(s.id)}</b>　${escapeHtml(s.name)}</div>
       <div>密碼：<b class="pin">${s.pin ? escapeHtml(s.pin) : "（未設定）"}</b></div>
     </div>`).join("");
@@ -334,6 +389,8 @@ async function teacherImportRoster() {
     alert("下列幾行格式不正確（需要「5 碼座號 姓名 密碼」），請修正後再匯入：\n\n" + badLines.join("\n"));
     return;
   }
+  const notMine = rows.filter(r => !ownsStudentId(r.id)).map(r => r.id);
+  if (notMine.length) { alert(notMineMsg(notMine)); return; }
   if (rows.length === 0) {
     alert("請先貼上名單！");
     return;
@@ -431,7 +488,7 @@ function exportClassCSV() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `凱正老師分數盲盒店_班級成績_${new Date().toISOString().slice(0,10)}.csv`;
+  link.download = `${currentTeacher ? currentTeacher.name : "班級"}_分數盲盒店成績_${new Date().toISOString().slice(0,10)}.csv`;
   link.click();
 }
 

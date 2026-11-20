@@ -272,7 +272,7 @@ async function handleAnswerSelect(opt, clickedBtn) {
     fbTitle.textContent = "差一點！看看正確答案怎麼算";
     fbDetail.innerHTML = `
       <div class="font-bold mb-1.5">正確答案：<span class="inline-block bg-white px-2.5 py-1 rounded-lg border-2 border-[#1E2A33] text-base align-middle">${formatFracHTML(q.ans)}</span></div>
-      <div><span class="font-bold">凱正老師解析：</span>${q.hint}</div>
+      <div><span class="font-bold">老師解析：</span>${q.hint}</div>
     `;
   }
 

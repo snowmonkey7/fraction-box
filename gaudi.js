@@ -429,7 +429,7 @@ async function renderRank() {
   try {
     list = await fetchAllStudents();
   } catch (e) { reportError("讀取排行榜", e); return; }
-  const rows = list.filter(s => !isTestAccount(s.id)).map(s => {
+  const rows = list.filter(s => !isTestAccount(s.id) && sameClass(s.id, stu.id)).map(s => {   // 只排同班同學
     const g = s.gaudi || {};
     const a = Number(g.answered) || 0, c = Number(g.correct) || 0;
     return { id: s.id, name: s.name, a, c, acc: a ? c / a : 0 };

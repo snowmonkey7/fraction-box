@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理員｜網站設定</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <style>body { font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; background: #F1F5F9; }</style>
+</head>
+<body class="text-slate-800">
+<header class="bg-slate-800 text-white">
+  <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+    <div>
+      <h1 class="text-xl font-black">管理員｜網站設定</h1>
+      <p class="text-xs text-slate-300"><span class="jsSiteTitle"></span></p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="syncBadge" class="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600 font-bold">連線檢查中...</span>
+      <a href="teacher.html" class="bg-slate-600 hover:bg-slate-500 text-sm font-bold px-3 py-1.5 rounded-xl">教師端</a>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-4xl mx-auto px-4 py-6">
+  <section id="viewAdmin" class="hidden space-y-6">
+
+    <!-- 網站名稱 -->
+    <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+      <h2 class="text-lg font-black">網站名稱</h2>
+      <p class="text-xs text-slate-500 mt-1 mb-3">顯示在學生登入頁和遊戲目錄最上面。</p>
+      <div class="flex flex-wrap gap-2">
+        <input id="inSiteTitle" class="flex-1 min-w-[12rem] border-2 border-slate-300 rounded-xl px-3 py-2 font-bold" />
+        <button onclick="saveSiteTitle()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2 rounded-xl">儲存</button>
+      </div>
+    </div>
+
+    <!-- 老師名單 -->
+    <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+      <h2 class="text-lg font-black">老師名單</h2>
+      <p class="text-xs text-slate-500 mt-1 mb-4">
+        每位老師用「學生座號開頭」決定管理哪些學生，例如 501 就是座號 50101、50102……的學生。
+        一位老師可以有好幾個開頭，用逗號分開。老師登入教師端後，只看得到、只管得到自己班的學生；
+        排行榜和班級統計也只算同一位老師的學生。
+      </p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-100 text-slate-700">
+              <th class="py-2.5 px-3">老師</th><th class="py-2.5 px-3">學生座號開頭</th><th class="py-2.5 px-3">測試帳號從</th>
+              <th class="py-2.5 px-3">學生數</th><th class="py-2.5 px-3">密碼</th><th class="py-2.5 px-3">操作</th>
+            </tr>
+          </thead>
+          <tbody id="teacherRows" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+      <p id="overlapWarn" class="hidden mt-3 text-sm font-bold text-rose-600"></p>
+
+      <h3 class="font-black mt-6 mb-2">新增老師</h3>
+      <div class="grid sm:grid-cols-2 gap-2">
+        <input id="newTName" placeholder="老師名字，例如 王老師" class="border-2 border-slate-300 rounded-xl px-3 py-2 font-bold" />
+        <input id="newTPwd" placeholder="第一次登入用的密碼（至少 4 個字）" class="border-2 border-slate-300 rounded-xl px-3 py-2 font-bold" />
+        <input id="newTPrefix" placeholder="學生座號開頭，例如 502" class="border-2 border-slate-300 rounded-xl px-3 py-2 font-bold" />
+        <input id="newTTest" placeholder="測試帳號從（可以不填），例如 50230" class="border-2 border-slate-300 rounded-xl px-3 py-2 font-bold" />
+      </div>
+      <p class="text-xs text-slate-500 mt-2">新老師第一次登入時，系統會要他把密碼改成自己的。</p>
+      <button onclick="addTeacher()" class="mt-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl">新增老師</button>
+    </div>
+
+    <!-- 管理員密碼 -->
+    <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+      <h2 class="text-lg font-black">管理員密碼</h2>
+      <button onclick="openAdminPwd(false)" class="mt-3 bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2 rounded-xl">修改管理員密碼</button>
+      <button onclick="adminLogout()" class="mt-3 ml-2 bg-slate-100 hover:bg-slate-200 font-bold px-4 py-2 rounded-xl">登出</button>
+    </div>
+  </section>
+</main>
+
+<!-- 登入 -->
+<div id="modalAdminLogin" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl">
+    <h3 class="text-xl font-black mb-1">管理員登入</h3>
+    <p class="text-xs text-slate-500 mb-4">管理老師名單和網站設定。</p>
+    <input id="inAdminPwd" type="password" placeholder="管理員密碼" onkeydown="if(event.key==='Enter') adminLogin()"
+      class="w-full border-2 border-slate-300 rounded-xl px-4 py-2.5 text-center text-lg font-bold mb-4" />
+    <div class="flex gap-2">
+      <button onclick="location.href='teacher.html'" class="flex-1 bg-slate-100 hover:bg-slate-200 font-bold py-2.5 rounded-xl">取消</button>
+      <button onclick="adminLogin()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl">登入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 修改管理員密碼 -->
+<div id="modalAdminPwd" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl">
+    <h3 class="text-xl font-black mb-1">修改管理員密碼</h3>
+    <p id="adminForcedNote" class="hidden text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl p-2 mb-3">第一次登入，請先設定新的管理員密碼。</p>
+    <label class="text-xs font-bold text-slate-500">新密碼（至少 6 個字）</label>
+    <input id="adminPwd1" type="password" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2 font-bold mb-2" />
+    <label class="text-xs font-bold text-slate-500">再輸入一次</label>
+    <input id="adminPwd2" type="password" onkeydown="if(event.key==='Enter') saveAdminPwd()" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2 font-bold mb-4" />
+    <div class="flex gap-2">
+      <button id="btnAdminPwdCancel" onclick="closeModal('modalAdminPwd')" class="flex-1 bg-slate-100 hover:bg-slate-200 font-bold py-2.5 rounded-xl">取消</button>
+      <button onclick="saveAdminPwd()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 編輯老師 -->
+<div id="modalEditTeacher" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl">
+    <h3 class="text-xl font-black mb-3">編輯老師</h3>
+    <label class="text-xs font-bold text-slate-500">名字</label>
+    <input id="edTName" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2 font-bold mb-2" />
+    <label class="text-xs font-bold text-slate-500">學生座號開頭（多個用逗號分開）</label>
+    <input id="edTPrefix" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2 font-bold mb-2" />
+    <label class="text-xs font-bold text-slate-500">測試帳號從（可以不填）</label>
+    <input id="edTTest" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2 font-bold mb-4" />
+    <div class="flex gap-2">
+      <button onclick="closeModal('modalEditTeacher')" class="flex-1 bg-slate-100 hover:bg-slate-200 font-bold py-2.5 rounded-xl">取消</button>
+      <button onclick="saveEditTeacher()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

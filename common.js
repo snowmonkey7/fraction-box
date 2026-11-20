@@ -17,7 +17,7 @@ function explainFirebaseError(e) {
     return "這個帳號已經被老師刪除了，請登出後找老師確認。";
   }
   if (code.includes("not-found-account") || /No document to update/i.test(msg)) {
-    return "這個學生帳號已經被老師刪除了，請重新整理頁面或找凱正老師。";
+    return "這個學生帳號已經被老師刪除了，請重新整理頁面或找老師。";
   }
   if (code.includes("not-found") || /database .* does not exist|NOT_FOUND/i.test(msg)) {
     return "這個 Firebase 專案還沒有建立 Firestore 資料庫。\n請到 Firebase 主控台 → Firestore Database → 建立資料庫。";
@@ -129,6 +129,110 @@ function createDefaultStudentObj(id, name = "", pin = "") {
 }
 
 // 確保預設班級 50101~50122 存在
+/* =========================================================================
+ * 網站設定（網站名稱、老師名單）：存在資料庫同一個集合裡的 _settings 這一筆
+ * 老師密碼只存「雜湊值」，看得到資料庫也看不到原本的密碼
+ * ========================================================================= */
+const SETTINGS_DOC_ID = "_settings";
+const LOCAL_SETTINGS_KEY = "kz_site_settings";
+let SITE = null;
+
+// SHA-256（自己寫的版本，任何瀏覽器、任何網址都能用）
+function sha256Hex(str) {
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const bytes = Array.from(unescape(encodeURIComponent(str)), c => c.charCodeAt(0));
+  const bitLen = bytes.length * 8;
+  bytes.push(0x80);
+  while (bytes.length % 64 !== 56) bytes.push(0);
+  for (let i = 7; i >= 0; i--) bytes.push(i >= 4 ? 0 : (bitLen >>> (i * 8)) & 0xff);
+  let h = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let off = 0; off < bytes.length; off += 64) {
+    const w = new Array(64);
+    for (let i = 0; i < 16; i++) w[i] = (bytes[off+i*4] << 24) | (bytes[off+i*4+1] << 16) | (bytes[off+i*4+2] << 8) | bytes[off+i*4+3];
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr(w[i-15], 7) ^ rotr(w[i-15], 18) ^ (w[i-15] >>> 3);
+      const s1 = rotr(w[i-2], 17) ^ rotr(w[i-2], 19) ^ (w[i-2] >>> 10);
+      w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
+    }
+    let [a, b, c, d, e, f, g, hh] = h;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (hh + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+      const t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+      hh = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    h = [h[0]+a, h[1]+b, h[2]+c, h[3]+d, h[4]+e, h[5]+f, h[6]+g, h[7]+hh].map(x => x | 0);
+  }
+  return h.map(x => (x >>> 0).toString(16).padStart(8, "0")).join("");
+}
+const hashPassword = pwd => sha256Hex("kz-game-site|" + String(pwd || "").trim());
+
+function defaultSettings() {
+  return {
+    siteTitle: SITE_TITLE,
+    adminHash: hashPassword(ADMIN_FIRST_PASSWORD),
+    adminMustChange: true,
+    teachers: [{
+      id: "t1", name: FIRST_TEACHER.name, hash: hashPassword(FIRST_TEACHER.password), mustChange: true,
+      prefixes: FIRST_TEACHER.prefixes.slice(), testFrom: FIRST_TEACHER.testFrom || ""
+    }],
+    updatedAt: Date.now()
+  };
+}
+
+function normalizeSettings(raw) {
+  const s = Object.assign(defaultSettings(), raw || {});
+  if (!Array.isArray(s.teachers)) s.teachers = [];
+  s.teachers = s.teachers.map(t => ({
+    id: String(t.id), name: String(t.name || "老師"), hash: t.hash || "", mustChange: !!t.mustChange,
+    prefixes: (Array.isArray(t.prefixes) ? t.prefixes : String(t.prefixes || "").split(/[,，\s]+/)).map(x => String(x).trim()).filter(Boolean),
+    testFrom: String(t.testFrom || "").trim()
+  }));
+  return s;
+}
+
+async function loadSettings() {
+  try {
+    if (isCloudMode && !cloudError) {
+      const ref = db.collection(COLLECTION_NAME).doc(SETTINGS_DOC_ID);
+      const snap = await withTimeout(ref.get());
+      if (snap.exists) SITE = normalizeSettings(snap.data());
+      else { SITE = defaultSettings(); await withTimeout(ref.set(SITE)); }
+    } else {
+      const raw = JSON.parse(localStorage.getItem(LOCAL_SETTINGS_KEY) || "null");
+      SITE = raw ? normalizeSettings(raw) : defaultSettings();
+      if (!raw) localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(SITE));
+    }
+  } catch (e) {
+    console.warn("讀取網站設定失敗，先用預設值：", e);
+    SITE = defaultSettings();
+  }
+  return SITE;
+}
+
+async function saveSettings() {
+  SITE.updatedAt = Date.now();
+  if (isCloudMode) await withTimeout(db.collection(COLLECTION_NAME).doc(SETTINGS_DOC_ID).set(SITE));
+  else localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(SITE));
+}
+
+// 這個座號屬於哪位老師（座號開頭最長的那個優先）
+function teacherOfStudent(id) {
+  if (!SITE) return null;
+  id = String(id || "");
+  let best = null, bestLen = 0;
+  SITE.teachers.forEach(t => t.prefixes.forEach(p => {
+    if (p && id.startsWith(p) && p.length > bestLen) { best = t; bestLen = p.length; }
+  }));
+  return best;
+}
+// 兩個學生是不是同一班（同一位老師）
+function sameClass(idA, idB) {
+  const a = teacherOfStudent(idA), b = teacherOfStudent(idB);
+  return !!a && !!b && a.id === b.id;
+}
+const isSystemDocId = id => String(id || "").startsWith("_");
+
 async function ensureDefaultClassExists() {
   const defaultIds = [];
   for (let i = 1; i <= 22; i++) {
@@ -176,6 +280,7 @@ function saveLocalStore(data) {
 }
 
 async function fetchStudent(studentId) {
+  if (isSystemDocId(studentId)) return null;
   if (isCloudMode) {
     const doc = await withTimeout(db.collection(COLLECTION_NAME).doc(studentId).get());
     return doc.exists ? normalizeStudent(doc.data(), doc.id) : null;
@@ -225,10 +330,13 @@ async function saveStudentProgress(studentObj, coinDelta = 0) {
 const GAME_FIELDS = ["gaudi"];
 // 只有老師能改的欄位：gaudiOpen = 高第遊戲開放到第幾棟（0 = 不能進入，1～4 = 開放到第幾棟）
 const TEACHER_ONLY_FIELDS = ["gaudiOpen"];
+// 測試帳號：每位老師可以設定「從哪個座號開始是測試帳號」，不列入排行榜和班級統計
 function isTestAccount(id) {
-  if (typeof TEST_ACCOUNT_FROM === "undefined" || !TEST_ACCOUNT_FROM) return false;
   id = String(id || "");
-  return id.length === TEST_ACCOUNT_FROM.length && id >= TEST_ACCOUNT_FROM;
+  const t = teacherOfStudent(id);
+  const from = t && t.testFrom;
+  if (!from) return false;
+  return id.length === from.length && id >= from;
 }
 
 // 教師端：增減金幣（雲端用 increment，不會蓋掉學生同時賺到的金幣）
@@ -321,10 +429,10 @@ async function fetchAllStudents() {
   if (isCloudMode) {
     const snap = await withTimeout(db.collection(COLLECTION_NAME).get());
     list = [];
-    snap.forEach(doc => list.push(normalizeStudent(doc.data(), doc.id)));
+    snap.forEach(doc => { if (!isSystemDocId(doc.id)) list.push(normalizeStudent(doc.data(), doc.id)); });
   } else {
     const store = getLocalStore();
-    list = Object.keys(store).map(k => normalizeStudent(store[k], k));
+    list = Object.keys(store).filter(k => !isSystemDocId(k)).map(k => normalizeStudent(store[k], k));
   }
   return list.sort((a, b) => a.id.localeCompare(b.id));
 }
@@ -383,11 +491,19 @@ async function loadSessionStudentOrRedirect() {
 }
 
 /* ---------- 頁面載入：先連資料庫，再交給各頁面的 onPageReady ---------- */
+function applySiteTitle() {
+  const title = (SITE && SITE.siteTitle) || SITE_TITLE;
+  document.querySelectorAll(".jsSiteTitle").forEach(el => (el.textContent = title));
+  if (document.body && document.body.dataset.titleFromSite === "1") document.title = title;
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
-  document.querySelectorAll(".jsSiteTitle").forEach(el => (el.textContent = SITE_TITLE));
+  applySiteTitle();
   try {
     await initDatabase();
-    await ensureDefaultClassExists();
+    await ensureDefaultClassExists();   // 要在建立 _settings 之前檢查「資料庫是不是空的」
+    await loadSettings();
+    applySiteTitle();
   } finally {
     dbReadyResolve();
   }
