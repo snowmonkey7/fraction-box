@@ -78,7 +78,7 @@ function exitTeacherView() {
 }
 
 function switchTeacherTab(name) {
-  ["fraction", "gaudi"].forEach(t => {
+  ["fraction", "gaudi", "dress", "food"].forEach(t => {
     document.getElementById("tchPane_" + t).classList.toggle("hidden", t !== name);
     document.getElementById("tchTabBtn_" + t).className = t === name
       ? "px-4 py-2 rounded-xl font-black text-sm bg-slate-800 text-white shadow"
@@ -109,6 +109,8 @@ async function refreshTeacherData() {
   }
   cachedAllStudents = list;
   renderGaudiTeacher(list);
+  renderDressTeacher(list);
+  renderFoodTeacher(list);
 
   // 統計數據
   // 測試帳號不列入班級統計
@@ -656,4 +658,247 @@ async function giveCoinsBulk() {
     reportError("調整金幣", e);
     msg.textContent = "";
   }
+}
+
+
+/* ---------- 對稱換裝扭蛋 ---------- */
+function dressOpenOptions(selected) {
+  const labels = ["不能玩", ...DRESS_MACHINES.map((m, i) => i === DRESS_MACHINES.length - 1 ? "全部開放" : `前 ${i + 1} 台（到${m.name}）`)];
+  return labels.map((t, i) => `<option value="${i}" ${i === selected ? "selected" : ""}>${t}</option>`).join("");
+}
+function renderDressTeacher(list) {
+  if (typeof DRESS_ITEMS === "undefined") return;
+  let players = 0, sumA = 0, sumC = 0, draws = 0;
+  const wrongT = {};
+  const rows = list.map(s => {
+    const d = s.dress || {};
+    const a = Number(d.answered) || 0, c = Number(d.correct) || 0;
+    const inv = d.inv || {};
+    const isTest = isTestAccount(s.id);
+    if (!isTest) {
+      if (a > 0) players += 1;
+      sumA += a; sumC += c; draws += Number(d.draws) || 0;
+      Object.entries(d.wrong || {}).forEach(([k, n]) => { wrongT[k] = (wrongT[k] || 0) + (Number(n) || 0); });
+    }
+    const owned = DRESS_ITEMS.filter(i => inv[i.id] > 0);
+    const sr = owned.filter(i => i.r === "S").length;
+    const worst = Object.entries(d.wrong || {}).sort((x, y) => y[1] - x[1])[0];
+    const openN = Math.max(0, Math.min(DRESS_MACHINES.length, Number(s.dressOpen) || 0));
+    const acc = a ? Math.round(c / a * 100) : 0;
+    return `<tr class="hover:bg-slate-50 ${openN ? "" : "bg-slate-50/60"}">
+      <td class="py-2.5 px-3"><input type="checkbox" class="dsChk w-4 h-4" value="${escapeHtml(s.id)}" /></td>
+      <td class="py-2.5 px-3 font-black">${escapeHtml(s.id)}</td>
+      <td class="py-2.5 px-3 font-bold text-slate-600">${escapeHtml(s.name)}${isTest ? ' <span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">測試</span>' : ""}<div class="text-[11px] text-amber-600 font-bold">金幣 ${s.coins || 0}</div></td>
+      <td class="py-2.5 px-3"><select onchange="setDressOpen('${escapeHtml(s.id)}', this.value, this)" class="border-2 rounded-lg px-1.5 py-1 font-bold text-xs ${openN ? "border-emerald-400 text-emerald-700" : "border-slate-300 text-slate-500"}">${dressOpenOptions(openN)}</select></td>
+      <td class="py-2.5 px-3 font-bold">${Number(d.draws) || 0} 次</td>
+      <td class="py-2.5 px-3 font-bold">${owned.length} / ${DRESS_ITEMS.length}</td>
+      <td class="py-2.5 px-3 font-bold">${sr}</td>
+      <td class="py-2.5 px-3 font-bold">${a} 題</td>
+      <td class="py-2.5 px-3 font-black ${acc >= 80 ? "text-emerald-600" : (acc >= 60 ? "text-amber-600" : "text-slate-500")}">${a ? acc + "%" : "—"}</td>
+      <td class="py-2.5 px-3 font-bold text-slate-600">${worst ? `${Q_TYPE_NAMES[worst[0]] || worst[0]}（${worst[1]}）` : "—"}</td>
+    </tr>`;
+  });
+  document.getElementById("dsBulkOpen").innerHTML = dressOpenOptions(DRESS_MACHINES.length);
+  document.getElementById("dsCheckAll").checked = false;
+  document.getElementById("dsStatPlayers").textContent = `${players} 人`;
+  document.getElementById("dsStatAcc").textContent = `${sumA ? Math.round(sumC / sumA * 100) : 0}%`;
+  document.getElementById("dsStatTotal").textContent = `${sumA} 題`;
+  document.getElementById("dsStatDraws").textContent = `${draws} 次`;
+  document.getElementById("dsTableBody").innerHTML = rows.join("") || `<tr><td colspan="10" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
+  const types = Object.entries(wrongT).sort((x, y) => y[1] - x[1]);
+  const max = types.length ? types[0][1] : 1;
+  document.getElementById("dsWrongTypes").innerHTML = types.length ? types.map(([k, n]) => `
+    <div class="flex items-center gap-3"><span class="w-32 text-sm font-bold">${Q_TYPE_NAMES[k] || k}</span>
+      <div class="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-rose-400" style="width:${n / max * 100}%"></div></div>
+      <span class="w-14 text-right text-sm font-black text-rose-600">${n} 次</span></div>`).join("")
+    : `<p class="text-slate-400 text-sm">還沒有人答錯過。</p>`;
+}
+async function setDressOpen(id, value, selectEl) {
+  const n = Number(value);
+  try {
+    await saveStudentFields(id, { dressOpen: n });
+    const s = cachedAllStudents.find(x => x.id === id);
+    if (s) s.dressOpen = n;
+    if (selectEl) selectEl.className = "border-2 rounded-lg px-1.5 py-1 font-bold text-xs " + (n ? "border-emerald-400 text-emerald-700" : "border-slate-300 text-slate-500");
+  } catch (e) { reportError("儲存開放設定", e); refreshTeacherData(); }
+}
+const dsCheckedIds = () => [...document.querySelectorAll(".dsChk:checked")].map(c => c.value);
+function checkDressRange() {
+  const from = document.getElementById("dsRangeFrom").value.trim();
+  const to = document.getElementById("dsRangeTo").value.trim() || from;
+  if (!from) { alert("請輸入座號，例如 50122"); return; }
+  let n = 0;
+  document.querySelectorAll(".dsChk").forEach(c => {
+    const hit = c.value >= from && c.value <= to && c.value.length === from.length;
+    c.checked = hit; if (hit) n += 1;
+  });
+  document.getElementById("dsBulkMsg").textContent = `已勾選 ${n} 位`;
+}
+async function applyDressOpenBulk() {
+  const ids = dsCheckedIds();
+  if (!ids.length) { alert("請先勾選同學"); return; }
+  const n = Number(document.getElementById("dsBulkOpen").value);
+  const msg = document.getElementById("dsBulkMsg");
+  msg.textContent = "儲存中…";
+  try {
+    for (const id of ids) await saveStudentFields(id, { dressOpen: n });
+    await refreshTeacherData();
+    document.getElementById("dsBulkMsg").textContent = `已更新 ${ids.length} 位`;
+  } catch (e) { reportError("儲存開放設定", e); msg.textContent = ""; }
+}
+async function resetDressProgress() {
+  const ids = dsCheckedIds();
+  if (!ids.length) { alert("請先勾選要重置的同學"); return; }
+  const names = ids.map(id => (cachedAllStudents.find(s => s.id === id) || {}).name || id).join("、");
+  if (!confirm(`確定要重置這 ${ids.length} 位同學的換裝進度嗎？\n${names}\n\n會清空：角色造型、所有衣服、扭蛋與答題紀錄。金幣不會動。\n開放設定會保留。這個動作不能復原。`)) return;
+  const msg = document.getElementById("dsBulkMsg");
+  msg.textContent = "重置中…";
+  try {
+    for (const id of ids) await saveStudentFields(id, { dress: null });
+    await refreshTeacherData();
+    document.getElementById("dsBulkMsg").textContent = `已重置 ${ids.length} 位`;
+  } catch (e) { reportError("重置進度", e); msg.textContent = ""; }
+}
+async function giveCoinsBulkDress() {
+  const ids = dsCheckedIds();
+  if (!ids.length) { alert("請先勾選同學"); return; }
+  const n = parseInt(document.getElementById("dsCoinAmount").value, 10);
+  if (!Number.isFinite(n) || n === 0) { alert("請輸入金幣數量，例如 10（要扣金幣就輸入 -10）"); return; }
+  if (!confirm(`確定要幫 ${ids.length} 位同學每人${n > 0 ? "加" : "扣"} ${Math.abs(n)} 金幣嗎？`)) return;
+  const msg = document.getElementById("dsBulkMsg");
+  msg.textContent = "儲存中…";
+  try {
+    for (const id of ids) {
+      const s = cachedAllStudents.find(x => x.id === id);
+      const delta = n < 0 && s ? Math.max(n, -(s.coins || 0)) : n;
+      if (delta) await addCoinsToStudent(id, delta);
+    }
+    await refreshTeacherData();
+    document.getElementById("dsBulkMsg").textContent = `已${n > 0 ? "加" : "扣"}金幣給 ${ids.length} 位`;
+  } catch (e) { reportError("調整金幣", e); msg.textContent = ""; }
+}
+
+
+/* ---------- 對稱美食街 ---------- */
+const FOOD_MATH_TYPES = { find: "找線對稱圖形", axes: "數對稱軸", isAxis: "判斷對稱軸", pair: "對稱點、邊、角", prop: "線對稱的性質", grid: "方格畫另一半" };
+function foodTypeName(k) {
+  if (k.startsWith("z_")) return "國語・" + ((typeof ZH_TYPE_NAMES !== "undefined" && ZH_TYPE_NAMES[k.slice(2)]) || k.slice(2));
+  if (k.startsWith("m_")) return "數學・" + (FOOD_MATH_TYPES[k.slice(2)] || k.slice(2));
+  return k;
+}
+function renderFoodTeacher(list) {
+  if (typeof FOOD_DISHES === "undefined") return;
+  let players = 0, sumA = 0, sumC = 0, draws = 0, zhWrong = 0, mWrong = 0;
+  const wrongT = {};
+  const rows = list.map(s => {
+    const f = s.food || {};
+    const a = Number(f.answered) || 0, c = Number(f.correct) || 0;
+    const isTest = isTestAccount(s.id);
+    const wrong = f.wrong || {};
+    if (!isTest) {
+      if (a > 0) players += 1;
+      sumA += a; sumC += c; draws += Number(f.draws) || 0;
+      Object.entries(wrong).forEach(([k, n]) => {
+        n = Number(n) || 0; wrongT[k] = (wrongT[k] || 0) + n;
+        if (k.startsWith("z_")) zhWrong += n; else mWrong += n;
+      });
+    }
+    const seen = FOOD_INGS.filter(i => (f.seen || {})[i.id]).length;
+    const found = FOOD_DISHES.filter(d => (f.found || {})[d.id]).length;
+    const made = Object.values(f.made || {}).reduce((x, y) => x + (Number(y) || 0), 0);
+    const worst = Object.entries(wrong).sort((x, y) => y[1] - x[1])[0];
+    const open = (Number(s.foodOpen) || 0) > 0;
+    const acc = a ? Math.round(c / a * 100) : 0;
+    return `<tr class="hover:bg-slate-50 ${open ? "" : "bg-slate-50/60"}">
+      <td class="py-2.5 px-3"><input type="checkbox" class="fdChk w-4 h-4" value="${escapeHtml(s.id)}" /></td>
+      <td class="py-2.5 px-3 font-black">${escapeHtml(s.id)}</td>
+      <td class="py-2.5 px-3 font-bold text-slate-600">${escapeHtml(s.name)}${isTest ? ' <span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">測試</span>' : ""}<div class="text-[11px] text-amber-600 font-bold">金幣 ${s.coins || 0}</div></td>
+      <td class="py-2.5 px-3"><select onchange="setFoodOpen('${escapeHtml(s.id)}', this.value, this)" class="border-2 rounded-lg px-1.5 py-1 font-bold text-xs ${open ? "border-emerald-400 text-emerald-700" : "border-slate-300 text-slate-500"}">
+        <option value="0" ${open ? "" : "selected"}>不開放</option><option value="1" ${open ? "selected" : ""}>開放</option></select></td>
+      <td class="py-2.5 px-3 font-bold">${Number(f.draws) || 0} 次</td>
+      <td class="py-2.5 px-3 font-bold">${seen} / ${FOOD_INGS.length}</td>
+      <td class="py-2.5 px-3 font-bold">${found} / ${FOOD_DISHES.length}</td>
+      <td class="py-2.5 px-3 font-bold">${made} 份</td>
+      <td class="py-2.5 px-3 font-bold">${a} 題</td>
+      <td class="py-2.5 px-3 font-black ${acc >= 80 ? "text-emerald-600" : (acc >= 60 ? "text-amber-600" : "text-slate-500")}">${a ? acc + "%" : "—"}</td>
+      <td class="py-2.5 px-3 font-bold text-slate-600">${worst ? `${foodTypeName(worst[0])}（${worst[1]}）` : "—"}</td>
+    </tr>`;
+  });
+  document.getElementById("fdCheckAll").checked = false;
+  document.getElementById("fdStatPlayers").textContent = `${players} 人`;
+  document.getElementById("fdStatAcc").textContent = `${sumA ? Math.round(sumC / sumA * 100) : 0}%`;
+  document.getElementById("fdStatSubj").textContent = sumA ? `${zhWrong}／${mWrong} 題` : "—";
+  document.getElementById("fdStatDraws").textContent = `${draws} 次`;
+  document.getElementById("fdTableBody").innerHTML = rows.join("") || `<tr><td colspan="11" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
+  const types = Object.entries(wrongT).sort((x, y) => y[1] - x[1]);
+  const max = types.length ? types[0][1] : 1;
+  document.getElementById("fdWrongTypes").innerHTML = types.length ? types.map(([k, n]) => `
+    <div class="flex items-center gap-3"><span class="w-44 text-sm font-bold">${foodTypeName(k)}</span>
+      <div class="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden"><div class="h-full ${k.startsWith("z_") ? "bg-emerald-400" : "bg-sky-400"}" style="width:${n / max * 100}%"></div></div>
+      <span class="w-14 text-right text-sm font-black text-rose-600">${n} 次</span></div>`).join("")
+    : `<p class="text-slate-400 text-sm">還沒有人答錯過。</p>`;
+}
+async function setFoodOpen(id, value, selectEl) {
+  const n = Number(value) ? 1 : 0;
+  try {
+    await saveStudentFields(id, { foodOpen: n });
+    const s = cachedAllStudents.find(x => x.id === id);
+    if (s) s.foodOpen = n;
+    if (selectEl) selectEl.className = "border-2 rounded-lg px-1.5 py-1 font-bold text-xs " + (n ? "border-emerald-400 text-emerald-700" : "border-slate-300 text-slate-500");
+  } catch (e) { reportError("儲存開放設定", e); refreshTeacherData(); }
+}
+const fdCheckedIds = () => [...document.querySelectorAll(".fdChk:checked")].map(c => c.value);
+function checkFoodRange() {
+  const from = document.getElementById("fdRangeFrom").value.trim();
+  const to = document.getElementById("fdRangeTo").value.trim() || from;
+  if (!from) { alert("請輸入座號，例如 50101"); return; }
+  let n = 0;
+  document.querySelectorAll(".fdChk").forEach(c => {
+    const hit = c.value >= from && c.value <= to && c.value.length === from.length;
+    c.checked = hit; if (hit) n += 1;
+  });
+  document.getElementById("fdBulkMsg").textContent = `已勾選 ${n} 位`;
+}
+async function applyFoodOpenBulk() {
+  const ids = fdCheckedIds();
+  if (!ids.length) { alert("請先勾選同學"); return; }
+  const n = Number(document.getElementById("fdBulkOpen").value) ? 1 : 0;
+  const msg = document.getElementById("fdBulkMsg");
+  msg.textContent = "儲存中…";
+  try {
+    for (const id of ids) await saveStudentFields(id, { foodOpen: n });
+    await refreshTeacherData();
+    document.getElementById("fdBulkMsg").textContent = `已更新 ${ids.length} 位`;
+  } catch (e) { reportError("儲存開放設定", e); msg.textContent = ""; }
+}
+async function resetFoodProgress() {
+  const ids = fdCheckedIds();
+  if (!ids.length) { alert("請先勾選要重置的同學"); return; }
+  const names = ids.map(id => (cachedAllStudents.find(s => s.id === id) || {}).name || id).join("、");
+  if (!confirm(`確定要重置這 ${ids.length} 位同學的美食街進度嗎？\n${names}\n\n會清空：食材、發現的食譜、做好的料理、扭蛋與答題紀錄。金幣不會動。\n開放設定會保留。這個動作不能復原。`)) return;
+  const msg = document.getElementById("fdBulkMsg");
+  msg.textContent = "重置中…";
+  try {
+    for (const id of ids) await saveStudentFields(id, { food: null });
+    await refreshTeacherData();
+    document.getElementById("fdBulkMsg").textContent = `已重置 ${ids.length} 位`;
+  } catch (e) { reportError("重置進度", e); msg.textContent = ""; }
+}
+async function giveCoinsBulkFood() {
+  const ids = fdCheckedIds();
+  if (!ids.length) { alert("請先勾選同學"); return; }
+  const n = parseInt(document.getElementById("fdCoinAmount").value, 10);
+  if (!Number.isFinite(n) || n === 0) { alert("請輸入金幣數量，例如 10（要扣金幣就輸入 -10）"); return; }
+  if (!confirm(`確定要幫 ${ids.length} 位同學每人${n > 0 ? "加" : "扣"} ${Math.abs(n)} 金幣嗎？`)) return;
+  const msg = document.getElementById("fdBulkMsg");
+  msg.textContent = "儲存中…";
+  try {
+    for (const id of ids) {
+      const s = cachedAllStudents.find(x => x.id === id);
+      const delta = n < 0 && s ? Math.max(n, -(s.coins || 0)) : n;
+      if (delta) await addCoinsToStudent(id, delta);
+    }
+    await refreshTeacherData();
+    document.getElementById("fdBulkMsg").textContent = `已${n > 0 ? "加" : "扣"}金幣給 ${ids.length} 位`;
+  } catch (e) { reportError("調整金幣", e); msg.textContent = ""; }
 }

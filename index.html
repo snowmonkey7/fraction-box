@@ -100,6 +100,32 @@
           <div id="gaudiBtn" class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
         </div>
       </a>
+      <a href="dressup.html" id="dressCard" class="k-game k-game--tilt-l k-slap">
+        <div id="dressTape" class="k-tape hidden">還沒開放</div>
+        <div class="k-game-top k-game-top--math px-6 pt-5 pb-4 flex items-end justify-between" style="background:#F7A8C4">
+          <div class="k-game-icon" aria-hidden="true">🎀</div>
+          <span class="k-chip k-chip--math mr-12">數學</span>
+        </div>
+        <div class="px-6 pt-4 pb-6">
+          <h3 class="k-display text-3xl">對稱換裝扭蛋</h3>
+          <p class="text-sm font-bold text-[#5B6B78] mt-1">線對稱圖形</p>
+          <p class="text-sm mt-3 leading-relaxed">答對線對稱的題目轉扭蛋，收集衣服幫自己的角色換裝。重複的可以合成新東西。</p>
+          <div id="dressBtn" class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
+        </div>
+      </a>
+      <a href="food.html" id="foodCard" class="k-game k-game--tilt-r k-slap">
+        <div id="foodTape" class="k-tape hidden">還沒開放</div>
+        <div class="k-game-top k-game-top--math px-6 pt-5 pb-4 flex items-end justify-between" style="background:#FFD98A">
+          <div class="k-game-icon" aria-hidden="true">🍱</div>
+          <span class="k-chip k-chip--chi mr-12">國語＋數學</span>
+        </div>
+        <div class="px-6 pt-4 pb-6">
+          <h3 class="k-display text-3xl">對稱美食街</h3>
+          <p class="text-sm font-bold text-[#5B6B78] mt-1">第八課・線對稱圖形</p>
+          <p class="text-sm mt-3 leading-relaxed">答題轉扭蛋收集食材，在圖鑑裡發現台灣和世界各地的對稱美食，做出一道道料理。</p>
+          <div id="foodBtn" class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
+        </div>
+      </a>
     </div>
   </section>
 </main>
@@ -165,6 +191,26 @@ function showMenu(stu) {
   btn.style.opacity = open ? "" : ".6";
   if (open) card.setAttribute("href", "gaudi.html"); else card.removeAttribute("href");
   card.setAttribute("aria-disabled", open ? "false" : "true");
+  // 換裝扭蛋
+  const dOpen = (Number(stu.dressOpen) || 0) > 0;
+  const dCard = document.getElementById("dressCard");
+  dCard.classList.toggle("k-game--locked", !dOpen);
+  document.getElementById("dressTape").classList.toggle("hidden", dOpen);
+  const dBtn = document.getElementById("dressBtn");
+  dBtn.textContent = dOpen ? "進入遊戲" : "老師還沒開放";
+  dBtn.classList.toggle("k-btn--yellow", dOpen);
+  dBtn.style.opacity = dOpen ? "" : ".6";
+  if (dOpen) dCard.setAttribute("href", "dressup.html"); else dCard.removeAttribute("href");
+  // 對稱美食街
+  const fOpen = (Number(stu.foodOpen) || 0) > 0;
+  const fCard = document.getElementById("foodCard");
+  fCard.classList.toggle("k-game--locked", !fOpen);
+  document.getElementById("foodTape").classList.toggle("hidden", fOpen);
+  const fBtn = document.getElementById("foodBtn");
+  fBtn.textContent = fOpen ? "進入遊戲" : "老師還沒開放";
+  fBtn.classList.toggle("k-btn--yellow", fOpen);
+  fBtn.style.opacity = fOpen ? "" : ".6";
+  if (fOpen) fCard.setAttribute("href", "food.html"); else fCard.removeAttribute("href");
 }
 
 function indexLogout() {

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>對稱換裝扭蛋</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="theme.css" />
+  <style>
+    /* ---- 角色舞台：所有圖層疊在同一個框裡 ---- */
+    .dz-stage { position: relative; width: 100%; aspect-ratio: 500 / 704; }
+    .dz-stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+    .dz-stage-wrap {
+      background: radial-gradient(ellipse at 50% 92%, rgba(30,42,51,.13) 0 22%, transparent 23%),
+                  linear-gradient(#FFFDF6, #FFF4D8);
+      border: 3px solid var(--ink); border-radius: 20px; overflow: hidden;
+    }
+
+    /* ---- 物品格 ---- */
+    .dz-item {
+      position: relative; aspect-ratio: 1/1; background: #fff;
+      border: 3px solid var(--ink); border-radius: 16px; padding: 6px;
+      box-shadow: 0 3px 0 var(--ink); transition: transform .06s;
+    }
+    .dz-item:active { transform: translateY(3px); box-shadow: 0 0 0 var(--ink); }
+    .dz-item img { width: 100%; height: 100%; object-fit: contain; }
+    .dz-item.is-R { background: #EEF5FF; }
+    .dz-item.is-S { background: #FFF6D8; }
+    .dz-item.is-worn { box-shadow: 0 3px 0 var(--ink), 0 0 0 4px var(--leaf); }
+    .dz-item.is-pick { box-shadow: 0 3px 0 var(--ink), 0 0 0 4px var(--crayon); }
+    .dz-item.is-empty { opacity: .35; }
+    .dz-count {
+      position: absolute; right: -6px; top: -8px; min-width: 1.6rem; height: 1.6rem; padding: 0 .3rem;
+      border: 2.5px solid var(--ink); border-radius: 999px; background: #fff;
+      font-family: var(--display); font-weight: 700; font-size: .8rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .dz-rar { position: absolute; left: 5px; bottom: 4px; font-size: .68rem; font-weight: 900; padding: 0 .35rem; border-radius: 6px; color: #fff; }
+    .dz-worn-tag { position: absolute; left: 50%; top: -10px; transform: translateX(-50%); background: var(--leaf); color: #fff; border: 2px solid var(--ink);
+      border-radius: 999px; font-size: .68rem; font-weight: 900; padding: 0 .45rem; white-space: nowrap; }
+
+    .dz-chip { border: 2.5px solid var(--ink); border-radius: 999px; background: #fff; padding: .2rem .75rem; font-weight: 800; font-size: .85rem; }
+    .dz-chip.is-on { background: var(--crayon); }
+
+    /* ---- 扭蛋機卡片 ---- */
+    .dz-mach { background: #fff; border: 3px solid var(--ink); border-radius: 22px; box-shadow: 5px 5px 0 var(--ink); overflow: hidden; }
+    .dz-mach-top { border-bottom: 3px solid var(--ink); padding: .6rem .6rem 0; display: flex; justify-content: center; }
+    .dz-mach svg.machine { width: 150px; height: auto; display: block; }
+    .dz-mach.is-locked { filter: grayscale(1); opacity: .55; }
+    .dz-prize { width: 3.2rem; height: 3.2rem; border: 2.5px solid var(--ink); border-radius: 12px; background: #fff; padding: 2px; position: relative; }
+    .dz-prize img { width: 100%; height: 100%; object-fit: contain; }
+    .dz-prize.is-S { background: #FFF6D8; }
+    .dz-prize.is-R { background: #EEF5FF; }
+    .dz-prize.not-owned img { filter: brightness(0) opacity(.28); }
+    .dz-pity { height: 12px; border: 2.5px solid var(--ink); border-radius: 999px; background: #fff; overflow: hidden; }
+    .dz-pity > div { height: 100%; background: linear-gradient(90deg, #FFC83D, #F28C3D); }
+
+    /* ---- 方格操作題 ---- */
+    .dz-grid { display: grid; gap: 0; border: 3px solid var(--ink); background: #fff; position: relative; touch-action: manipulation; }
+    .dz-cell { aspect-ratio: 1/1; border: 1px solid #C9D5DF; }
+    .dz-cell.is-given { background: #5BB8F0; }
+    .dz-cell.is-on { background: #FFC83D; }
+    .dz-cell.is-miss { background: repeating-linear-gradient(45deg, #FFE3DE 0 6px, #fff 6px 12px); }
+    .dz-cell.is-extra { background: #F2644E; }
+    .dz-cell.can { cursor: pointer; }
+    .dz-axis { position: absolute; background: #E5484D; pointer-events: none; }
+
+    .dz-fig { background: #fff; border-radius: 16px; display: inline-flex; padding: .4rem; }
+    .dz-opt-fig { justify-content: center; padding: .5rem; }
+    .dz-opt-fig .k-opt-key { position: absolute; left: .5rem; top: .5rem; }
+    .dz-opt-fig { position: relative; }
+
+    /* ---- 扭蛋動畫 ---- */
+    @keyframes dz-knob { to { transform: rotate(360deg); } }
+    .dz-knob-spin { animation: dz-knob .9s ease-in-out 1; transform-box: fill-box; transform-origin: center; }
+    @keyframes dz-shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px) rotate(-1deg)} 75%{transform:translateX(5px) rotate(1deg)} }
+    .dz-shake { animation: dz-shake .25s ease-in-out 3; }
+    @keyframes dz-drop { 0% { transform: translateY(-140px) scale(.6); opacity: 0; } 60% { transform: translateY(10px) scale(1); opacity: 1; } 80% { transform: translateY(-14px); } 100% { transform: translateY(0); } }
+    .dz-capsule { width: 130px; height: 130px; border-radius: 50%; border: 4px solid var(--ink); overflow: hidden; position: relative; cursor: pointer;
+      box-shadow: 0 6px 0 var(--ink); animation: dz-drop .8s cubic-bezier(.3,1.4,.5,1) both; }
+    .dz-capsule .top { position: absolute; left: 0; right: 0; top: 0; height: 50%; border-bottom: 4px solid var(--ink); }
+    .dz-capsule .bot { position: absolute; left: 0; right: 0; bottom: 0; height: 50%; background: #fff; }
+    .dz-capsule.is-open .top { transition: transform .35s ease-in; transform: translateY(-140%) rotate(-25deg); }
+    @keyframes dz-glow { 0%,100% { box-shadow: 0 6px 0 var(--ink), 0 0 0 0 rgba(255,200,61,.0); } 50% { box-shadow: 0 6px 0 var(--ink), 0 0 30px 12px rgba(255,200,61,.75); } }
+    .dz-capsule.is-S { animation: dz-drop .8s cubic-bezier(.3,1.4,.5,1) both, dz-glow 1.2s ease-in-out .8s infinite; }
+    @keyframes dz-pop { 0% { transform: scale(.3) rotate(-8deg); opacity: 0; } 70% { transform: scale(1.06) rotate(2deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
+    .dz-pop { animation: dz-pop .45s cubic-bezier(.2,.9,.3,1.3) both; }
+    .dz-rays { background: repeating-conic-gradient(from 0deg, rgba(255,200,61,.35) 0 10deg, transparent 10deg 20deg); border-radius: 50%; }
+    @keyframes dz-spin { to { transform: rotate(360deg); } }
+    .dz-rays.spin { animation: dz-spin 12s linear infinite; }
+    @media (prefers-reduced-motion: reduce) { .dz-capsule, .dz-pop, .dz-rays.spin, .dz-knob-spin, .dz-shake { animation: none !important; } }
+    @media (max-width: 640px) { .dz-mach svg.machine { width: 120px; } .dz-capsule { width: 110px; height: 110px; } }
+  </style>
+</head>
+<body class="k-page select-none">
+<header class="k-board sticky top-0 z-30">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+    <div class="min-w-0">
+      <h1 class="k-board-title text-2xl md:text-3xl truncate">對稱換裝扭蛋</h1>
+      <p class="k-board-sub text-xs font-medium mt-0.5">康軒五上數學第七單元・線對稱圖形</p>
+    </div>
+    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <span class="k-wallet text-base bg-white"><span class="k-coin"></span><span id="dCoins">0</span></span>
+      <span id="syncBadge" class="k-chip bg-slate-100 text-slate-600">連線檢查中...</span>
+      <button onclick="location.href='index.html'" class="k-btn k-btn--chalk k-btn--sm">遊戲目錄</button>
+      <button onclick="dLogout()" class="k-btn k-btn--tomato k-btn--sm">登出</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+  <div id="viewLoading" class="k-card p-8 text-center font-bold text-[#5B6B78]">載入中…</div>
+  <div id="viewLocked" class="hidden k-card p-8 text-center">
+    <p class="k-display text-2xl">老師還沒開放這個遊戲</p>
+    <button onclick="location.href='index.html'" class="k-btn k-btn--yellow px-6 py-2.5 mt-5">回遊戲目錄</button>
+  </div>
+
+  <section id="viewGame" class="hidden grid md:grid-cols-[minmax(240px,320px)_1fr] gap-5 items-start">
+    <!-- 左：我的角色 -->
+    <div class="k-card p-4 md:sticky md:top-24">
+      <div class="flex items-center justify-between gap-2 mb-3">
+        <span class="k-nametag"><span id="dStuId" class="k-nt-id"></span><span id="dStuName" class="k-nt-name"></span></span>
+        <button onclick="openMaker(false)" class="k-btn k-btn--sky k-btn--sm">改造型</button>
+      </div>
+      <div class="dz-stage-wrap max-w-[300px] mx-auto"><div id="myStage" class="dz-stage"></div></div>
+      <div class="flex gap-2 mt-3">
+        <button onclick="undressAll()" class="k-btn k-btn--sm flex-1" style="background:#fff">全部脫掉</button>
+      </div>
+      <p class="text-xs font-bold text-[#5B6B78] mt-3 leading-relaxed">今天免費扭蛋：<b id="dFreeLeft" class="text-[#1E2A33]">3</b> 次<br/>答題 <b id="dAnswered">0</b> 題・正確率 <b id="dAcc">0%</b></p>
+    </div>
+
+    <!-- 右：分頁 -->
+    <div>
+      <div class="k-tabs pl-3" role="tablist">
+        <button class="k-tab is-active" data-tab="gacha" onclick="switchTab('gacha')">扭蛋機</button>
+        <button class="k-tab" data-tab="closet" onclick="switchTab('closet')">我的衣櫃</button>
+        <button class="k-tab" data-tab="craft" onclick="switchTab('craft')">合成</button>
+        <button class="k-tab" data-tab="help" onclick="switchTab('help')">怎麼玩</button>
+      </div>
+      <div class="k-card k-tab-panel p-4 md:p-5">
+        <div id="tab_gacha">
+          <div id="machineGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+        </div>
+        <div id="tab_closet" class="hidden">
+          <div id="slotChips" class="flex flex-wrap gap-2 mb-4"></div>
+          <div id="closetGrid" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3"></div>
+        </div>
+        <div id="tab_craft" class="hidden">
+          <p class="text-sm font-bold text-[#33434F] leading-relaxed">放進 <b>5 件同樣稀有度</b>的重複物品，就能合成 1 件新東西。<br/>
+            <span class="text-[#5B6B78]">45% 同稀有度隨機物品、45% 同稀有度你還沒有的物品、10% 升級成更高一級！</span></p>
+          <div id="craftRarity" class="flex flex-wrap gap-2 my-4"></div>
+          <div id="craftSlots" class="grid grid-cols-5 gap-2 max-w-md"></div>
+          <div class="flex flex-wrap items-center gap-3 mt-4">
+            <button id="btnCraft" onclick="doCraft()" class="k-btn k-btn--yellow px-6 py-2.5">合成</button>
+            <button onclick="craftClear()" class="k-btn k-btn--sm" style="background:#fff">清空</button>
+            <span id="craftMsg" class="text-sm font-bold text-[#5B6B78]"></span>
+          </div>
+          <h3 class="k-display text-lg mt-6 mb-2">可以拿去合成的物品（只算多出來的）</h3>
+          <div id="craftGrid" class="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-3"></div>
+        </div>
+        <div id="tab_help" class="hidden text-[15px] leading-relaxed space-y-3 font-medium">
+          <p><b>1. 扭蛋：</b>每天有 <b>3 次免費</b>，之後每次 <b>2 金幣</b>。每次要先答 <b>3 題線對稱的題目</b>，<b>答對 2 題以上</b>才能轉扭蛋；答對不到 2 題，這次就沒有了（金幣不會退）。</p>
+          <p><b>2. 稀有度：</b>每台機器有 6 件普通、3 件稀有、1 件超稀有。在同一台機器轉到第 30 次還沒拿到超稀有，第 30 次一定會出！</p>
+          <p><b>3. 穿搭：</b>到「我的衣櫃」點物品就能穿上，再點一次脫下。連身裝會換掉上衣和下身。</p>
+          <p><b>4. 合成：</b>重複的東西可以 5 件合成 1 件新的。正在穿的那一件不會被拿去合成。</p>
+          <p class="text-[#5B6B78]">（之後還會加上：同學交易商店、展示區）</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- 捏臉 -->
+<div id="modalMaker" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-3">
+  <div class="k-modal max-w-3xl w-full p-4 sm:p-6 max-h-[94vh] overflow-y-auto">
+    <h2 class="k-display text-2xl mb-1">設計你的角色</h2>
+    <p class="text-sm font-bold text-[#5B6B78] mb-4">之後隨時可以按「改造型」重新選。</p>
+    <div class="grid sm:grid-cols-[220px_1fr] gap-5">
+      <div class="dz-stage-wrap max-w-[220px] mx-auto w-full"><div id="makerStage" class="dz-stage"></div></div>
+      <div class="space-y-4">
+        <div>
+          <div class="font-black mb-2">髮型</div>
+          <div id="makerHair" class="grid grid-cols-4 sm:grid-cols-6 gap-2"></div>
+        </div>
+        <div>
+          <div class="font-black mb-2">髮色</div>
+          <div id="makerColor" class="flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 mt-5">
+      <button id="btnMakerCancel" onclick="closeModal('modalMaker')" class="k-btn k-btn--chalk px-5 py-2">取消</button>
+      <button onclick="saveMaker()" class="k-btn k-btn--yellow px-6 py-2">完成</button>
+    </div>
+  </div>
+</div>
+
+<!-- 答題 -->
+<div id="modalQuiz" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-3">
+  <div class="k-modal max-w-2xl w-full p-4 sm:p-6 max-h-[96vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-3">
+      <span id="quizTitle" class="k-display text-lg"></span>
+      <span id="quizDots" class="k-stamps"></span>
+    </div>
+    <div id="quizBody"></div>
+  </div>
+</div>
+
+<!-- 扭蛋結果 -->
+<div id="modalDraw" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-3">
+  <div class="k-modal max-w-md w-full p-5 sm:p-6 text-center" id="drawBody"></div>
+</div>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script src="dress-items.js"></script>
+<script src="dress-q.js"></script>
+<script src="dressup.js"></script>
+</body>
+</html>

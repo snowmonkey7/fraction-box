@@ -114,6 +114,108 @@
     <div class="flex flex-wrap gap-2">
       <button id="tchTabBtn_fraction" onclick="switchTeacherTab('fraction')" class="px-4 py-2 rounded-xl font-black text-sm bg-slate-800 text-white shadow">📋 全班名單・分數盲盒店</button>
       <button id="tchTabBtn_gaudi" onclick="switchTeacherTab('gaudi')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🏛️ 高第的魔法建築</button>
+      <button id="tchTabBtn_dress" onclick="switchTeacherTab('dress')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🎀 對稱換裝扭蛋</button>
+      <button id="tchTabBtn_food" onclick="switchTeacherTab('food')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🍱 對稱美食街</button>
+    </div>
+
+    <div id="tchPane_food" class="hidden space-y-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">玩過的人數</div><div id="fdStatPlayers" class="text-2xl font-black text-slate-800 mt-1">0 人</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">全班平均正確率</div><div id="fdStatAcc" class="text-2xl font-black text-emerald-600 mt-1">0%</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">答錯題數（國語／數學）</div><div id="fdStatSubj" class="text-2xl font-black text-sky-600 mt-1">—</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">全班扭蛋次數</div><div id="fdStatDraws" class="text-2xl font-black text-amber-600 mt-1">0 次</div></div>
+      </div>
+      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+        <h3 class="text-lg font-black text-slate-800">學生進度與開放設定</h3>
+        <p class="text-xs text-slate-500 mt-1 mb-4">設成「不開放」的同學會看到上鎖的卡片。改了就會自動儲存。標示「測試」的帳號不列入上方統計。</p>
+        <div class="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+          <span class="text-sm font-bold text-slate-700">把勾選的同學設為</span>
+          <select id="fdBulkOpen" class="border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm"><option value="1">開放</option><option value="0">不開放</option></select>
+          <button onclick="applyFoodOpenBulk()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm px-4 py-2 rounded-xl">套用</button>
+          <span class="text-slate-300 mx-1">|</span>
+          <span class="text-sm font-bold text-slate-700">快速勾選座號</span>
+          <input id="fdRangeFrom" placeholder="50101" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <span class="font-bold text-slate-500">到</span>
+          <input id="fdRangeTo" placeholder="50121" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <button onclick="checkFoodRange()" class="bg-white border-2 border-slate-300 hover:bg-slate-100 font-bold text-sm px-3 py-1.5 rounded-xl">勾選</button>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200">
+          <span class="text-sm font-bold text-slate-700">勾選的同學每人</span>
+          <input id="fdCoinAmount" type="number" placeholder="10" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <span class="text-sm font-bold text-slate-700">金幣</span>
+          <button onclick="giveCoinsBulkFood()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm px-4 py-2 rounded-xl">發金幣</button>
+          <span class="text-xs text-slate-500">（輸入負數就是扣金幣）</span>
+          <span class="flex-1"></span>
+          <button onclick="resetFoodProgress()" class="bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm px-4 py-2 rounded-xl">重置勾選同學的美食街進度</button>
+        </div>
+        <div id="fdBulkMsg" class="text-sm font-bold text-emerald-600 mb-2 min-h-[1.25rem]"></div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left border-collapse">
+            <thead><tr class="bg-slate-100 text-slate-700">
+              <th class="py-2.5 px-3"><input type="checkbox" id="fdCheckAll" onchange="document.querySelectorAll('.fdChk').forEach(c => c.checked = this.checked)" class="w-4 h-4" title="全選" /></th>
+              <th class="py-2.5 px-3">座號</th><th class="py-2.5 px-3">姓名</th><th class="py-2.5 px-3">開放</th>
+              <th class="py-2.5 px-3">扭蛋次數</th><th class="py-2.5 px-3">食材收集</th><th class="py-2.5 px-3">發現食譜</th><th class="py-2.5 px-3">做過料理</th>
+              <th class="py-2.5 px-3">答題數</th><th class="py-2.5 px-3">正確率</th><th class="py-2.5 px-3">最常錯的題型</th>
+            </tr></thead>
+            <tbody id="fdTableBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+        <h3 class="text-lg font-black text-slate-800">全班各題型答錯次數</h3>
+        <p class="text-xs text-slate-500 mt-1 mb-4">國語題從 113 題的題庫隨機抽；數學題每次隨機產生。都用題型來統計。</p>
+        <div id="fdWrongTypes" class="space-y-2"></div>
+      </div>
+    </div>
+
+    <div id="tchPane_dress" class="hidden space-y-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">玩過的人數</div><div id="dsStatPlayers" class="text-2xl font-black text-slate-800 mt-1">0 人</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">全班平均正確率</div><div id="dsStatAcc" class="text-2xl font-black text-emerald-600 mt-1">0%</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">全班累計答題數</div><div id="dsStatTotal" class="text-2xl font-black text-amber-600 mt-1">0 題</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">全班扭蛋次數</div><div id="dsStatDraws" class="text-2xl font-black text-pink-600 mt-1">0 次</div></div>
+      </div>
+      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+        <h3 class="text-lg font-black text-slate-800">學生進度與開放設定</h3>
+        <p class="text-xs text-slate-500 mt-1 mb-4">「開放」決定這位同學可以玩前幾台扭蛋機（依序：蝴蝶花園、鏡之宮殿、格子工坊、剪紙藝廊、機甲戰隊、動物派對）；設成「不能玩」的同學會看到上鎖的卡片。改了就會自動儲存。標示「測試」的帳號不列入上方統計。</p>
+        <div class="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+          <span class="text-sm font-bold text-slate-700">把勾選的同學設為</span>
+          <select id="dsBulkOpen" class="border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm"></select>
+          <button onclick="applyDressOpenBulk()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm px-4 py-2 rounded-xl">套用</button>
+          <span class="text-slate-300 mx-1">|</span>
+          <span class="text-sm font-bold text-slate-700">快速勾選座號</span>
+          <input id="dsRangeFrom" placeholder="50122" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <span class="font-bold text-slate-500">到</span>
+          <input id="dsRangeTo" placeholder="50125" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <button onclick="checkDressRange()" class="bg-white border-2 border-slate-300 hover:bg-slate-100 font-bold text-sm px-3 py-1.5 rounded-xl">勾選</button>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200">
+          <span class="text-sm font-bold text-slate-700">勾選的同學每人</span>
+          <input id="dsCoinAmount" type="number" placeholder="10" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <span class="text-sm font-bold text-slate-700">金幣</span>
+          <button onclick="giveCoinsBulkDress()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm px-4 py-2 rounded-xl">發金幣</button>
+          <span class="text-xs text-slate-500">（輸入負數就是扣金幣）</span>
+          <span class="flex-1"></span>
+          <button onclick="resetDressProgress()" class="bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm px-4 py-2 rounded-xl">重置勾選同學的換裝進度</button>
+        </div>
+        <div id="dsBulkMsg" class="text-sm font-bold text-emerald-600 mb-2 min-h-[1.25rem]"></div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left border-collapse">
+            <thead><tr class="bg-slate-100 text-slate-700">
+              <th class="py-2.5 px-3"><input type="checkbox" id="dsCheckAll" onchange="document.querySelectorAll('.dsChk').forEach(c => c.checked = this.checked)" class="w-4 h-4" title="全選" /></th>
+              <th class="py-2.5 px-3">座號</th><th class="py-2.5 px-3">姓名</th><th class="py-2.5 px-3">開放</th>
+              <th class="py-2.5 px-3">扭蛋次數</th><th class="py-2.5 px-3">收集</th><th class="py-2.5 px-3">超稀有</th>
+              <th class="py-2.5 px-3">答題數</th><th class="py-2.5 px-3">正確率</th><th class="py-2.5 px-3">最常錯的題型</th>
+            </tr></thead>
+            <tbody id="dsTableBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+        <h3 class="text-lg font-black text-slate-800">全班各題型答錯次數</h3>
+        <p class="text-xs text-slate-500 mt-1 mb-4">題目每次隨機產生，所以用題型來統計。</p>
+        <div id="dsWrongTypes" class="space-y-2"></div>
+      </div>
     </div>
 
     <div id="tchPane_gaudi" class="hidden space-y-6">
@@ -362,6 +464,10 @@
 <script src="common.js"></script>
 <script src="fraction-data.js"></script>
 <script src="gaudi-data.js"></script>
+<script src="dress-items.js"></script>
+<script src="dress-q.js"></script>
+<script src="food-data.js"></script>
+<script src="food-q.js"></script>
 <script src="teacher.js"></script>
 </body>
 </html>

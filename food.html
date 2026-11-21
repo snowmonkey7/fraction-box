@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>對稱美食街</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="theme.css" />
+  <style>
+    /* ---- 食材／料理格 ---- */
+    .fd-tile {
+      position: relative; background: #fff; border: 3px solid var(--ink); border-radius: 16px;
+      box-shadow: 0 3px 0 var(--ink); padding: 6px; text-align: center; transition: transform .06s;
+    }
+    button.fd-tile:active { transform: translateY(3px); box-shadow: 0 0 0 var(--ink); }
+    .fd-tile img { width: 100%; aspect-ratio: 1/1; object-fit: contain; display: block; }
+    .fd-tile .nm { font-weight: 900; font-size: .85rem; margin-top: 2px; line-height: 1.2; }
+    .fd-tile.is-U { background: #EEF5FF; }
+    .fd-tile.is-R { background: #FFF6D8; }
+    .fd-tile.is-none img { filter: brightness(0) opacity(.22); }
+    .fd-tile.is-none .nm { color: #9AA8B3; }
+    .fd-tile.is-pick { box-shadow: 0 3px 0 var(--ink), 0 0 0 4px var(--crayon); }
+    .fd-tile:disabled { opacity: .45; }
+    .fd-count {
+      position: absolute; right: -7px; top: -9px; min-width: 1.8rem; height: 1.7rem; padding: 0 .35rem;
+      border: 2.5px solid var(--ink); border-radius: 999px; background: #fff;
+      font-family: var(--display); font-weight: 700; font-size: .85rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .fd-count.is-zero { background: #EEF1F4; color: #8A99A6; }
+    .fd-rar { display: inline-block; font-size: .7rem; font-weight: 900; padding: 0 .4rem; border-radius: 6px; color: #fff; }
+
+    .fd-dish { background: #fff; border: 3px solid var(--ink); border-radius: 18px; box-shadow: 4px 4px 0 var(--ink); overflow: hidden; display: flex; flex-direction: column; }
+    .fd-dish .pic { background: #FFF4D8; border-bottom: 3px solid var(--ink); padding: 8px; position: relative; }
+    .fd-dish .pic img { width: 100%; aspect-ratio: 1/1; object-fit: contain; display: block; }
+    .fd-dish.is-lock .pic { background: #EEF1F4; }
+    .fd-dish.is-lock .pic img { filter: grayscale(1) blur(7px) opacity(.55); }
+    .fd-flag { position: absolute; left: 6px; top: 6px; border: 2px solid var(--ink); border-radius: 999px; background: #fff; font-size: .7rem; font-weight: 900; padding: 0 .45rem; }
+    .fd-stock { position: absolute; right: 6px; top: 6px; border: 2px solid var(--ink); border-radius: 999px; background: var(--leaf); color: #fff; font-size: .7rem; font-weight: 900; padding: 0 .45rem; }
+    .fd-chip { border: 2.5px solid var(--ink); border-radius: 999px; background: #fff; padding: .2rem .8rem; font-weight: 800; font-size: .85rem; }
+    .fd-chip.is-on { background: var(--crayon); }
+
+    .fd-rec { display: flex; align-items: center; gap: .5rem; border: 2.5px solid var(--ink); border-radius: 14px; background: #fff; padding: .35rem .6rem; }
+    .fd-rec img { width: 2.6rem; height: 2.6rem; object-fit: contain; }
+    .fd-rec.is-short { background: #FFE3DE; }
+
+    /* ---- 扭蛋機 ---- */
+    .fd-mach { background: #fff; border: 3px solid var(--ink); border-radius: 26px; box-shadow: 6px 6px 0 var(--ink); overflow: hidden; }
+    .fd-mach-top { background: repeating-linear-gradient(90deg, #FFE7A8 0 22px, #FFF4D8 22px 44px); border-bottom: 3px solid var(--ink); display: flex; justify-content: center; padding: .8rem 0 .2rem; }
+    .fd-mach-top img { width: min(260px, 70vw); height: auto; display: block; }
+    .fd-pity { height: 14px; border: 2.5px solid var(--ink); border-radius: 999px; background: #fff; overflow: hidden; }
+    .fd-pity > div { height: 100%; background: linear-gradient(90deg, #FFC83D, #F28C3D); }
+    .fd-ratebar { display: flex; height: 18px; border: 2.5px solid var(--ink); border-radius: 999px; overflow: hidden; }
+
+    .fd-pot { border: 3px dashed var(--ink); border-radius: 22px; background: #FFFDF6; min-height: 92px; padding: .6rem; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; justify-content: center; }
+    .fd-pot-item { position: relative; width: 3.6rem; height: 3.6rem; border: 2.5px solid var(--ink); border-radius: 14px; background: #fff; padding: 3px; }
+    .fd-pot-item img { width: 100%; height: 100%; object-fit: contain; }
+    .fd-pot-item .x { position: absolute; right: -8px; top: -8px; width: 1.4rem; height: 1.4rem; border-radius: 50%; border: 2px solid var(--ink); background: var(--tomato); color: #fff; font-size: .75rem; font-weight: 900; line-height: 1; }
+
+    .fd-step { width: 2.8rem; height: 2.8rem; border: 3px solid var(--ink); border-radius: 14px; background: #fff; font-size: 1.4rem; font-weight: 900; box-shadow: 0 3px 0 var(--ink); }
+    .fd-step:active { transform: translateY(3px); box-shadow: none; }
+    .fd-step:disabled { opacity: .35; }
+
+    .fd-note { border: 2.5px solid var(--ink); border-radius: 16px; background: #FFF6D8; padding: .7rem .9rem; font-size: .9rem; font-weight: 700; line-height: 1.6; }
+
+    .fd-help-dot { width: .7rem; height: .7rem; border-radius: 50%; border: 2px solid var(--ink); background: #fff; }
+    .fd-help-dot.is-on { background: var(--crayon); }
+
+    /* 方格操作題（和換裝扭蛋相同） */
+    .dz-grid { display: grid; gap: 0; border: 3px solid var(--ink); background: #fff; position: relative; touch-action: manipulation; }
+    .dz-cell { aspect-ratio: 1/1; border: 1px solid #C9D5DF; }
+    .dz-cell.is-given { background: #5BB8F0; }
+    .dz-cell.is-on { background: #FFC83D; }
+    .dz-cell.is-miss { background: repeating-linear-gradient(45deg, #FFE3DE 0 6px, #fff 6px 12px); }
+    .dz-cell.is-extra { background: #F2644E; }
+    .dz-cell.can { cursor: pointer; }
+    .dz-axis { position: absolute; background: #E5484D; pointer-events: none; }
+    .dz-fig { background: #fff; border-radius: 16px; display: inline-flex; padding: .4rem; }
+    .dz-opt-fig { justify-content: center; padding: .5rem; position: relative; }
+    .dz-opt-fig .k-opt-key { position: absolute; left: .5rem; top: .5rem; }
+    .fd-passage { border: 2.5px solid var(--ink); border-radius: 16px; background: #FFFDF6; padding: .8rem 1rem; font-size: 1rem; line-height: 1.85; font-weight: 500; }
+    .fd-subj { color: var(--ink); display: inline-block; border: 2px solid var(--ink); border-radius: 999px; padding: 0 .55rem; font-size: .75rem; font-weight: 900; margin-right: .35rem; vertical-align: middle; }
+    .fd-subj.zh { background: #C9EBD8; }
+    .fd-subj.math { background: #CFE8FB; }
+
+    /* ---- 動畫 ---- */
+    @keyframes dz-shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px) rotate(-1.5deg)} 75%{transform:translateX(6px) rotate(1.5deg)} }
+    .dz-shake { animation: dz-shake .22s ease-in-out 4; }
+    @keyframes dz-drop { 0% { transform: translateY(-140px) scale(.6); opacity: 0; } 60% { transform: translateY(10px) scale(1); opacity: 1; } 80% { transform: translateY(-14px); } 100% { transform: translateY(0); } }
+    .dz-capsule { width: 130px; height: 130px; border-radius: 50%; border: 4px solid var(--ink); overflow: hidden; position: relative; cursor: pointer;
+      box-shadow: 0 6px 0 var(--ink); animation: dz-drop .8s cubic-bezier(.3,1.4,.5,1) both; }
+    .dz-capsule .top { position: absolute; left: 0; right: 0; top: 0; height: 50%; border-bottom: 4px solid var(--ink); }
+    .dz-capsule .bot { position: absolute; left: 0; right: 0; bottom: 0; height: 50%; background: #fff; }
+    .dz-capsule.is-open .top { transition: transform .35s ease-in; transform: translateY(-140%) rotate(-25deg); }
+    @keyframes dz-glow { 0%,100% { box-shadow: 0 6px 0 var(--ink), 0 0 0 0 rgba(255,200,61,0); } 50% { box-shadow: 0 6px 0 var(--ink), 0 0 30px 12px rgba(255,200,61,.75); } }
+    .dz-capsule.is-R { animation: dz-drop .8s cubic-bezier(.3,1.4,.5,1) both, dz-glow 1.2s ease-in-out .8s infinite; }
+    @keyframes dz-pop { 0% { transform: scale(.3) rotate(-8deg); opacity: 0; } 70% { transform: scale(1.06) rotate(2deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
+    .dz-pop { animation: dz-pop .45s cubic-bezier(.2,.9,.3,1.3) both; }
+    .dz-rays { background: repeating-conic-gradient(from 0deg, rgba(255,200,61,.35) 0 10deg, transparent 10deg 20deg); border-radius: 50%; }
+    @keyframes dz-spin { to { transform: rotate(360deg); } }
+    .dz-rays.spin { animation: dz-spin 12s linear infinite; }
+    @keyframes fd-steam { 0% { transform: translateY(6px); opacity: 0; } 40% { opacity: .9; } 100% { transform: translateY(-22px); opacity: 0; } }
+    .fd-steam span { display: inline-block; width: 8px; height: 26px; border-radius: 8px; background: #C9D5DF; margin: 0 5px; animation: fd-steam 1.4s ease-in-out infinite; }
+    .fd-steam span:nth-child(2) { animation-delay: .35s; } .fd-steam span:nth-child(3) { animation-delay: .7s; }
+    @media (prefers-reduced-motion: reduce) { .dz-capsule, .dz-pop, .dz-rays.spin, .dz-shake, .fd-steam span { animation: none !important; } }
+  </style>
+</head>
+<body class="k-page select-none">
+<header class="k-board sticky top-0 z-30">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+    <div class="min-w-0">
+      <h1 class="k-board-title text-2xl md:text-3xl truncate">對稱美食街</h1>
+      <p class="k-board-sub text-xs font-medium mt-0.5">國語第八課〈嘗嘗我的家鄉味〉× 數學 線對稱圖形</p>
+    </div>
+    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <span class="k-wallet text-base bg-white"><span class="k-coin"></span><span id="fCoins">0</span></span>
+      <span id="syncBadge" class="k-chip bg-slate-100 text-slate-600">連線檢查中...</span>
+      <button onclick="location.href='index.html'" class="k-btn k-btn--chalk k-btn--sm">遊戲目錄</button>
+      <button onclick="fLogout()" class="k-btn k-btn--tomato k-btn--sm">登出</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+  <div id="viewLoading" class="k-card p-8 text-center font-bold text-[#5B6B78]">載入中…</div>
+  <div id="viewLocked" class="hidden k-card p-8 text-center">
+    <p class="k-display text-2xl">老師還沒開放這個遊戲</p>
+    <button onclick="location.href='index.html'" class="k-btn k-btn--yellow px-6 py-2.5 mt-5">回遊戲目錄</button>
+  </div>
+
+  <section id="viewGame" class="hidden">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <span class="k-nametag"><span id="fStuId" class="k-nt-id"></span><span id="fStuName" class="k-nt-name"></span></span>
+      <div class="flex flex-wrap gap-2 text-sm font-bold">
+        <span class="fd-chip">發現食譜 <b id="fFound">0</b> / <span id="fDishTotal">31</span></span>
+        <span class="fd-chip">答題 <b id="fAnswered">0</b>・正確率 <b id="fAcc">—</b></span>
+      </div>
+    </div>
+
+    <div class="k-tabs pl-3" role="tablist">
+      <button class="k-tab is-active" data-tab="gacha" onclick="switchTab('gacha')">美食扭蛋機</button>
+      <button class="k-tab" data-tab="pantry" onclick="switchTab('pantry')">食材庫</button>
+      <button class="k-tab" data-tab="book" onclick="switchTab('book')">美食圖鑑</button>
+      <button class="k-tab" data-tab="help" onclick="openHelp(0)">怎麼玩</button>
+    </div>
+    <div class="k-card k-tab-panel p-4 md:p-5">
+      <!-- 扭蛋機 -->
+      <div id="tab_gacha">
+        <div class="grid md:grid-cols-[minmax(260px,360px)_1fr] gap-5 items-start">
+          <div class="fd-mach">
+            <div class="fd-mach-top"><img id="machImg" src="images/food/machine/food.webp" alt="美食扭蛋機" /></div>
+            <div class="p-4">
+              <div class="flex justify-between text-xs font-bold text-[#5B6B78]"><span id="pityText"></span><span id="pityNum"></span></div>
+              <div class="fd-pity mt-1"><div id="pityBar" style="width:0"></div></div>
+              <button id="btnDraw" onclick="startDraw()" class="k-btn k-btn--leaf w-full mt-4 py-3 text-lg"></button>
+              <p class="text-xs font-bold text-[#5B6B78] mt-2 text-center">每次先答 3 題（國語、數學都有），答對 2 題以上才能轉</p>
+            </div>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <h3 class="k-display text-lg mb-2">會轉出什麼？</h3>
+              <div class="fd-ratebar">
+                <div style="width:70%;background:#C9D5DF"></div><div style="width:25%;background:#8FC1F2;border-left:2.5px solid var(--ink)"></div><div style="width:5%;background:#FFC83D;border-left:2.5px solid var(--ink)"></div>
+              </div>
+              <div class="grid grid-cols-3 gap-2 mt-2 text-sm font-bold">
+                <div><span class="fd-rar" style="background:#8FA3B3">常見</span> 70%<br/><span class="text-[#5B6B78]">一次拿 10 份</span></div>
+                <div><span class="fd-rar" style="background:#4A90E2">少見</span> 25%<br/><span class="text-[#5B6B78]">一次拿 5 份</span></div>
+                <div><span class="fd-rar" style="background:#E0A21B">稀有</span> 5%<br/><span class="text-[#5B6B78]">一次拿 2 份</span></div>
+              </div>
+            </div>
+            <div>
+              <h3 class="k-display text-lg mb-2">最近轉到的食材</h3>
+              <div id="recentGrid" class="grid grid-cols-4 sm:grid-cols-6 gap-3"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 食材庫 -->
+      <div id="tab_pantry" class="hidden">
+        <p class="text-sm font-bold text-[#5B6B78] mb-4">右上角的數字是你現在有幾份。灰色的是還沒轉到過的食材。</p>
+        <div id="pantryGrid" class="space-y-5"></div>
+      </div>
+
+      <!-- 圖鑑 -->
+      <div id="tab_book" class="hidden">
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+          <div id="regionChips" class="flex flex-wrap gap-2"></div>
+          <span class="flex-1"></span>
+          <button onclick="openPot(null)" class="k-btn k-btn--sky k-btn--sm">🍲 自由試做</button>
+        </div>
+        <div id="bookGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+        <p class="fd-note mt-6">⚠️ 遊戲中的食譜、食材用量和圖片都是為了遊戲設計的，只在遊戲裡使用，和真正的做法不一樣，請勿輕易模仿。想在家下廚時，請和大人一起。</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- 怎麼玩 -->
+<div id="modalHelp" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-3">
+  <div class="k-modal max-w-lg w-full p-5 sm:p-6">
+    <div id="helpBody"></div>
+    <div class="flex items-center justify-between mt-5">
+      <div id="helpDots" class="flex gap-1.5"></div>
+      <div class="flex gap-2">
+        <button id="helpPrev" onclick="helpGo(-1)" class="k-btn k-btn--sm" style="background:#fff">上一頁</button>
+        <button id="helpNext" onclick="helpGo(1)" class="k-btn k-btn--yellow px-5 py-2">下一頁</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 答題 -->
+<div id="modalQuiz" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-3">
+  <div class="k-modal max-w-2xl w-full p-4 sm:p-6 max-h-[96vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-3">
+      <span id="quizTitle" class="k-display text-lg"></span>
+      <span id="quizDots" class="k-stamps"></span>
+    </div>
+    <div id="quizBody"></div>
+  </div>
+</div>
+
+<!-- 扭蛋結果 -->
+<div id="modalDraw" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-3">
+  <div class="k-modal max-w-md w-full p-5 sm:p-6 text-center" id="drawBody"></div>
+</div>
+
+<!-- 試做鍋 -->
+<div id="modalPot" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-3">
+  <div class="k-modal max-w-3xl w-full p-4 sm:p-6 max-h-[96vh] overflow-y-auto" id="potBody"></div>
+</div>
+
+<!-- 料理資訊／製作 -->
+<div id="modalDish" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-3">
+  <div class="k-modal max-w-xl w-full p-5 sm:p-6 max-h-[96vh] overflow-y-auto" id="dishBody"></div>
+</div>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script src="food-data.js"></script>
+<script src="food-q.js"></script>
+<script src="sym-q.js"></script>
+<script src="food.js"></script>
+</body>
+</html>
