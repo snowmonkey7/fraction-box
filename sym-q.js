@@ -181,16 +181,19 @@ function qPairs() {
     pool = [...Array(n).keys()].filter(k => k !== j && k !== i).map(k => L(k) + " 點");
     explain = `沿著對稱軸對摺，${L(i)} 點會和 ${L(j)} 點重合，所以它們是對稱點。`;
   } else if (kind === "edge") {
-    // 找一條兩端都不在對稱軸上、且對稱邊不是自己的邊
-    const edges = [...Array(n).keys()].map(i => [i, (i + 1) % n]);
-    const name = ([a, b]) => "邊 " + L(Math.min(a, b)) + L(Math.max(a, b));
+    // 對稱邊要照對應點的順序寫：邊 AB 的對稱邊是「A 的對稱點」接「B 的對稱點」
+    const edges = [...Array(n).keys()].map(i => [i, (i + 1) % n]).map(([a, b]) => a < b ? [a, b] : [b, a]);
+    const nm = ([a, b]) => "邊 " + L(a) + L(b);
     const mir = ([a, b]) => [mirrorIndex(fig.pts, a), mirrorIndex(fig.pts, b)];
-    const cand = edges.filter(e => name(mir(e)) !== name(e));
-    const e = pick(cand);
-    prompt = `紅色虛線是對稱軸。<b>${name(e)}</b> 的對稱邊是哪一條？`;
-    right = name(mir(e));
-    pool = edges.map(name).filter(x => x !== right && x !== name(e));
-    explain = `沿著對稱軸對摺，${name(e)} 會和 ${right} 重合。對稱邊一樣長。`;
+    const same = (e, f) => (e[0] === f[0] && e[1] === f[1]) || (e[0] === f[1] && e[1] === f[0]);
+    const cand = edges.filter(e => !same(mir(e), e));
+    const e = pick(cand), m = mir(e);
+    prompt = `紅色虛線是對稱軸。<b>${nm(e)}</b> 的對稱邊是哪一條？（要照對應點的順序寫）`;
+    right = nm(m);
+    const reversed = nm([m[1], m[0]]);
+    const others = edges.filter(f => !same(f, e) && !same(f, m)).map(nm);
+    pool = [reversed, ...sample(others, 2)];
+    explain = `${L(e[0])} 點的對稱點是 ${L(m[0])} 點，${L(e[1])} 點的對稱點是 ${L(m[1])} 點，所以${nm(e)}的對稱邊要照順序寫成${right}（不是${reversed}）。對稱邊一樣長。`;
   } else {
     const i = pick(offAxis), j = mirrorIndex(fig.pts, i);
     prompt = `紅色虛線是對稱軸。<b>角 ${L(i)}</b> 的對稱角是哪一個？`;
