@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>高第的魔法建築</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="theme.css" />
+  <style>
+    /* ---- 地圖上的建築按鈕 ---- */
+    .k-bld {
+      display: flex; flex-direction: column; align-items: center;
+      width: 100%;
+      background: #fff;
+      border: 3px solid var(--ink);
+      border-radius: 22px;
+      box-shadow: 5px 5px 0 var(--ink);
+      padding: .6rem .6rem 1rem;
+      transition: transform .1s, box-shadow .1s;
+      position: relative;
+      overflow: hidden;
+    }
+    .k-bld:not(.is-locked):hover { transform: translateY(-3px); box-shadow: 6px 8px 0 var(--ink); }
+    .k-bld:not(.is-locked):active { transform: translate(4px, 4px); box-shadow: 1px 1px 0 var(--ink); }
+    .k-bld svg { width: 100%; max-width: 190px; height: auto; display: block; }
+    .k-bld.is-locked { background: #EEF2F6; cursor: not-allowed; }
+    .k-bld.is-locked svg { filter: grayscale(1) opacity(.45); }
+    .k-bld.is-done { background: #FFF4CC; }
+    .k-bld-step {
+      position: absolute; top: 8px; left: 8px; z-index: 2;
+      width: 2.1rem; height: 2.1rem; border-radius: 50%;
+      border: 3px solid var(--ink); background: var(--crayon);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--display); font-weight: 700;
+    }
+    .k-bld.is-locked .k-bld-step { background: #fff; color: #8C9AA6; }
+    .k-route {
+      position: absolute; left: 6%; right: 6%; top: 46%;
+      border-top: 4px dashed #9AA8B4; z-index: 0;
+    }
+
+    #battle {
+      background-color: var(--paper);
+      background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+    /* ---- 剪影（還沒收服的怪獸） ---- */
+    .k-mon-img { aspect-ratio: 1/1; border-radius: 12px; background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .k-mon-img img { width: 100%; height: 100%; object-fit: contain; }
+
+    /* ---- 戰鬥 ---- */
+    .k-hp { height: 18px; border: 3px solid var(--ink); border-radius: 999px; background: #fff; overflow: hidden; }
+    .k-hp-fill { height: 100%; background: var(--leaf); transition: width .45s ease; }
+    .k-hp-fill.is-low { background: var(--tomato); }
+    .k-heart { font-size: 1.6rem; line-height: 1; color: var(--tomato); -webkit-text-stroke: 1.5px var(--ink); }
+    .k-heart.is-empty { color: #E3E8ED; }
+    .k-heart--sm { font-size: 1rem; -webkit-text-stroke: 1px var(--ink); }
+    .k-bld-tier { position: absolute; top: 10px; right: 10px; z-index: 2; color: var(--crayon); -webkit-text-stroke: 1px var(--ink); font-size: 1rem; letter-spacing: -1px; }
+    .k-bld.is-locked .k-bld-tier { color: #fff; }
+    #weakArea .k-btn { display: flex; }
+    @keyframes k-hit { 0%,100% { transform: translateX(0) rotate(0); } 20% { transform: translateX(-10px) rotate(-4deg); } 50% { transform: translateX(8px) rotate(3deg); } 80% { transform: translateX(-4px); } }
+    .k-hit { animation: k-hit .45s ease; }
+    .k-passage { background: #FFFDF3; border: 2px dashed #B9A777; border-radius: 14px; }
+    .k-qtext { font-size: 1.35rem; line-height: 1.7; font-weight: 700; }
+    .k-opt-txt { font-size: 1.12rem; font-weight: 700; line-height: 1.5; }
+    .k-opt.is-cut { opacity: .25; text-decoration: line-through; pointer-events: none; }
+    .k-skill.is-used { opacity: .4; pointer-events: none; }
+    .k-ball { width: 1.25em; height: 1.25em; border-radius: 50%; border: 2.5px solid var(--ink); display: inline-block; position: relative; overflow: hidden; flex-shrink: 0; background: #fff; }
+    .k-ball::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 50%; background: var(--tomato); border-bottom: 2.5px solid var(--ink); }
+    .k-ball.is-super::before { background: #8A63D2; }
+    .k-ball::after { content: ""; position: absolute; left: 50%; top: 50%; width: 32%; height: 32%; border-radius: 50%; background: #fff; border: 2px solid var(--ink); transform: translate(-50%, -50%); }
+    .k-ready { box-shadow: 0 4px 0 var(--ink), 0 0 0 5px var(--crayon); }
+    @media (prefers-reduced-motion: reduce) { .k-hit { animation: none; } }
+    @media (max-width: 640px) {
+      .k-bld-step { width: 1.7rem; height: 1.7rem; font-size: .85rem; border-width: 2.5px; }
+      .k-bld { padding: .4rem .4rem .7rem; box-shadow: 4px 4px 0 var(--ink); }
+      .k-bld .k-display { font-size: 1.05rem; }
+      .k-qtext { font-size: 1.12rem; line-height: 1.6; }
+      .k-opt-txt { font-size: 1rem; }
+      .k-heart { font-size: 1.35rem; }
+      #battle .k-card { padding: .75rem; }
+    }
+  </style>
+</head>
+<body class="k-page select-none">
+<header class="k-board sticky top-0 z-30">
+  <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+    <div class="min-w-0">
+      <h1 class="k-board-title text-2xl md:text-3xl truncate">高第的魔法建築</h1>
+      <p class="k-board-sub text-xs font-medium mt-0.5">南一五上國語第七課</p>
+    </div>
+    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <span class="k-wallet text-base bg-white"><span class="k-coin"></span><span id="gCoins">0</span></span>
+      <span id="syncBadge" class="k-chip bg-slate-100 text-slate-600">連線檢查中...</span>
+      <button onclick="gBackToMenu()" class="k-btn k-btn--chalk k-btn--sm">遊戲目錄</button>
+      <button onclick="gLogout()" class="k-btn k-btn--tomato k-btn--sm">登出</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+  <section id="viewGame" class="hidden space-y-5">
+
+    <!-- 狀態列 -->
+    <div class="k-card p-4 md:p-5 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <span class="k-nametag text-lg"><span id="gStuId" class="k-nt-id"></span><span id="gStuName" class="k-nt-name"></span></span>
+        <p class="text-sm text-[#5B6B78] font-bold mt-2">
+          作答 <b id="gAnswered" class="text-[#1E2A33]">0</b> 題　答對 <b id="gCorrect" class="text-[#1E2A33]">0</b> 題　正確率 <b id="gAcc" class="text-[#1E2A33]">0%</b>
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="px-3 py-1.5 rounded-xl border-2 border-dashed border-[#9AA8B4] bg-white text-center">
+          <div class="text-xs font-bold text-[#5B6B78]">我的寶貝球</div>
+          <div class="k-display text-lg mt-0.5 flex items-center gap-2 justify-center">
+            <span class="k-ball"></span><span id="gBallN">0</span>
+            <span class="k-ball is-super ml-1"></span><span id="gBallS">0</span>
+          </div>
+        </div>
+        <div class="px-3 py-1.5 rounded-xl border-2 border-dashed border-[#9AA8B4] bg-white text-center">
+          <div class="text-xs font-bold text-[#5B6B78]">今天拿到的金幣</div>
+          <div class="k-display text-lg mt-0.5"><span id="gDayCoins">0</span> / <span class="jsDailyCap">20</span></div>
+        </div>
+        <div class="px-3 py-1.5 rounded-xl border-2 border-dashed border-[#9AA8B4] bg-white text-center">
+          <div class="text-xs font-bold text-[#5B6B78]">收服</div>
+          <div class="k-display text-lg mt-0.5"><span id="gCaughtCount">0</span> / 20 隻</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="k-card k-card--soft px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <span class="text-sm font-bold text-[#33434F]">不知道怎麼玩？答錯夥伴會受傷，不要亂猜喔！</span>
+      <button onclick="openHelp(false)" class="k-btn k-btn--yellow k-btn--sm">怎麼玩</button>
+    </div>
+
+    <div>
+      <div class="k-tabs pl-3" role="tablist">
+        <button onclick="gTab('map')" id="gTabMap" class="k-tab is-active">地圖</button>
+        <button onclick="gTab('team')" id="gTabTeam" class="k-tab">我的夥伴</button>
+        <button onclick="gTab('shop')" id="gTabShop" class="k-tab">商店</button>
+        <button onclick="gTab('rank')" id="gTabRank" class="k-tab">排行榜</button>
+      </div>
+
+      <!-- 地圖 -->
+      <div id="gPaneMap" class="k-card k-tab-panel p-5 md:p-6">
+        <div id="mapView">
+          <h3 class="k-display text-2xl">巴塞隆納散步地圖</h3>
+          <p class="text-sm text-[#5B6B78] font-bold mt-0.5 mb-5">點一棟建築走進去。</p>
+          <div class="relative">
+            <div class="k-route hidden md:block"></div>
+            <div id="mapGrid" class="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5"></div>
+          </div>
+        </div>
+
+        <div id="buildingView" class="hidden">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <button onclick="gShowMap()" class="k-btn k-btn--sm">回地圖</button>
+            <span id="bvProgress" class="k-chip k-chip--yellow"></span>
+          </div>
+          <div class="flex flex-wrap items-center gap-5 mb-6">
+            <div id="bvArt" class="w-32 md:w-40 shrink-0"></div>
+            <div>
+              <h3 id="bvName" class="k-display text-3xl"></h3>
+              <p id="bvSub" class="font-bold text-[#5B6B78] mt-1"></p>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-5">
+            <div class="k-card k-card--flat p-5">
+              <h4 class="k-display text-xl">到附近探索</h4>
+              <p class="text-sm font-bold text-[#5B6B78] mt-1">會遇到住在這裡的野生怪獸。已收服 <b id="bvCaughtKinds">0</b> / 5 種。</p>
+              <div id="bvWild" class="grid grid-cols-5 gap-2 mt-4"></div>
+              <button onclick="startWild()" class="k-btn k-btn--leaf w-full mt-4 py-3 text-lg">出發探索</button>
+            </div>
+            <div class="k-card k-card--flat p-5">
+              <h4 class="k-display text-xl">挑戰守護精靈</h4>
+              <p class="text-sm font-bold text-[#5B6B78] mt-1">照順序打；要先收服這棟 2、3、4 種怪獸才能挑戰。</p>
+              <div id="bvGuards" class="space-y-3 mt-4"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 我的夥伴 -->
+      <div id="gPaneTeam" class="hidden k-card k-tab-panel p-5 md:p-6">
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+          <div>
+            <h3 class="k-display text-2xl">我的夥伴</h3>
+            <p class="text-sm text-[#5B6B78] font-bold mt-0.5">黑色剪影是還沒收服的。</p>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-sm font-bold">出戰隊伍：</span>
+            <span id="teamNow" class="flex gap-2"></span>
+            <button onclick="openTeamPicker(null)" class="k-btn k-btn--yellow k-btn--sm">換隊伍</button>
+          </div>
+        </div>
+        <div id="dexList" class="space-y-6"></div>
+      </div>
+
+      <!-- 商店 -->
+      <div id="gPaneShop" class="hidden k-card k-tab-panel p-5 md:p-6">
+        <h3 class="k-display text-2xl">寶貝球商店</h3>
+        <p class="text-sm text-[#5B6B78] font-bold mt-0.5 mb-5">金幣在所有遊戲都能用。你現在有 <b id="shopCoins">0</b> 金幣。</p>
+        <div class="grid sm:grid-cols-2 gap-5">
+          <div class="k-card k-card--flat p-5 flex flex-col">
+            <div class="flex items-center gap-3"><span class="k-ball text-5xl"></span>
+              <div><div class="k-display text-2xl">普通球</div><div class="font-bold text-[#5B6B78]"><span class="jsPriceN">3</span> 金幣</div></div></div>
+            <p class="text-sm mt-3 leading-relaxed flex-1">用來「初級捕捉」。普通怪獸很好抓，稀有的一半機會，<b>傳說怪獸抓不到</b>。</p>
+            <button onclick="buyBall('n')" class="k-btn k-btn--yellow mt-4 py-2.5 text-lg">買 1 顆</button>
+          </div>
+          <div class="k-card k-card--flat p-5 flex flex-col">
+            <div class="flex items-center gap-3"><span class="k-ball is-super text-5xl"></span>
+              <div><div class="k-display text-2xl">超級球</div><div class="font-bold text-[#5B6B78]"><span class="jsPriceS">10</span> 金幣</div></div></div>
+            <p class="text-sm mt-3 leading-relaxed flex-1">用來「高級捕捉」。普通怪獸一定抓得到，<b>傳說怪獸只有它抓得到</b>。</p>
+            <button onclick="buyBall('s')" class="k-btn k-btn--yellow mt-4 py-2.5 text-lg">買 1 顆</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 排行榜 -->
+      <div id="gPaneRank" class="hidden k-card k-tab-panel p-5 md:p-6">
+        <div class="flex flex-wrap items-end justify-between gap-2 mb-5">
+          <div>
+            <h3 class="k-display text-2xl">排行榜</h3>
+            <p class="text-sm text-[#5B6B78] font-bold mt-0.5">答對率要答滿 20 題才會上榜。</p>
+          </div>
+          <button onclick="renderRank()" class="k-btn k-btn--sm">重新整理</button>
+        </div>
+        <div class="grid md:grid-cols-2 gap-5">
+          <div><h4 class="k-display text-lg mb-2">答對題數</h4><ol id="rankCount" class="space-y-2"></ol></div>
+          <div><h4 class="k-display text-lg mb-2">答對率</h4><ol id="rankAcc" class="space-y-2"></ol></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ==================== 戰鬥畫面 ==================== -->
+<div id="battle" class="hidden fixed inset-0 z-40 overflow-y-auto k-page">
+  <div class="max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3 sm:space-y-4">
+    <div class="grid md:grid-cols-[1.1fr_1fr] gap-3 sm:gap-4">
+      <!-- 對手 -->
+      <div class="k-card p-4 flex items-center gap-3 sm:gap-4">
+        <div id="foeImgWrap" class="k-mon-img w-20 sm:w-28 md:w-36 shrink-0 border-[3px] border-[#1E2A33]"><img id="foeImg" alt="" /></div>
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <span id="foeName" class="k-display text-xl sm:text-2xl"></span>
+            <span id="foeTag" class="k-chip"></span>
+          </div>
+          <div class="mt-3 k-hp"><div id="foeHp" class="k-hp-fill" style="width:100%"></div></div>
+          <div id="foeHpText" class="text-sm font-bold text-[#5B6B78] mt-1"></div>
+        </div>
+      </div>
+      <!-- 我方 -->
+      <div class="k-card p-4">
+        <div id="myHearts" class="flex flex-wrap items-center gap-1 min-h-[1.5rem]"></div>
+        <div id="myTeam" class="flex flex-wrap gap-2 mt-3"></div>
+        <p id="battleHint" class="text-sm font-bold text-[#5B6B78] mt-2"></p>
+      </div>
+    </div>
+
+    <!-- 怪獸變虛弱後：三選一 -->
+    <div id="weakArea" class="hidden k-card p-5 md:p-6">
+      <h3 id="weakTitle" class="k-display text-2xl"></h3>
+      <div class="grid sm:grid-cols-3 gap-3 mt-4">
+        <button id="btnCatchN" onclick="catchWith('n')" class="k-btn flex-col py-3 px-2">
+          <span class="flex items-center gap-2 text-lg"><span class="k-ball"></span>初級捕捉</span>
+          <span id="actN" class="text-xs font-bold text-[#5B6B78]" style="font-family:var(--body)"></span>
+        </button>
+        <button id="btnCatchS" onclick="catchWith('s')" class="k-btn k-btn--yellow flex-col py-3 px-2">
+          <span class="flex items-center gap-2 text-lg"><span class="k-ball is-super"></span>高級捕捉</span>
+          <span id="actS" class="text-xs font-bold" style="font-family:var(--body)"></span>
+        </button>
+        <button id="btnDefeat" onclick="defeatWild()" class="k-btn k-btn--tomato flex-col py-3 px-2">
+          <span class="text-lg">擊敗牠</span>
+          <span id="actD" class="text-xs font-bold" style="font-family:var(--body)"></span>
+        </button>
+      </div>
+      <p id="weakHint" class="text-sm font-bold text-[#5B6B78] mt-3"></p>
+    </div>
+
+    <!-- 題目 -->
+    <div id="qArea" class="k-card p-5 md:p-6">
+      <div id="qPassage" class="hidden k-passage p-4 mb-4">
+        <div id="qPassageTitle" class="k-display text-lg mb-1"></div>
+        <p id="qPassageText" class="leading-8 text-[1.05rem]"></p>
+      </div>
+      <div class="flex items-center justify-between mb-2">
+        <span id="gqType" class="k-chip k-chip--chi"></span>
+      </div>
+      <p id="gqText" class="k-qtext"></p>
+      <div id="gqOpts" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 mt-4 sm:mt-5"></div>
+      <div id="gqFeedback" class="hidden k-feedback mt-5 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <h4 id="gqFbTitle" class="k-display text-xl"></h4>
+            <p id="gqFbText" class="text-sm mt-1 leading-relaxed"></p>
+          </div>
+          <button id="btnNext" onclick="afterAnswer()" class="k-btn k-btn--ink px-6 py-3 text-lg">繼續</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 彈窗：怎麼玩 ==================== -->
+<div id="modalHelp" class="hidden fixed inset-0 k-overlay z-[55] flex items-center justify-center p-4">
+  <div class="k-modal max-w-md w-full p-6 text-center">
+    <div id="helpArt" class="min-h-[7rem] flex items-center justify-center"></div>
+    <h3 id="helpTitle" class="k-display text-2xl mt-3"></h3>
+    <p id="helpText" class="font-bold text-[#33434F] mt-2 leading-relaxed"></p>
+    <div id="helpDots" class="flex justify-center gap-1.5 mt-4"></div>
+    <div class="flex gap-3 mt-5">
+      <button id="helpPrev" onclick="helpStep(-1)" class="k-btn flex-1 py-3">上一頁</button>
+      <button id="helpNext" onclick="helpStep(1)" class="k-btn k-btn--yellow flex-1 py-3 text-lg">下一頁</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 彈窗：結果 ==================== -->
+<div id="modalResult" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-4">
+  <div class="k-modal max-w-sm w-full p-6 text-center animate-pop-in">
+    <div id="resImgWrap" class="hidden w-40 h-40 mx-auto k-mon-img border-[3px] border-[#1E2A33] mb-3"><img id="resImg" alt="" /></div>
+    <h3 id="resTitle" class="k-display text-2xl"></h3>
+    <p id="resText" class="text-sm font-bold text-[#33434F] mt-2 leading-relaxed"></p>
+    <button id="resBtn" onclick="closeResult()" class="mt-5 k-btn k-btn--yellow w-full py-3 text-lg">好</button>
+  </div>
+</div>
+
+<!-- ==================== 彈窗：選隊伍 ==================== -->
+<div id="modalTeam" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-4">
+  <div class="k-modal max-w-2xl w-full p-6 max-h-[90vh] flex flex-col">
+    <h3 class="k-display text-2xl">選 2 隻夥伴出戰</h3>
+    <p id="teamHint" class="text-sm font-bold text-[#5B6B78] mt-1">點一下選擇，再點一下取消。</p>
+    <div id="teamPickGrid" class="grid grid-cols-3 sm:grid-cols-5 gap-3 mt-4 overflow-y-auto p-1"></div>
+    <div class="flex gap-3 mt-5">
+      <button onclick="closeModal('modalTeam')" class="k-btn flex-1 py-3">取消</button>
+      <button id="btnTeamGo" onclick="confirmTeam()" class="k-btn k-btn--tomato flex-1 py-3 text-lg">出戰</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 彈窗：亂猜暫停 ==================== -->
+<div id="modalGuessLock" class="hidden fixed inset-0 bg-[#1E2A33]/85 z-[70] flex items-center justify-center p-4">
+  <div class="k-modal max-w-md w-full p-7 text-center" style="background:#FFF4CC">
+    <div class="k-display text-3xl">先停一下，想一想</div>
+    <p class="font-bold leading-relaxed mt-3">你在很短的時間裡<span class="text-[#D9442F]">連錯了 <span class="jsGuessLimit">3</span> 題</span>，<br/>看起來有點像在猜答案。</p>
+    <p class="text-sm text-[#5B6B78] font-bold mt-2">把剛剛的解析再讀一次，<br/>時間到了再慢慢作答。</p>
+    <div class="mx-auto mt-5 w-32 h-32 rounded-full border-[4px] border-[#1E2A33] bg-white flex flex-col items-center justify-center">
+      <div id="guessLockCountdown" class="k-display text-5xl tabular-nums leading-none">30</div>
+      <div class="text-xs font-bold text-[#5B6B78] mt-1">秒</div>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script src="gaudi-data.js"></script>
+<script src="gaudi-art.js"></script>
+<script src="gaudi.js"></script>
+</body>
+</html>

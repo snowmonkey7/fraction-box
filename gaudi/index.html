@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>遊戲教室</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDK (Compat v10 for single-file direct browser execution) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="theme.css" />
+</head>
+<body class="k-page select-none" data-title-from-site="1">
+<header class="k-board sticky top-0 z-30">
+  <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+    <div class="min-w-0">
+      <h1 class="k-board-title text-2xl md:text-3xl truncate"><span class="jsSiteTitle"></span></h1>
+      <p class="k-board-sub text-xs font-medium mt-0.5">五年級 數學・國語 學習遊戲</p>
+    </div>
+    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <span id="syncBadge" class="k-chip bg-slate-100 text-slate-600">連線檢查中...</span>
+      <a href="teacher.html" id="btnHeaderTeacher" class="k-btn k-btn--chalk k-btn--sm">教師管理端</a>
+      <button id="btnLogout" onclick="indexLogout()" class="hidden k-btn k-btn--tomato k-btn--sm">登出</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-3 sm:px-4 py-5 sm:py-8">
+
+<!-- ==================== 1. 登入畫面 ==================== -->
+  <section id="viewLogin" class="max-w-md mx-auto mt-2">
+    <div class="k-card overflow-hidden">
+      <div class="bg-[#FFC83D] border-b-[3px] border-[#1E2A33] px-6 py-4 flex items-center justify-between">
+        <div>
+          <div class="k-display text-2xl">學生登入</div>
+          <div class="text-sm font-bold opacity-80">輸入座號和密碼，就能開始玩</div>
+        </div>
+        <div class="w-14 h-14 rounded-full border-[3px] border-[#1E2A33] bg-white flex items-center justify-center text-3xl" aria-hidden="true">✏️</div>
+      </div>
+      <div class="p-6 space-y-5">
+        <div>
+          <label for="inputStudentId" class="k-display block text-base mb-1.5">班級座號</label>
+          <input id="inputStudentId" type="text" inputmode="numeric" maxlength="10" placeholder="50101"
+            onkeydown="if(event.key==='Enter') document.getElementById('inputStudentPin').focus()"
+            class="k-input text-center text-3xl tracking-[0.25em] py-3" />
+          <p class="text-xs text-[#5B6B78] font-bold mt-1">共 5 碼：班級 501 ＋ 座號 01</p>
+        </div>
+        <div>
+          <label for="inputStudentPin" class="k-display block text-base mb-1.5">密碼</label>
+          <input id="inputStudentPin" type="password" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="off"
+            onkeydown="if(event.key==='Enter') studentLogin()"
+            class="k-input text-center text-3xl tracking-[0.5em] py-3" />
+          <p class="text-xs text-[#5B6B78] font-bold mt-1">4 位數字，忘記了請問老師</p>
+        </div>
+        <button id="btnStudentLogin" onclick="studentLogin()" class="k-btn k-btn--yellow w-full text-xl py-3.5">登入</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 遊戲目錄 ==================== -->
+  <section id="viewMenu" class="hidden">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-7">
+      <div>
+        <div class="k-nametag text-lg">
+          <span id="menuStuId" class="k-nt-id"></span><span id="menuStuName" class="k-nt-name"></span>
+        </div>
+        <p class="k-display text-xl mt-3">今天想玩哪一個？</p>
+      </div>
+      <div class="text-right">
+        <div class="k-wallet text-2xl"><span class="k-coin text-xl"></span><span id="menuCoins">0</span></div>
+        <p class="text-xs font-bold text-[#5B6B78] mt-1.5">金幣在所有遊戲都能用</p>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-8 md:gap-10">
+      <a href="fraction.html" class="k-game k-game--tilt-l k-slap">
+        <div class="k-game-top k-game-top--math px-6 pt-5 pb-4 flex items-end justify-between">
+          <div class="k-game-icon" aria-hidden="true">🎁</div>
+          <span class="k-chip k-chip--math">數學</span>
+        </div>
+        <div class="px-6 pt-4 pb-6">
+          <h3 class="k-display text-3xl">分數盲盒店</h3>
+          <p class="text-sm font-bold text-[#5B6B78] mt-1">異分母分數的加減</p>
+          <p class="text-sm mt-3 leading-relaxed">答對 3 題抽 1 個盲盒，把 18 款公仔全部收集起來。抽到重複的會變成碎片和金幣。</p>
+          <div class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
+        </div>
+      </a>
+      <a href="gaudi.html" id="gaudiCard" class="k-game k-game--tilt-r k-slap">
+        <div id="gaudiTape" class="k-tape hidden">還沒開放</div>
+        <div class="k-game-top k-game-top--chi px-6 pt-5 pb-4 flex items-end justify-between">
+          <div class="k-game-icon p-1" aria-hidden="true" id="gaudiIcon">🏛️</div>
+          <span class="k-chip k-chip--chi mr-12">國語</span>
+        </div>
+        <div class="px-6 pt-4 pb-6">
+          <h3 class="k-display text-3xl">高第的魔法建築</h3>
+          <p class="text-sm font-bold text-[#5B6B78] mt-1">第七課</p>
+          <p class="text-sm mt-3 leading-relaxed">走進高第的四棟建築，答題收服怪獸，再帶著夥伴挑戰守護精靈。</p>
+          <div id="gaudiBtn" class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
+        </div>
+      </a>
+      <a href="food.html" id="foodCard" class="k-game k-game--tilt-r k-slap">
+        <div id="foodTape" class="k-tape hidden">還沒開放</div>
+        <div class="k-game-top k-game-top--math px-6 pt-5 pb-4 flex items-end justify-between" style="background:#FFD98A">
+          <div class="k-game-icon" aria-hidden="true">🍱</div>
+          <span class="k-chip k-chip--chi mr-12">國語＋數學</span>
+        </div>
+        <div class="px-6 pt-4 pb-6">
+          <h3 class="k-display text-3xl">對稱美食街</h3>
+          <p class="text-sm font-bold text-[#5B6B78] mt-1">第八課・線對稱圖形</p>
+          <p class="text-sm mt-3 leading-relaxed">答題轉扭蛋收集食材，在圖鑑裡發現台灣和世界各地的對稱美食，做出一道道料理。</p>
+          <div id="foodBtn" class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
+        </div>
+      </a>
+    </div>
+  </section>
+</main>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script src="gaudi-art.js"></script>
+<script>
+/* 首頁：登入與遊戲目錄 */
+async function studentLogin() {
+  const rawId = document.getElementById("inputStudentId").value.trim();
+  if (!rawId) {
+    alert("請輸入班級座號，例如 50101！");
+    return;
+  }
+  const loginBtn = document.getElementById("btnStudentLogin");
+  loginBtn.disabled = true;
+  loginBtn.textContent = "連線中…";
+  let stu;
+  try {
+    await dbReady;
+    if (isCloudMode && cloudError) throw cloudError;
+    stu = await fetchStudent(rawId);
+    if (!stu) {
+      alert("找不到此帳號！請確認輸入 5 碼「班級＋座號」（例如 50101），或請老師在教師端建立帳號。");
+      return;
+    }
+    const inputPin = document.getElementById("inputStudentPin").value.trim();
+    if (stu.pin && inputPin !== stu.pin) {
+      alert("密碼錯誤！請再試一次，忘記密碼請找老師。");
+      document.getElementById("inputStudentPin").value = "";
+      document.getElementById("inputStudentPin").focus();
+      return;
+    }
+  } catch (e) {
+    reportError("登入", e);
+    return;
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = "登入";
+  }
+  setSessionStudent(stu.id);
+  showMenu(stu);
+}
+
+function showMenu(stu) {
+  const gi = document.getElementById("gaudiIcon");
+  if (gi && typeof BUILDING_ART !== "undefined") gi.innerHTML = BUILDING_ART.sagrada;
+  document.getElementById("viewLogin").classList.add("hidden");
+  document.getElementById("viewMenu").classList.remove("hidden");
+  document.getElementById("btnLogout").classList.remove("hidden");
+  document.getElementById("menuStuId").textContent = stu.id;
+  document.getElementById("menuStuName").textContent = stu.name || "";
+  document.getElementById("menuCoins").textContent = stu.coins || 0;
+  // 高第遊戲：老師沒開放的同學看到上鎖的卡片
+  const open = getGaudiOpen(stu) > 0;
+  const card = document.getElementById("gaudiCard");
+  card.classList.toggle("k-game--locked", !open);
+  document.getElementById("gaudiTape").classList.toggle("hidden", open);
+  const btn = document.getElementById("gaudiBtn");
+  btn.textContent = open ? "進入遊戲" : "老師還沒開放";
+  btn.classList.toggle("k-btn--yellow", open);
+  btn.style.opacity = open ? "" : ".6";
+  if (open) card.setAttribute("href", "gaudi.html"); else card.removeAttribute("href");
+  card.setAttribute("aria-disabled", open ? "false" : "true");
+  // 對稱美食街
+  const fOpen = (Number(stu.foodOpen) || 0) > 0;
+  const fCard = document.getElementById("foodCard");
+  fCard.classList.toggle("k-game--locked", !fOpen);
+  document.getElementById("foodTape").classList.toggle("hidden", fOpen);
+  const fBtn = document.getElementById("foodBtn");
+  fBtn.textContent = fOpen ? "進入遊戲" : "老師還沒開放";
+  fBtn.classList.toggle("k-btn--yellow", fOpen);
+  fBtn.style.opacity = fOpen ? "" : ".6";
+  if (fOpen) fCard.setAttribute("href", "food.html"); else fCard.removeAttribute("href");
+}
+
+function indexLogout() {
+  clearSessionStudent();
+  document.getElementById("viewMenu").classList.add("hidden");
+  document.getElementById("viewLogin").classList.remove("hidden");
+  document.getElementById("btnLogout").classList.add("hidden");
+  document.getElementById("inputStudentId").value = "";
+  document.getElementById("inputStudentPin").value = "";
+}
+
+// 已經登入過（例如從遊戲按「遊戲目錄」回來）就直接顯示目錄，並更新金幣
+window.onPageReady = async () => {
+  const id = getSessionStudentId();
+  if (!id) return;
+  try {
+    if (isCloudMode && cloudError) throw cloudError;
+    const stu = await fetchStudent(id);
+    if (stu) showMenu(stu); else clearSessionStudent();
+  } catch (e) {
+    reportError("讀取學生資料", e);
+  }
+};
+</script>
+</body>
+</html>
