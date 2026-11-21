@@ -372,7 +372,17 @@ function showReveal() {
 }
 
 /* ---------------- 食材庫 ---------------- */
+function renderUnlockHint() {
+  const ready = FOOD_DISHES.filter(d => !F.found[d.id] && recKeys(d).every(k => F.seen[k]));
+  const el = document.getElementById("unlockHint");
+  el.innerHTML = ready.length
+    ? `<div class="fd-note" style="background:#DFF5E8">🔓 你的食材可以解鎖：
+        ${ready.map(d => `<button onclick="openPot('${d.id}')" class="fd-chip" style="margin:.15rem .1rem">${d.name}</button>`).join("")}
+        <div class="text-xs mt-1 text-[#33434F]">點料理名稱去試做看看，要自己想想需要哪些食材喔！</div></div>`
+    : `<div class="fd-note" style="background:#fff">🔒 你的食材還沒辦法解鎖新的美食，再去扭蛋機轉轉看吧！</div>`;
+}
 function renderPantry() {
+  renderUnlockHint();
   document.getElementById("pantryGrid").innerHTML = ["N", "U", "R"].map(r => {
     const list = FOOD_INGS.filter(i => i.r === r);
     const R = FOOD_RARITY[r];
