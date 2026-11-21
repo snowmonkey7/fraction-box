@@ -62,7 +62,7 @@ window.onPageReady = async () => {
   const sold = tickShop();
   renderAll();
   if (sold) { await save(); showOffline(sold); }
-  setInterval(shopLoop, 15000);
+  setInterval(shopLoop, 5000);
   setInterval(renderCountdown, 1000);
   if (F.pending) resumePending();
   else if (!F.helped) { F.helped = true; save(); openHelp(0); }
@@ -91,7 +91,7 @@ const HELP_PAGES = [
       <p class="mt-2">組合不對<b>不扣食材</b>，還會給你提示。解鎖後才看得到每份要用多少食材。</p>` },
   { t: "🍽️ 做菜和對稱擺盤", b: `<p>選要做幾份，系統會算出要用多少食材。</p>
       <p class="mt-2">最後把配料擺盤：盤子的一半已經擺好，你要把另一半擺成和它<b>對稱</b>。擺對了就是「<b>完美料理</b>」，賣的價錢是 <b>1.5 倍</b>！擺錯也做得出來，只是「普通」。</p>` },
-  { t: "🏪 開店賺家鄉幣", b: `<p>把料理放上<b>菜單</b>，客人每 10 分鐘來買一份，沒上線也會賣（最多累積 8 小時）。每天最多賺 500 家鄉幣。</p>
+  { t: "🏪 開店賺家鄉幣", b: `<p>把料理放上<b>菜單</b>，客人每 30 秒來買一份，沒上線也會賣（最多累積 8 小時）。每天最多賺 500 家鄉幣。</p>
       <p class="mt-2">家鄉幣可以轉<b>金幣扭蛋機</b>（100 家鄉幣一次），也可以買裝潢。裝潢擺得左右對稱，每賣一份人氣再多 1。<b>人氣</b>越高，店就越大！</p>` }
 ];
 let helpPage = 0;
@@ -149,7 +149,6 @@ async function startDraw() {
       const fresh = await fetchStudent(STU.id);   // 金幣可能在別的遊戲用掉了
       if (fresh) STU.coins = fresh.coins || 0;
       if ((STU.coins || 0) < DRAW_COST) { renderTop(); alert(`金幣不夠喔！轉一次要 ${DRAW_COST} 金幣，去其他遊戲答題賺金幣吧。`); return; }
-      if (!confirm(`要用 ${DRAW_COST} 金幣轉一次嗎？\n要先答 3 題，答對 2 題以上才能轉。`)) return;
     }
     if (free) { F.freeDay = todayKey(); F.freeUsed = (F.freeUsed || 0) + 1; }
     const third = Math.random() < 0.5 ? "zh" : "math";
@@ -636,7 +635,7 @@ async function serveDish() {
 /* =========================================================
    我的餐廳：菜單自動販賣、人氣、裝潢
    ========================================================= */
-const SALE_MS = 10 * 60 * 1000;       // 每 10 分鐘賣出 1 份
+const SALE_MS = 30 * 1000;            // 有料理在菜單上時，每 30 秒來一位客人
 const OFFLINE_MAX = 8 * 3600 * 1000;  // 沒上線最多累積 8 小時
 const HOME_CAP = 500;                 // 每天最多賺 500 家鄉幣
 const COIN_COST = 100;
@@ -723,7 +722,7 @@ function renderCountdown() {
   if (!sellable().length) { el.textContent = F.shop.menu.length ? "菜單上的料理都賣完了，快去做菜補貨！" : "把料理放上菜單，客人就會來買。"; return; }
   const left = Math.max(0, F.shop.last + SALE_MS - Date.now());
   const m = Math.floor(left / 60000), sec = Math.floor(left / 1000) % 60;
-  el.textContent = `下一位客人大約 ${m} 分 ${String(sec).padStart(2, "0")} 秒後來`;
+  el.textContent = m ? `下一位客人大約 ${m} 分 ${sec} 秒後來` : `下一位客人大約 ${sec} 秒後來`;
   if (left === 0) shopLoop();
 }
 
@@ -861,7 +860,6 @@ async function buyDecor(id) {
 async function coinDraw() {
   if (busy) return;
   if ((F.home || 0) < COIN_COST) { alert(`家鄉幣不夠喔！轉一次要 ${COIN_COST} 家鄉幣，讓餐廳多賣一些料理吧。`); return; }
-  if (!confirm(`要用 ${COIN_COST} 家鄉幣轉一次金幣扭蛋機嗎？`)) return;
   busy = true;
   let x = Math.random(), got = COIN_TABLE[0][0];
   for (const [c, p] of COIN_TABLE) { if (x < p) { got = c; break; } x -= p; }
