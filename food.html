@@ -106,6 +106,27 @@
     @keyframes fd-steam { 0% { transform: translateY(6px); opacity: 0; } 40% { opacity: .9; } 100% { transform: translateY(-22px); opacity: 0; } }
     .fd-steam span { display: inline-block; width: 8px; height: 26px; border-radius: 8px; background: #C9D5DF; margin: 0 5px; animation: fd-steam 1.4s ease-in-out infinite; }
     .fd-steam span:nth-child(2) { animation-delay: .35s; } .fd-steam span:nth-child(3) { animation-delay: .7s; }
+
+    .fd-home { width: 1.35rem; height: 1.35rem; border-radius: 50%; border: 2.5px solid var(--ink); background: #F7A8C4; display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 900; }
+    .fd-coin-top { background: repeating-linear-gradient(90deg, #DCEBFF 0 22px, #F0F6FF 22px 44px); display: flex; justify-content: center; align-items: center; padding: .5rem; }
+    .fd-mach--coin .fd-coin-top { border-bottom: 3px solid var(--ink); }
+    @media (min-width: 640px) { .fd-mach--coin .fd-coin-top { border-bottom: 0; border-right: 3px solid var(--ink); } }
+    .fd-coin-top img { width: 150px; height: auto; }
+    .fd-stage { position: relative; border: 3px solid var(--ink); border-radius: 18px; overflow: hidden; box-shadow: 5px 5px 0 var(--ink); background: #fff; }
+    .fd-slot { position: absolute; display: flex; align-items: center; justify-content: center; }
+    .fd-slot svg { width: 100%; height: 100%; }
+    .fd-stage.is-edit .fd-slot { outline: 2.5px dashed rgba(30,42,51,.45); outline-offset: -4px; border-radius: 12px; cursor: pointer; }
+    .fd-stage.is-edit .fd-slot:hover { background: rgba(255,200,61,.25); }
+    .fd-stage.is-edit .fd-slot.is-bad { background: rgba(229,72,77,.18); outline-color: #E5484D; }
+    .fd-menu { display: flex; gap: .6rem; align-items: center; border: 2.5px solid var(--ink); border-radius: 16px; background: #fff; padding: .4rem .6rem; }
+    .fd-menu img { width: 3.2rem; height: 3.2rem; object-fit: contain; }
+    .fd-menu.is-empty { border-style: dashed; background: #FFFDF6; justify-content: center; min-height: 4rem; cursor: pointer; font-weight: 900; color: #5B6B78; }
+    .fd-menu.is-out { background: #F1F3F5; }
+    .fd-plate { width: min(340px, 86vw); margin: 0 auto; display: block; touch-action: manipulation; }
+    .fd-plate .spot { cursor: pointer; }
+    .fd-gpick { border: 2.5px solid var(--ink); border-radius: 14px; background: #fff; padding: .25rem .6rem; font-weight: 900; font-size: .85rem; display: inline-flex; align-items: center; gap: .3rem; }
+    .fd-gpick.is-on { background: var(--crayon); box-shadow: 0 3px 0 var(--ink); }
+    .fd-perf { background: linear-gradient(90deg,#FFE27A,#F2A93B); color: var(--ink); }
     @media (prefers-reduced-motion: reduce) { .dz-capsule, .dz-pop, .dz-rays.spin, .dz-shake, .fd-steam span { animation: none !important; } }
   </style>
 </head>
@@ -118,6 +139,7 @@
     </div>
     <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
       <span class="k-wallet text-base bg-white"><span class="k-coin"></span><span id="fCoins">0</span></span>
+      <span class="k-wallet text-base bg-white" title="家鄉幣"><span class="fd-home">鄉</span><span id="fHome">0</span></span>
       <span id="syncBadge" class="k-chip bg-slate-100 text-slate-600">連線檢查中...</span>
       <button onclick="location.href='index.html'" class="k-btn k-btn--chalk k-btn--sm">遊戲目錄</button>
       <button onclick="fLogout()" class="k-btn k-btn--tomato k-btn--sm">登出</button>
@@ -142,9 +164,10 @@
     </div>
 
     <div class="k-tabs pl-3" role="tablist">
-      <button class="k-tab is-active" data-tab="gacha" onclick="switchTab('gacha')">美食扭蛋機</button>
+      <button class="k-tab is-active" data-tab="gacha" onclick="switchTab('gacha')">扭蛋機</button>
       <button class="k-tab" data-tab="pantry" onclick="switchTab('pantry')">食材庫</button>
       <button class="k-tab" data-tab="book" onclick="switchTab('book')">美食圖鑑</button>
+      <button class="k-tab" data-tab="shop" onclick="switchTab('shop')">我的餐廳</button>
       <button class="k-tab" data-tab="help" onclick="openHelp(0)">怎麼玩</button>
     </div>
     <div class="k-card k-tab-panel p-4 md:p-5">
@@ -162,7 +185,7 @@
           </div>
           <div class="space-y-4">
             <div>
-              <h3 class="k-display text-lg mb-2">會轉出什麼？</h3>
+              <h3 class="k-display text-lg mb-2">美食扭蛋機會轉出什麼？</h3>
               <div class="fd-ratebar">
                 <div style="width:70%;background:#C9D5DF"></div><div style="width:25%;background:#8FC1F2;border-left:2.5px solid var(--ink)"></div><div style="width:5%;background:#FFC83D;border-left:2.5px solid var(--ink)"></div>
               </div>
@@ -170,6 +193,17 @@
                 <div><span class="fd-rar" style="background:#8FA3B3">常見</span> 70%<br/><span class="text-[#5B6B78]">一次拿 10 份</span></div>
                 <div><span class="fd-rar" style="background:#4A90E2">少見</span> 25%<br/><span class="text-[#5B6B78]">一次拿 5 份</span></div>
                 <div><span class="fd-rar" style="background:#E0A21B">稀有</span> 5%<br/><span class="text-[#5B6B78]">一次拿 2 份</span></div>
+              </div>
+            </div>
+            <div class="fd-mach fd-mach--coin flex flex-col sm:flex-row">
+              <div class="fd-coin-top"><img src="images/food/machine/coin.webp" alt="金幣扭蛋機" /></div>
+              <div class="p-4 flex-1">
+                <h3 class="k-display text-xl">金幣扭蛋機</h3>
+                <p class="text-sm font-bold text-[#5B6B78] mt-1">用餐廳賺的家鄉幣換金幣，金幣在所有遊戲都能用。</p>
+                <div class="flex flex-wrap gap-1.5 mt-2 text-xs font-black">
+                  <span class="fd-chip !text-xs">2 金幣 50%</span><span class="fd-chip !text-xs">3 金幣 30%</span><span class="fd-chip !text-xs">5 金幣 15%</span><span class="fd-chip !text-xs">7 金幣 4%</span><span class="fd-chip !text-xs" style="background:#FFF6D8">10 金幣 1%</span>
+                </div>
+                <button id="btnCoin" onclick="coinDraw()" class="k-btn k-btn--yellow w-full mt-3 py-2.5"></button>
               </div>
             </div>
             <div>
@@ -196,6 +230,42 @@
         <div id="bookGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"></div>
         <p class="fd-note mt-6">⚠️ 遊戲中的食譜、食材用量和圖片都是為了遊戲設計的，只在遊戲裡使用，和真正的做法不一樣，請勿輕易模仿。想在家下廚時，請和大人一起。</p>
       </div>
+
+      <!-- 我的餐廳 -->
+      <div id="tab_shop" class="hidden">
+        <div class="grid lg:grid-cols-[1fr_300px] gap-5 items-start">
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div>
+                <h3 class="k-display text-2xl" id="shopName"></h3>
+                <p class="text-xs font-bold text-[#5B6B78]" id="shopNext"></p>
+              </div>
+              <div class="flex gap-2">
+                <button id="btnEdit" onclick="toggleEdit()" class="k-btn k-btn--sky k-btn--sm"></button>
+                <button onclick="openDecorShop()" class="k-btn k-btn--yellow k-btn--sm">🛋️ 裝潢店</button>
+              </div>
+            </div>
+            <div class="fd-pity" style="height:16px"><div id="popBar" style="width:0;background:linear-gradient(90deg,#F7A8C4,#E8513F)"></div></div>
+            <div id="shopStage" class="fd-stage mt-3"></div>
+            <div id="symBadge" class="mt-3"></div>
+          </div>
+          <div class="space-y-4">
+            <div class="fd-note" style="background:#fff">
+              <div class="flex justify-between"><span>今天賺的家鄉幣</span><b><span id="homeToday">0</span> / 500</b></div>
+              <div class="fd-pity mt-1"><div id="homeBar" style="width:0"></div></div>
+              <p class="text-xs mt-2 text-[#5B6B78]" id="nextCustomer"></p>
+            </div>
+            <div>
+              <h3 class="k-display text-lg mb-2">菜單</h3>
+              <div id="menuList" class="space-y-2"></div>
+            </div>
+            <div>
+              <h3 class="k-display text-lg mb-2">最近賣出</h3>
+              <div id="saleLog" class="space-y-1 text-sm font-bold"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 </main>
@@ -204,6 +274,7 @@
 <div id="modalHelp" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-3">
   <div class="k-modal max-w-lg w-full p-5 sm:p-6">
     <div id="helpBody"></div>
+    <p class="fd-note mt-4" style="font-size:.78rem">⚠️ 遊戲中的食譜、食材用量和圖片都是為了遊戲設計的，只在遊戲裡使用，和真正的做法不一樣，請勿輕易模仿。想在家下廚時，請和大人一起。</p>
     <div class="flex items-center justify-between mt-5">
       <div id="helpDots" class="flex gap-1.5"></div>
       <div class="flex gap-2">
@@ -235,6 +306,11 @@
   <div class="k-modal max-w-3xl w-full p-4 sm:p-6 max-h-[96vh] overflow-y-auto" id="potBody"></div>
 </div>
 
+<!-- 選擇視窗（菜單、裝潢） -->
+<div id="modalPick" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-3">
+  <div class="k-modal max-w-2xl w-full p-4 sm:p-6 max-h-[94vh] overflow-y-auto" id="pickBody"></div>
+</div>
+
 <!-- 料理資訊／製作 -->
 <div id="modalDish" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-3">
   <div class="k-modal max-w-xl w-full p-5 sm:p-6 max-h-[96vh] overflow-y-auto" id="dishBody"></div>
@@ -244,6 +320,7 @@
 <script src="common.js"></script>
 <script src="food-data.js"></script>
 <script src="food-q.js"></script>
+<script src="food-art.js"></script>
 <script src="sym-q.js"></script>
 <script src="food.js"></script>
 </body>

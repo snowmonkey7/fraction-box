@@ -78,7 +78,7 @@ function exitTeacherView() {
 }
 
 function switchTeacherTab(name) {
-  ["fraction", "gaudi", "dress", "food"].forEach(t => {
+  ["fraction", "gaudi", "food"].forEach(t => {
     document.getElementById("tchPane_" + t).classList.toggle("hidden", t !== name);
     document.getElementById("tchTabBtn_" + t).className = t === name
       ? "px-4 py-2 rounded-xl font-black text-sm bg-slate-800 text-white shadow"
@@ -818,7 +818,8 @@ function renderFoodTeacher(list) {
       <td class="py-2.5 px-3 font-bold">${Number(f.draws) || 0} 次</td>
       <td class="py-2.5 px-3 font-bold">${seen} / ${FOOD_INGS.length}</td>
       <td class="py-2.5 px-3 font-bold">${found} / ${FOOD_DISHES.length}</td>
-      <td class="py-2.5 px-3 font-bold">${made} 份</td>
+      <td class="py-2.5 px-3 font-bold">${made} 份<div class="text-[11px] text-slate-500">完美 ${Number(f.perfects) || 0} / ${Number(f.plates) || 0} 次</div></td>
+      <td class="py-2.5 px-3 font-bold">${typeof SHOP_LEVELS !== "undefined" ? SHOP_LEVELS[[...SHOP_LEVELS.keys()].reverse().find(i => (Number(f.pop) || 0) >= SHOP_LEVELS[i].need) || 0].name : ""}<div class="text-[11px] text-slate-500">人氣 ${Number(f.pop) || 0}・家鄉幣 ${Number(f.homeTotal) || 0}</div></td>
       <td class="py-2.5 px-3 font-bold">${a} 題</td>
       <td class="py-2.5 px-3 font-black ${acc >= 80 ? "text-emerald-600" : (acc >= 60 ? "text-amber-600" : "text-slate-500")}">${a ? acc + "%" : "—"}</td>
       <td class="py-2.5 px-3 font-bold text-slate-600">${worst ? `${foodTypeName(worst[0])}（${worst[1]}）` : "—"}</td>
@@ -829,7 +830,7 @@ function renderFoodTeacher(list) {
   document.getElementById("fdStatAcc").textContent = `${sumA ? Math.round(sumC / sumA * 100) : 0}%`;
   document.getElementById("fdStatSubj").textContent = sumA ? `${zhWrong}／${mWrong} 題` : "—";
   document.getElementById("fdStatDraws").textContent = `${draws} 次`;
-  document.getElementById("fdTableBody").innerHTML = rows.join("") || `<tr><td colspan="11" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
+  document.getElementById("fdTableBody").innerHTML = rows.join("") || `<tr><td colspan="12" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
   const types = Object.entries(wrongT).sort((x, y) => y[1] - x[1]);
   const max = types.length ? types[0][1] : 1;
   document.getElementById("fdWrongTypes").innerHTML = types.length ? types.map(([k, n]) => `
@@ -875,7 +876,7 @@ async function resetFoodProgress() {
   const ids = fdCheckedIds();
   if (!ids.length) { alert("請先勾選要重置的同學"); return; }
   const names = ids.map(id => (cachedAllStudents.find(s => s.id === id) || {}).name || id).join("、");
-  if (!confirm(`確定要重置這 ${ids.length} 位同學的美食街進度嗎？\n${names}\n\n會清空：食材、發現的食譜、做好的料理、扭蛋與答題紀錄。金幣不會動。\n開放設定會保留。這個動作不能復原。`)) return;
+  if (!confirm(`確定要重置這 ${ids.length} 位同學的美食街進度嗎？\n${names}\n\n會清空：食材、發現的食譜、做好的料理、餐廳（人氣、家鄉幣、裝潢）、扭蛋與答題紀錄。已經換到的金幣不會動。\n開放設定會保留。這個動作不能復原。`)) return;
   const msg = document.getElementById("fdBulkMsg");
   msg.textContent = "重置中…";
   try {
