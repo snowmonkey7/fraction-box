@@ -135,6 +135,11 @@ function loadNextQuestion() {
   document.getElementById("qNumberTag").textContent = `題號 #${chosen.id}（剩餘未做新題：${Math.max(0, QUESTION_BANK.length - answeredSet.size)} 題）`;
 
   const opSymbol = chosen.op === "+" ? "＋" : "－";
+  document.getElementById("qPrompt").textContent = chosen.text ? "讀讀題目，答案是多少？" : "算算看，答案是多少？";
+  if (chosen.text) {   // 應用題：題目文字裡的 {A}、{B} 換成分數
+    const t = chosen.text.replace("{A}", formatFracHTML(chosen.a)).replace("{B}", formatFracHTML(chosen.b));
+    document.getElementById("qExpression").innerHTML = `<div class="word-q">${t}</div>`;
+  } else
   document.getElementById("qExpression").innerHTML = `
     <div class="frac-expr">
       ${formatFracHTML(chosen.a)}
@@ -165,7 +170,7 @@ function loadNextQuestion() {
     btn.className = "opt-btn k-opt";
     btn.innerHTML = `
       <span class="k-opt-key">${labels[idx]}</span>
-      <div class="text-2xl font-black text-slate-800">${formatFracHTML(opt.frac)}</div>
+      <div class="text-2xl font-black text-slate-800">${formatFracHTML(opt.frac)}${chosen.unit ? `<span class="text-base ml-1">${chosen.unit}</span>` : ""}</div>
     `;
     if (opt.isCorrect) btn.dataset.correct = "1";
     btn.onclick = () => handleAnswerSelect(opt, btn);

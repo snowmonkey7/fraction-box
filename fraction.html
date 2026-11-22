@@ -47,6 +47,11 @@
       padding: 2px 5px 0 5px;
       text-align: center;
     }
+    /* 應用題：文字和分數排在同一行 */
+    .word-q { font-size: 1.3rem; line-height: 2.4; text-align: left; font-weight: 700; max-width: 40em; }
+    .word-q .frac { font-size: 1.05em; margin: 0 .15em; }
+    .word-q .mixed-num { margin: 0 .15em; }
+    @media (min-width: 768px) { .word-q { font-size: 1.5rem; } }
     /* 盲盒晃動與發光動畫 */
     @keyframes boxShake {
       0%, 100% { transform: rotate(0deg) scale(1); }
@@ -165,7 +170,7 @@
           <span id="qNumberTag" class="text-sm font-bold text-[#5B6B78]">題號 #1</span>
         </div>
         <div class="k-question px-5 py-7 md:py-9 text-center">
-          <p class="text-sm font-bold opacity-80 mb-3">算算看，答案是多少？</p>
+          <p id="qPrompt" class="text-sm font-bold opacity-80 mb-3">算算看，答案是多少？</p>
           <div id="qExpression" class="text-3xl md:text-4xl font-black flex justify-center items-center py-1"></div>
         </div>
         <div id="qOptionsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6"></div>
