@@ -1,6 +1,6 @@
 /* 對稱美食街：食材與料理資料 */
 const FOOD_IMG = 'images/food/';
-const FOOD_RARITY = { N: { name: '常見', color: '#8FA3B3', give: 10 }, U: { name: '少見', color: '#4A90E2', give: 5 }, R: { name: '稀有', color: '#E0A21B', give: 2 } };
+const FOOD_RARITY = { N: { name: '常見', color: '#8FA3B3', give: 30 }, U: { name: '少見', color: '#4A90E2', give: 15 }, R: { name: '稀有', color: '#E0A21B', give: 6 } };
 const FOOD_INGS = [
   { id: 'i01', name: '米', r: 'N' },
   { id: 'i02', name: '麵粉', r: 'N' },
