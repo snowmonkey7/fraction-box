@@ -454,7 +454,21 @@ function pickQuestion(bId) {
   // 優先出還沒答對過的題目
   const notYet = pool.filter(q => !G.correctIds.includes(q.id));
   const src = notYet.length ? notYet : pool;
-  return src[Math.floor(Math.random() * src.length)];
+  return pickByFamily(src);
+}
+// 先依「題型大類」抽，再從那一類裡抽一題，避免字音字形題出現太多次
+const Q_FAMILY = { "生字注音": "zi", "生字": "zi", "形近字": "zi", "用字": "zi", "多音字": "zi", "字義": "zi", "部首": "zi",
+  "語詞": "ci", "選詞填空": "ci", "成語": "cheng", "課文內容": "ke", "修辭": "xiu", "句型": "xiu",
+  "閱讀測驗": "yue", "素養題": "su", "國學常識": "guo" };
+const FAMILY_W = { zi: 3, ci: 2, cheng: 1, ke: 2, xiu: 1.2, yue: 1, su: 0.8, guo: 0.5 };
+function pickByFamily(list) {
+  const groups = {};
+  list.forEach(q => { const f = Q_FAMILY[q.t] || "other"; (groups[f] = groups[f] || []).push(q); });
+  const fams = Object.keys(groups);
+  let x = Math.random() * fams.reduce((s, f) => s + (FAMILY_W[f] || 1), 0);
+  for (const f of fams) { x -= FAMILY_W[f] || 1; if (x <= 0) return groups[f][Math.floor(Math.random() * groups[f].length)]; }
+  const last = groups[fams[fams.length - 1]];
+  return last[Math.floor(Math.random() * last.length)];
 }
 
 function shuffle(arr) {

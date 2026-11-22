@@ -1,6 +1,6 @@
 /* =========================================================
-   換裝扭蛋｜線對稱題庫（康軒五上 第七單元 線對稱圖形）
-   題目每次隨機組合產生，分成 6 種題型：
+   對稱美食街｜線對稱題庫（康軒五上 第七單元 線對稱圖形）
+   題目每次隨機組合產生，分成 11 種題型：
    1. 找線對稱圖形　2. 數對稱軸　3. 虛線是不是對稱軸
    4. 對稱點／對稱邊／對稱角　5. 線對稱的性質　6. 方格上畫完另一半（操作題）
    ========================================================= */
@@ -214,7 +214,7 @@ function qProperty() {
   if (t === 0) {
     const d = 2 + rnd(8);
     const right = d * 2 + " 公分";
-    const opts = shuffle([right, d + " 公分", d * 4 + " 公分", d + 2 + " 公分"]);
+    const opts = shuffle([right, d + " 公分", d * 4 + " 公分", d * 2 + 2 + " 公分"]);
     return { key: "prop:dist", type: "choice",
       prompt: `線對稱圖形中，A 點和 B 點是對稱點。A 點到對稱軸的距離是 ${d} 公分，A 點和 B 點相距幾公分？`,
       options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
@@ -232,7 +232,7 @@ function qProperty() {
   if (t === 2) {
     const len = 3 + rnd(12);
     const right = len + " 公分";
-    const opts = shuffle([right, len * 2 + " 公分", (len + 3) + " 公分", Math.max(1, len - 2) + " 公分"]);
+    const opts = shuffle([right, len * 2 + " 公分", (len + 1) + " 公分", Math.max(1, len - 2) + " 公分"]);
     return { key: "prop:edge", type: "choice",
       prompt: `線對稱圖形中，邊 AB 和邊 EF 是對稱邊。邊 AB 長 ${len} 公分，邊 EF 長幾公分？`,
       options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
@@ -299,9 +299,143 @@ function qGrid() {
   };
 }
 
+
+// 7. 正多邊形和其他圖形的對稱軸（課本 7-1 第 7、8 題）
+function qPolyAxes() {
+  const t = rnd(3);
+  if (t < 2) {
+    const n = 3 + rnd(8);   // 正三角形～正十邊形
+    const NAME = { 3: "正三角形", 4: "正方形", 5: "正五邊形", 6: "正六邊形", 7: "正七邊形", 8: "正八邊形", 9: "正九邊形", 10: "正十邊形" };
+    const right = n + " 條";
+    const pool = [n - 1, n + 1, n * 2, 1, 2, Math.max(1, n - 2)].filter(x => x > 0 && x !== n).map(x => x + " 條");
+    const opts = shuffle([right, ...sample([...new Set(pool)], 3)]);
+    return { key: "poly:" + n, type: "choice", prompt: `<b>${NAME[n]}</b>有幾條對稱軸？`,
+      options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
+      explain: `正多邊形有幾條邊，就有幾條對稱軸。${NAME[n]}有 ${n} 條邊，所以有 ${n} 條對稱軸。` };
+  }
+  const cases = [
+    { name: "菱形", a: "2 條", e: "菱形的兩條對角線都是對稱軸，共 2 條。" },
+    { name: "平行四邊形", a: "沒有對稱軸", e: "平行四邊形不管怎麼對摺都不會完全重合，不是線對稱圖形。很多人以為兩條對角線是對稱軸，其實不是。" },
+    { name: "扇形", a: "1 條", e: "扇形沿著通過圓心、把弧平分的直線對摺，兩邊會重合，有 1 條對稱軸。" },
+    { name: "圓形", a: "無數條", e: "通過圓心的直線都是對稱軸，所以有無數條。" },
+    { name: "長方形", a: "2 條", e: "長方形沿著兩條中線對摺都會重合，對角線不是對稱軸，共 2 條。" },
+    { name: "等腰三角形", a: "1 條", e: "等腰三角形只有 1 條對稱軸，通過頂點和底邊中點。" },
+    { name: "箏形", a: "1 條", e: "箏形只有 1 條對稱軸。" },
+    { name: "等腰梯形", a: "1 條", e: "等腰梯形只有 1 條對稱軸，通過上下底的中點。" }
+  ];
+  const c = pick(cases);
+  const all = ["沒有對稱軸", "1 條", "2 條", "4 條", "無數條"];
+  const opts = shuffle([c.a, ...sample(all.filter(x => x !== c.a), 3)]);
+  return { key: "poly:" + c.name, type: "choice", prompt: `<b>${c.name}</b>有幾條對稱軸？`,
+    options: opts.map(x => ({ text: x })), answer: opts.indexOf(c.a), explain: c.e };
+}
+
+// 8. 是非題（課本 練習百分百、重點整理）
+const TF_FACTS = [
+  ["線對稱的圖形都只有一條對稱軸。", false, "正方形有 4 條、圓形有無數條對稱軸，所以不一定只有一條。"],
+  ["線對稱圖形的對稱邊一樣長。", true, "對摺後對稱邊會完全疊合，所以一樣長。"],
+  ["將線對稱圖形的兩個對稱點連起來，它會和對稱軸垂直。", true, "對稱點的連線和對稱軸互相垂直。"],
+  ["線對稱圖形的對稱角一樣大。", true, "對摺後對稱角會完全疊合，所以一樣大。"],
+  ["平行四邊形的對角線是它的對稱軸。", false, "平行四邊形沿對角線對摺不會重合，它不是線對稱圖形。"],
+  ["正方形有 4 條對稱軸。", true, "正方形有 2 條中線和 2 條對角線，共 4 條對稱軸。"],
+  ["長方形的對角線也是對稱軸。", false, "長方形只有 2 條對稱軸（兩條中線），對角線不是。"],
+  ["兩個對稱點到對稱軸的距離相等。", true, "對稱軸會把對稱點的連線平分。"],
+  ["把紙對摺後剪下的圖形，打開後一定是線對稱圖形。", true, "摺痕就是對稱軸，兩邊形狀完全一樣。"],
+  ["對摺後兩邊能完全疊合的圖形，叫做線對稱圖形。", true, "這就是線對稱圖形的意思，摺線就是對稱軸。"],
+  ["圓形只有 2 條對稱軸。", false, "通過圓心的直線都是對稱軸，圓形有無數條。"],
+  ["正五邊形有 5 條對稱軸。", true, "正多邊形有幾條邊就有幾條對稱軸。"],
+  ["等腰三角形的兩個底角一樣大。", true, "等腰三角形的兩個底角是對稱角，所以一樣大。"],
+  ["線對稱圖形中，對稱點的連線會被對稱軸平分。", true, "兩個對稱點到對稱軸的距離一樣，所以連線被平分。"],
+  ["菱形有 4 條對稱軸。", false, "菱形只有 2 條對稱軸，就是它的兩條對角線。"],
+  ["對稱軸一定是直的。", true, "對稱軸是對摺的摺線，一定是一條直線。"]
+];
+function qTF() {
+  const f = pick(TF_FACTS);
+  return { key: "tf:" + TF_FACTS.indexOf(f), type: "choice", prompt: `下面這句話對不對？<br/>「${f[0]}」`,
+    options: [{ text: "對 ○" }, { text: "錯 ×" }], answer: f[1] ? 0 : 1, explain: f[2] };
+}
+
+// 9. 方格紙、方格點上的對稱點（課本 7-3）
+function qGridDist() {
+  const d = 1 + rnd(6), t = rnd(3);
+  if (t === 0) {
+    const right = d + " 格";
+    const opts = shuffle([right, ...sample([...new Set([d + 1, d * 2, Math.max(1, d - 1), d + 2])].filter(x => x !== d).map(x => x + " 格"), 3)]);
+    return { key: "dist:1", type: "choice",
+      prompt: `在方格紙上，點 A 和對稱軸相距 ${d} 格。點 A 的對稱點 F，應該在對稱軸另一邊的幾格處？`,
+      options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
+      explain: `對稱點到對稱軸的距離相等，所以點 F 也要和對稱軸相距 ${d} 格。` };
+  }
+  if (t === 1) {
+    const right = d * 2 + " 格";
+    const opts = shuffle([right, ...sample([...new Set([d, d * 2 + 1, d * 3, d + 1])].filter(x => x !== d * 2).map(x => x + " 格"), 3)]);
+    return { key: "dist:2", type: "choice",
+      prompt: `在方格紙上，點 B 和對稱軸相距 ${d} 格。點 B 和它的對稱點相距幾格？`,
+      options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
+      explain: `兩個對稱點各離對稱軸 ${d} 格，加起來是 ${d} + ${d} = ${d * 2} 格。` };
+  }
+  const total = 2 * d;
+  const right = d + " 格";
+  const opts = shuffle([right, ...sample([...new Set([total, d + 1, Math.max(1, d - 1), total + 1])].filter(x => x !== d).map(x => x + " 格"), 3)]);
+  return { key: "dist:3", type: "choice",
+    prompt: `在方格點上，點 C 和它的對稱點 G 相距 ${total} 格，而且 CG 和對稱軸垂直。點 C 和對稱軸相距幾格？`,
+    options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
+    explain: `對稱軸把 CG 平分，${total} ÷ 2 = ${d} 格。` };
+}
+
+// 10. 用對稱邊算周長（課本 7-2 做做看）
+function qPerimeter() {
+  const a = 5 + rnd(20), b = 5 + rnd(20), c = 4 + rnd(16);
+  if (Math.random() < 0.5) {
+    const P = 2 * (a + b + c);
+    const right = P + " 公分";
+    const opts = shuffle([right, (a + b + c) + " 公分", (P + a) + " 公分", (2 * (a + b) + c) + " 公分"]);
+    return { key: "peri:1", type: "choice",
+      prompt: `一個六邊形是線對稱圖形，對稱軸通過兩個頂點。它的三組對稱邊，一邊分別長 ${a} 公分、${b} 公分、${c} 公分。這個六邊形的周長是多少？`,
+      options: [...new Set(opts)].map(x => ({ text: x })), answer: [...new Set(opts)].indexOf(right),
+      explain: `對稱邊一樣長，每一組有 2 條邊：(${a} + ${b} + ${c}) × 2 = ${P} 公分。` };
+  }
+  const P = 2 * (a + b + c);
+  const right = c + " 公分";
+  const opts = shuffle([right, ...sample([...new Set([2 * c, c + 2, Math.max(1, c - 2), a + b])].filter(x => x !== c).map(x => x + " 公分"), 3)]);
+  return { key: "peri:2", type: "choice",
+    prompt: `一個六邊形是線對稱圖形，周長 ${P} 公分。它有三組對稱邊，其中兩組的邊長是 ${a} 公分和 ${b} 公分。第三組的一條邊長幾公分？`,
+    options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
+    explain: `${P} ÷ 2 = ${a + b + c}，${a + b + c} − ${a} − ${b} = ${c} 公分。` };
+}
+
+// 11. 等腰三角形與對稱角（課本 數學想一想）
+function qTriAngle() {
+  const t = rnd(3);
+  const base = pick([30, 35, 40, 45, 50, 55, 60, 65, 70, 75]);
+  if (t === 0) {
+    const right = base + " 度";
+    const opts = shuffle([right, ...sample([...new Set([180 - base, 90 - base, 180 - 2 * base, base + 10])].filter(x => x > 0 && x !== base).map(x => x + " 度"), 3)]);
+    return { key: "tri:1", type: "choice",
+      prompt: `三角形 ABC 是線對稱圖形，對稱軸通過頂點 A。∠B 是 ${base} 度，∠C 是幾度？`,
+      options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
+      explain: `∠B 和 ∠C 是對稱角，對稱角一樣大，所以 ∠C = ${base} 度。` };
+  }
+  if (t === 1) {
+    const apex = 180 - 2 * base;
+    const right = apex + " 度";
+    const opts = shuffle([right, ...sample([base, 180 - base, 90 - base > 0 ? 90 - base : base + 20, apex + 10].filter(x => x > 0 && x !== apex).map(x => x + " 度"), 3)]);
+    return { key: "tri:2", type: "choice",
+      prompt: `三角形 ABC 是線對稱圖形，對稱軸通過頂點 A。∠B 是 ${base} 度，∠A 是幾度？`,
+      options: [...new Set(opts)].map(x => ({ text: x })), answer: [...new Set(opts)].indexOf(right),
+      explain: `∠C 和 ∠B 一樣是 ${base} 度。三角形三個角加起來是 180 度：180 − ${base} − ${base} = ${apex} 度。` };
+  }
+  const opts = shuffle(["90 度", "45 度", "60 度", "180 度"]);
+  return { key: "tri:3", type: "choice",
+    prompt: "把等腰三角形 ABC 沿著對稱軸對摺，對稱軸和底邊 BC 相交形成 ∠1 和 ∠2。已知 ∠1 = ∠2，∠1 + ∠2 = 180 度，∠1 是幾度？",
+    options: opts.map(x => ({ text: x })), answer: opts.indexOf("90 度"),
+    explain: "∠1 和 ∠2 一樣大，加起來是 180 度，所以各是 90 度，對稱軸和底邊互相垂直。" };
+}
+
 const Q_MAKERS = [
   { f: qFindSym, w: 3 }, { f: qCountAxes, w: 2 }, { f: qIsAxis, w: 2 },
-  { f: qPairs, w: 3 }, { f: qProperty, w: 3 }, { f: qGrid, w: 2 }
+  { f: qPairs, w: 3 }, { f: qProperty, w: 3 }, { f: qGrid, w: 2 },
+  { f: qPolyAxes, w: 2 }, { f: qTF, w: 2 }, { f: qGridDist, w: 2 }, { f: qPerimeter, w: 2 }, { f: qTriAngle, w: 2 }
 ];
 // 產生一組題目（題型盡量不重複）
 function makeQuestionSet(n = 3) {
@@ -318,4 +452,5 @@ function makeQuestionSet(n = 3) {
   }
   return out;
 }
-const Q_TYPE_NAMES = { find: "找線對稱圖形", axes: "數對稱軸", isAxis: "判斷對稱軸", pair: "對稱點、邊、角", prop: "線對稱的性質", grid: "方格畫另一半" };
+const Q_TYPE_NAMES = { find: "找線對稱圖形", axes: "數對稱軸", isAxis: "判斷對稱軸", pair: "對稱點、邊、角", prop: "線對稱的性質", grid: "方格畫另一半",
+  poly: "多邊形的對稱軸", tf: "觀念是非題", dist: "方格上的對稱點", peri: "對稱邊與周長", tri: "等腰三角形的角" };

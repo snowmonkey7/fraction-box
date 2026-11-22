@@ -780,7 +780,7 @@ async function giveCoinsBulkDress() {
 
 
 /* ---------- 對稱美食街 ---------- */
-const FOOD_MATH_TYPES = { find: "找線對稱圖形", axes: "數對稱軸", isAxis: "判斷對稱軸", pair: "對稱點、邊、角", prop: "線對稱的性質", grid: "方格畫另一半" };
+const FOOD_MATH_TYPES = { find: "找線對稱圖形", axes: "數對稱軸", isAxis: "判斷對稱軸", pair: "對稱點、邊、角", prop: "線對稱的性質", grid: "方格畫另一半", poly: "多邊形的對稱軸", tf: "觀念是非題", dist: "方格上的對稱點", peri: "對稱邊與周長", tri: "等腰三角形的角" };
 function foodTypeName(k) {
   if (k.startsWith("z_")) return "國語・" + ((typeof ZH_TYPE_NAMES !== "undefined" && ZH_TYPE_NAMES[k.slice(2)]) || k.slice(2));
   if (k.startsWith("m_")) return "數學・" + (FOOD_MATH_TYPES[k.slice(2)] || k.slice(2));

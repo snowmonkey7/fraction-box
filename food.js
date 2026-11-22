@@ -170,14 +170,21 @@ function makeZhQuestion() {
   const seen = new Set(F.zhSeen);
   let pool = ZH_BANK.filter(q => !seen.has(q.id));
   if (pool.length < 10) { F.zhSeen = []; pool = ZH_BANK.slice(); }
-  const src = pick(pool);
+  // 先依題型抽（字音字形題很多，不讓它出現太頻繁），再從那一類裡抽一題
+  const W = { zi: 3, ci: 2, cheng: 1, ke: 2, xiu: 1.2, yue: 1, su: 0.8, guo: 0.5 };
+  const groups = {};
+  pool.forEach(q => { (groups[q.t] = groups[q.t] || []).push(q); });
+  const types = Object.keys(groups);
+  let x = Math.random() * types.reduce((s, t) => s + (W[t] || 1), 0), tp = types[types.length - 1];
+  for (const t of types) { x -= W[t] || 1; if (x <= 0) { tp = t; break; } }
+  const src = pick(groups[tp]);
   F.zhSeen.push(src.id); F.zhSeen = F.zhSeen.slice(-80);
   const order = shuffle([0, 1, 2, 3]);
   return {
     subj: "zh", key: "z_" + src.t, type: "choice",
     prompt: src.q, passage: src.p ? ZH_PASSAGES[src.p] : null,
     options: order.map(i => ({ text: src.o[i] })), answer: order.indexOf(src.a),
-    explain: `正確答案是「${src.o[src.a]}」。`
+    explain: `正確答案是「${src.o[src.a]}」。${src.e ? "<br/>" + src.e : ""}`
   };
 }
 function makeMathQuestion() {
