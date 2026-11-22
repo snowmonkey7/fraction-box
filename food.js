@@ -364,7 +364,8 @@ function showReveal() {
     <p class="mt-1"><span class="fd-rar" style="background:${R.color};font-size:.85rem;padding:.1rem .6rem">${R.name}</span>
       <span class="text-sm font-bold text-[#5B6B78] ml-1">現在有 ${F.inv[ing.id]} 份</span></p>
     ${canTry ? `<p class="text-sm font-bold text-[#5B6B78] mt-2">圖鑑裡還有料理會用到它，去試做看看吧！</p>` : ""}
-    <div class="flex justify-center gap-2 mt-5">
+    <div class="flex flex-wrap justify-center gap-2 mt-5">
+      <button onclick="closeModal('modalDraw');switchTab('pantry')" class="k-btn k-btn--leaf px-5 py-2">去食材庫</button>
       <button onclick="closeModal('modalDraw');switchTab('book')" class="k-btn k-btn--sky px-5 py-2">去圖鑑</button>
       <button onclick="closeModal('modalDraw')" class="k-btn k-btn--yellow px-6 py-2">收下</button>
     </div>`;
@@ -531,9 +532,18 @@ function renderDish(isNew = false) {
    12 個位置圍成一圈，0 號在正上方、順時針
    ========================================================= */
 let PLATE = null;
+// items = { 料理id: 份數 }；一道或批量製作都用同一次擺盤
+function canMakeAll(items) {
+  const need = {};
+  Object.entries(items).forEach(([id, n]) => { const d = dishById(id); recKeys(d).forEach(k => { need[k] = (need[k] || 0) + d.rec[k] * n; }); });
+  return Object.keys(need).every(k => (F.inv[k] || 0) >= need[k]);
+}
 function startPlating() {
   const d = dishById(COOK.id);
   if (maxServings(d) < COOK.n) { renderDish(); return; }
+  beginPlate({ [d.id]: COOK.n }, false);
+}
+function beginPlate(items, batch) {
   const axis = Math.random() < 0.5 ? "v" : "h";
   const mir = axis === "v" ? (i => (12 - i) % 12) : (i => (18 - i) % 12);
   const given = axis === "v" ? [7, 8, 9, 10, 11] : [10, 11, 0, 1, 2];
@@ -542,7 +552,9 @@ function startPlating() {
   const types = sample(GARNISH.map(x => x.id), 2 + rnd(2));
   sample(given, 3).forEach(i => { g[i] = pick(types); });
   if (Math.random() < 0.5) g[pick(onAxis)] = pick(types);   // 有時候對稱軸上也放一個
-  PLATE = { d: d.id, n: COOK.n, axis, mir, given: new Set(given), g, tool: types[0], done: false, wrong: [] };
+  const ids = Object.keys(items);
+  PLATE = { items, batch, d: ids[0], axis, mir, given: new Set(given), g, tool: types[0], done: false, wrong: [] };
+  if (batch) document.getElementById("modalDish").classList.remove("hidden");
   renderPlate();
 }
 function plateXY(i, R) { const a = i * Math.PI / 6; return [160 + R * Math.sin(a), 160 - R * Math.cos(a)]; }
@@ -573,11 +585,17 @@ function plateSvg() {
     ${axisLine}${spots}
   </svg>`;
 }
+function plateTitle() {
+  const e = Object.entries(PLATE.items);
+  if (!PLATE.batch) return `${dishById(e[0][0]).name} × ${e[0][1]}`;
+  return `一次做 ${e.length} 道料理，共 ${e.reduce((a, x) => a + x[1], 0)} 份`;
+}
 function renderPlate() {
-  const P = PLATE, d = dishById(P.d);
+  const P = PLATE;
   const sideName = P.axis === "v" ? ["左", "右"] : ["上", "下"];
   document.getElementById("dishBody").innerHTML = `
-    <h2 class="k-display text-2xl text-center">對稱擺盤：${d.name} × ${P.n}</h2>
+    <h2 class="k-display text-2xl text-center">對稱擺盤：${plateTitle()}</h2>
+    ${P.batch ? `<p class="text-center text-xs font-bold text-[#5B6B78]">這次擺盤的結果，會套用到這一批的全部料理。</p>` : ""}
     <p class="text-center text-sm font-bold text-[#5B6B78] mt-1">${sideName[0]}半邊（黃色）已經擺好了。紅色虛線是對稱軸，請把${sideName[1]}半邊擺成和它對稱。</p>
     <div class="mt-3">${plateSvg()}</div>
     ${P.done ? "" : `
@@ -588,7 +606,7 @@ function renderPlate() {
     </div>
     <p class="text-center text-xs font-bold text-[#5B6B78] mt-2">先選配料，再點盤子上的虛線圈。點同一種配料可以拿掉。</p>
     <div class="flex justify-center gap-2 mt-4">
-      <button onclick="renderDish()" class="k-btn px-5 py-2" style="background:#fff">上一步</button>
+      <button onclick="${P.batch ? "closeModal('modalDish');openBatch(true)" : "renderDish()"}" class="k-btn px-5 py-2" style="background:#fff">上一步</button>
       <button onclick="serveDish()" class="k-btn k-btn--yellow px-7 py-2">擺好了，上菜！</button>
     </div>`}`;
 }
@@ -600,36 +618,108 @@ function plateTap(i) {
 }
 async function serveDish() {
   if (busy || !PLATE || PLATE.done) return;
-  const P = PLATE, d = dishById(P.d), n = P.n;
-  if (maxServings(d) < n) { alert("食材不夠了，請重新選份數。"); renderDish(); return; }
+  const P = PLATE, items = P.items;
+  if (!canMakeAll(items)) { alert("食材不夠了，請重新選份數。"); if (P.batch) { closeModal("modalDish"); openBatch(true); } else renderDish(); return; }
   const wrong = [];
   for (let i = 0; i < 12; i++) if (!P.given.has(i) && P.g[i] !== P.g[P.mir(i)]) wrong.push(i);
   const ok = wrong.length === 0;
   busy = true;
-  recKeys(d).forEach(k => { F.inv[k] = (F.inv[k] || 0) - d.rec[k] * n; });
-  F.made[d.id] = (F.made[d.id] || 0) + n;
-  if (ok) F.perf[d.id] = (F.perf[d.id] || 0) + n; else F.stock[d.id] = (F.stock[d.id] || 0) + n;
+  Object.entries(items).forEach(([id, n]) => {
+    const d = dishById(id);
+    recKeys(d).forEach(k => { F.inv[k] = (F.inv[k] || 0) - d.rec[k] * n; });
+    F.made[id] = (F.made[id] || 0) + n;
+    if (ok) F.perf[id] = (F.perf[id] || 0) + n; else F.stock[id] = (F.stock[id] || 0) + n;
+  });
   F.plates = (F.plates || 0) + 1; if (ok) F.perfects = (F.perfects || 0) + 1;
   const saved = await save();
   busy = false;
   if (!saved) return;
   P.done = true; P.wrong = wrong;
   renderPantry(); renderBook(); renderShop();
-  const price = ok ? Math.floor(d.price * 1.5) : d.price;
-  const onMenu = F.shop.menu.includes(d.id);
-  const canMenu = !onMenu && F.shop.menu.length < shopLevel().menu;
+  const ids = Object.keys(items);
+  const free = shopLevel().menu - F.shop.menu.length;
+  const toMenu = ids.filter(id => !F.shop.menu.includes(id)).slice(0, Math.max(0, free));
+  const list = ids.map(id => { const d = dishById(id); return `<span class="fd-chip" style="margin:.15rem">${d.name} × ${items[id]}・每份 ${ok ? Math.floor(d.price * 1.5) : d.price}</span>`; }).join("");
   document.getElementById("dishBody").innerHTML = `
     <div class="text-center">
-      ${ok ? `<p class="k-display text-3xl">✨ 完美料理！</p><p class="font-bold text-[#5B6B78] mt-1">配料完全對稱，每份可以賣 ${price} 家鄉幣！</p>`
-           : `<p class="k-display text-3xl">做好了！</p><p class="font-bold text-[#5B6B78] mt-1">有 ${wrong.length} 個位置沒有對稱（紅圈），這次是普通料理，每份賣 ${price} 家鄉幣。</p>`}
+      ${ok ? `<p class="k-display text-3xl">✨ 完美料理！</p><p class="font-bold text-[#5B6B78] mt-1">配料完全對稱，賣的價錢是 1.5 倍！</p>`
+           : `<p class="k-display text-3xl">做好了！</p><p class="font-bold text-[#5B6B78] mt-1">有 ${wrong.length} 個位置沒有對稱（紅圈），這次是普通料理。</p>`}
       <div class="mt-3">${plateSvg()}</div>
-      <p class="k-display text-xl mt-2">${d.name} × ${n} ${ok ? `<span class="fd-rar fd-perf">完美</span>` : ""}</p>
+      <div class="mt-2">${list} ${ok ? `<span class="fd-rar fd-perf">完美</span>` : ""}</div>
       <div class="flex flex-wrap justify-center gap-2 mt-4">
-        ${canMenu ? `<button onclick="menuAdd('${d.id}');closeModal('modalDish');switchTab('shop')" class="k-btn k-btn--sky px-5 py-2">放上菜單</button>` : ""}
-        <button onclick="renderDish()" class="k-btn px-5 py-2" style="background:#fff">再做一些</button>
+        ${toMenu.length ? `<button onclick="menuAddMany(${JSON.stringify(toMenu).replace(/"/g, "'")});closeModal('modalDish');switchTab('shop')" class="k-btn k-btn--sky px-5 py-2">放上菜單${P.batch ? `（${toMenu.length} 道）` : ""}</button>` : ""}
+        <button onclick="${P.batch ? "closeModal('modalDish');openBatch()" : "renderDish()"}" class="k-btn px-5 py-2" style="background:#fff">再做一些</button>
         <button onclick="closeModal('modalDish')" class="k-btn k-btn--yellow px-6 py-2">好</button>
       </div>
     </div>`;
+}
+
+/* ---- 一次做多道：列出現在食材夠做的料理，選份數後一起擺盤 ---- */
+let BATCH = {};
+function batchLeft(extra) {   // 扣掉已選份數後剩下的食材
+  const left = Object.assign({}, F.inv);
+  Object.entries(Object.assign({}, BATCH, extra || {})).forEach(([id, n]) => { const d = dishById(id); recKeys(d).forEach(k => { left[k] = (left[k] || 0) - d.rec[k] * n; }); });
+  return left;
+}
+function batchMore(id) {   // 這道還能再多做幾份
+  const d = dishById(id), left = batchLeft();
+  return Math.max(0, Math.min(...recKeys(d).map(k => Math.floor((left[k] || 0) / d.rec[k]))));
+}
+const batchCands = () => FOOD_DISHES.filter(d => F.found[d.id] && maxServings(d) >= 1);
+function openBatch(keep) {
+  if (!keep) {
+    BATCH = {};
+    batchCands().forEach(d => { if (batchMore(d.id) >= 1) BATCH[d.id] = 1; });   // 預設每道 1 份
+  }
+  document.getElementById("modalPick").classList.remove("hidden");
+  renderBatch();
+}
+function batchStep(id, dlt) {
+  const n = (BATCH[id] || 0) + dlt;
+  if (dlt > 0 && batchMore(id) < 1) return;
+  if (n <= 0) delete BATCH[id]; else BATCH[id] = n;
+  renderBatch();
+}
+function batchFill() {   // 每道輪流加 1 份，加到食材用完
+  let grew = true;
+  while (grew) { grew = false; batchCands().forEach(d => { if (batchMore(d.id) >= 1) { BATCH[d.id] = (BATCH[d.id] || 0) + 1; grew = true; } }); }
+  renderBatch();
+}
+function batchEach1() { BATCH = {}; batchCands().forEach(d => { if (batchMore(d.id) >= 1) BATCH[d.id] = 1; }); renderBatch(); }
+function renderBatch() {
+  const list = batchCands();
+  const total = Object.values(BATCH).reduce((a, b) => a + b, 0);
+  const used = {};
+  Object.entries(BATCH).forEach(([id, n]) => { const d = dishById(id); recKeys(d).forEach(k => { used[k] = (used[k] || 0) + d.rec[k] * n; }); });
+  document.getElementById("pickBody").innerHTML = `
+    <h2 class="k-display text-2xl">🍳 一次做多道</h2>
+    <p class="text-sm font-bold text-[#5B6B78] mt-1 mb-3">下面是你現在的食材夠做的料理。選好每道要做幾份，再一起擺盤。</p>
+    ${list.length ? `
+    <div class="flex flex-wrap gap-2 mb-3">
+      <button onclick="batchEach1()" class="k-btn k-btn--sm" style="background:#fff">每道各 1 份</button>
+      <button onclick="batchFill()" class="k-btn k-btn--sky k-btn--sm">做到食材用完</button>
+      <button onclick="BATCH={};renderBatch()" class="k-btn k-btn--sm" style="background:#fff">全部歸零</button>
+    </div>
+    <div class="space-y-2">${list.map(d => { const n = BATCH[d.id] || 0, more = batchMore(d.id); return `
+      <div class="fd-menu ${n ? "" : "is-out"}"><img src="${FOOD_IMG}dish/${d.id}.webp" alt=""/>
+        <div class="flex-1 min-w-0"><div class="font-black">${d.name}</div>
+          <div class="text-xs font-bold text-[#5B6B78]">每份：${recKeys(d).map(k => ingById(k).name + " " + d.rec[k]).join("、")}</div></div>
+        <button class="fd-step" style="width:2.3rem;height:2.3rem;font-size:1.1rem" onclick="batchStep('${d.id}',-1)" ${n ? "" : "disabled"} aria-label="少做一份">−</button>
+        <b class="k-display text-xl w-8 text-center">${n}</b>
+        <button class="fd-step" style="width:2.3rem;height:2.3rem;font-size:1.1rem" onclick="batchStep('${d.id}',1)" ${more ? "" : "disabled"} aria-label="多做一份">＋</button>
+      </div>`; }).join("")}</div>
+    ${total ? `<div class="fd-note mt-3" style="background:#fff;font-size:.82rem">會用掉：${Object.entries(used).map(([k, v]) => `${ingById(k).name} ${v}（剩 ${(F.inv[k] || 0) - v}）`).join("、")}</div>` : ""}`
+    : `<p class="fd-note" style="background:#fff">現在的食材還不夠做任何一道已經發現的料理。去扭蛋機多轉一些食材，或到圖鑑試做新料理吧！</p>`}
+    <div class="flex flex-wrap justify-end gap-2 mt-5">
+      <button onclick="closeModal('modalPick')" class="k-btn px-5 py-2" style="background:#fff">關閉</button>
+      ${list.length ? `<button onclick="batchGo()" class="k-btn k-btn--yellow px-6 py-2" ${total ? "" : "disabled"}>做 ${total} 份，去擺盤 →</button>` : ""}
+    </div>`;
+}
+function batchGo() {
+  const items = Object.assign({}, BATCH);
+  if (!Object.keys(items).length || !canMakeAll(items)) { renderBatch(); return; }
+  closeModal("modalPick");
+  beginPlate(items, true);
 }
 
 /* =========================================================
@@ -789,6 +879,13 @@ async function menuAdd(id) {
   if (s.menu.includes(id) || s.menu.length >= shopLevel().menu) return;
   if (!sellable().length) s.last = Date.now();   // 原本沒東西賣，從現在開始計時
   s.menu.push(id);
+  renderShop();
+  await save();
+}
+async function menuAddMany(ids) {
+  const s = F.shop;
+  if (!sellable().length) s.last = Date.now();
+  ids.forEach(id => { if (!s.menu.includes(id) && s.menu.length < shopLevel().menu) s.menu.push(id); });
   renderShop();
   await save();
 }
