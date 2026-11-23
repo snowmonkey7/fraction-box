@@ -76,6 +76,20 @@ const GUARDIANS = [
   { id: "g1",  b: "sagrada", name: "聖家堂守護神", hp: 400, hearts: 3, skill: "power", final: true }
 ];
 
+// 最終守護精靈「高第」：全部圖鑑（20 種怪獸＋12 隻守護精靈）收集完才出現
+// 依序解鎖；初級、中級、高級打贏一次就結束，地獄級可以一直挑戰。獎勵金幣不算在每日上限內。
+const BOSS_LEVELS = [
+  { id: "boss1", lv: 1, b: "sagrada", name: "高第‧初級", hp: 400, reward: 10, repeat: false,
+    skillName: "魔法護罩", skillDesc: "你的攻擊被削弱 15%，只能造成 85% 的傷害。" },
+  { id: "boss2", lv: 2, b: "sagrada", name: "高第‧中級", hp: 520, reward: 15, repeat: false,
+    skillName: "扭曲空間", skillDesc: "你的攻擊會隨機變成 50%～120% 的傷害。" },
+  { id: "boss3", lv: 3, b: "sagrada", name: "高第‧高級", hp: 640, reward: 20, repeat: false,
+    skillName: "重擊", skillDesc: "答錯時，高第的攻擊會讓前面的夥伴少 2 顆愛心（不會打到第二隻）。" },
+  { id: "boss4", lv: 4, b: "sagrada", name: "高第‧地獄", hp: 760, reward: 25, repeat: true,
+    skillName: "建築雨", skillDesc: "答錯時，高第把所有建築物丟向你，出戰的夥伴全部倒下！" }
+];
+const BOSS_RANDOM_RATES = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2];   // 中級：傷害倍率，平均機率
+
 const tierOf = bId => (BUILDINGS.find(b => b.id === bId) || { tier: 1 }).tier;
 // 夥伴的攻擊力：建築星等越高越強；稀有、傳說再加成；守護精靈比同棟怪獸強
 function attackOf(id) {

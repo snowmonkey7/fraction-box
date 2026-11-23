@@ -51,6 +51,7 @@
     /* ---- 剪影（還沒收服的怪獸） ---- */
     .k-mon-img { aspect-ratio: 1/1; border-radius: 12px; background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; }
     .k-mon-img img { width: 100%; height: 100%; object-fit: contain; }
+    .k-bld--boss { background: linear-gradient(135deg, #FFF4CC, #F4EEFF); flex-direction: row; padding: 1rem 1.2rem; }
     .k-mon-card { cursor: pointer; border-radius: 14px; transition: transform .08s; }
     .k-mon-card:hover .k-mon-img { box-shadow: 0 0 0 3px var(--crayon); }
     .k-mon-card:active { transform: scale(.95); }
@@ -259,6 +260,7 @@
           </div>
           <div class="mt-3 k-hp"><div id="foeHp" class="k-hp-fill" style="width:100%"></div></div>
           <div id="foeHpText" class="text-sm font-bold text-[#5B6B78] mt-1"></div>
+          <div id="foeSkill" class="hidden text-sm font-bold mt-2 p-2 rounded-xl border-2 border-dashed border-[#8A63D2] bg-[#F4EEFF]"></div>
         </div>
       </div>
       <!-- 我方 -->
@@ -334,6 +336,17 @@
     <h3 id="resTitle" class="k-display text-2xl"></h3>
     <p id="resText" class="text-sm font-bold text-[#33434F] mt-2 leading-relaxed"></p>
     <button id="resBtn" onclick="closeResult()" class="mt-5 k-btn k-btn--yellow w-full py-3 text-lg">好</button>
+  </div>
+</div>
+
+<!-- ==================== 彈窗：最終守護精靈 ==================== -->
+<div id="modalBoss" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-4" onclick="if(event.target===this)closeModal('modalBoss')">
+  <div class="k-modal max-w-xl w-full p-5 sm:p-6 animate-pop-in max-h-[94vh] overflow-y-auto">
+    <h3 class="k-display text-2xl text-center">👑 最終守護精靈：高第</h3>
+    <p class="text-sm font-bold text-[#5B6B78] text-center mt-1">難度依序開放，打贏前一關才能挑戰下一關。通關的金幣不算在每天的上限裡！</p>
+    <p class="text-xs font-bold text-[#C23A26] text-center mt-1">注意：夥伴倒下的規則和平常一樣，一般怪獸倒下會永遠離開，守護精靈要休息。</p>
+    <div id="bossList" class="space-y-3 mt-4"></div>
+    <button onclick="closeModal('modalBoss')" class="mt-5 k-btn w-full py-3">關閉</button>
   </div>
 </div>
 

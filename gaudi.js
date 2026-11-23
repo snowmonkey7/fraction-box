@@ -13,7 +13,7 @@ let helpPage = 0;
 
 const $ = id => document.getElementById(id);
 const BLD = id => BUILDINGS.find(b => b.id === id);
-const MON = id => WILD.find(m => m.id === id) || GUARDIANS.find(m => m.id === id);
+const MON = id => WILD.find(m => m.id === id) || GUARDIANS.find(m => m.id === id) || BOSS_LEVELS.find(m => m.id === id);
 const isGuardian = id => id.startsWith("g");
 const HOUR = 3600 * 1000;
 
@@ -38,6 +38,9 @@ function ensureGaudi(s) {
   g.starterGiven = !!g.starterGiven;
   g.helpSeen = !!g.helpSeen;
   g.cleared = !!g.cleared;
+  if (!g.boss || typeof g.boss !== "object") g.boss = {};
+  if (!g.boss.cleared || typeof g.boss.cleared !== "object") g.boss.cleared = {};
+  g.boss.hellWins = Number(g.boss.hellWins) || 0;
   if (g.active && typeof g.active !== "object") g.active = null;
   if (g.dayKey !== todayKey()) { g.dayKey = todayKey(); g.dayCoins = 0; }
   s.gaudi = g;
@@ -251,7 +254,87 @@ function renderMap() {
         <span class="k-display text-xl mt-1">${b.name}</span>
         ${status}
       </button>`;
+  }).join("") + bossMapCard();
+}
+
+/* ================= 最終守護精靈：高第 ================= */
+const dexTotal = () => WILD.length + GUARDIANS.length;
+const dexDone = () => WILD.filter(m => G.everCaught[m.id]).length + GUARDIANS.filter(x => G.beaten[x.id]).length;
+const bossOpen = () => dexDone() >= dexTotal();
+const bossUnlocked = lv => lv === 1 || !!G.boss.cleared[lv - 1];
+const bossDone = lv => !BOSS_LEVELS[lv - 1].repeat && !!G.boss.cleared[lv];
+function bossMapCard() {
+  const open = bossOpen();
+  const next = BOSS_LEVELS.find(x => bossUnlocked(x.lv) && !bossDone(x.lv));
+  return `
+    <button class="k-bld k-bld--boss ${open ? "" : "is-locked"} col-span-2 md:col-span-4" onclick="openBossPanel()" aria-label="挑戰最終守護精靈">
+      <span class="k-bld-tier">👑</span>
+      <div class="flex items-center gap-4 w-full">
+        <img src="${monsterImg(next ? next.id : "boss4")}" alt="" class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border-[3px] border-[#1E2A33] ${open ? "" : "grayscale opacity-50"}"/>
+        <div class="text-left flex-1">
+          <span class="k-display text-2xl">挑戰最終守護精靈</span>
+          <div class="text-sm font-bold text-[#5B6B78] mt-1">${open
+            ? `下一關：${next ? next.name : "高第‧地獄"}・地獄級贏了 ${G.boss.hellWins} 次`
+            : `收集全部圖鑑才會出現（現在 ${dexDone()} / ${dexTotal()}）`}</div>
+        </div>
+      </div>
+    </button>`;
+}
+function openBossPanel() {
+  if (!bossOpen()) {
+    showResult({ title: "最終守護精靈還沒出現", text: `把「我的夥伴」裡的 ${dexTotal()} 個圖鑑全部收集完（20 種怪獸、12 隻守護精靈），高第就會出現！現在 ${dexDone()} / ${dexTotal()}。` });
+    return;
+  }
+  $("bossList").innerHTML = BOSS_LEVELS.map(x => {
+    const unlocked = bossUnlocked(x.lv), done = bossDone(x.lv);
+    let btn;
+    if (!unlocked) btn = `<span class="k-chip">先打贏 ${BOSS_LEVELS[x.lv - 2].name}</span>`;
+    else if (done) btn = `<span class="k-chip k-chip--yellow">已通關</span>`;
+    else btn = `<button onclick="closeModal('modalBoss');startBoss('${x.id}')" class="k-btn k-btn--tomato px-5 py-2">挑戰</button>`;
+    return `
+      <div class="flex gap-3 items-center border-[3px] border-[#1E2A33] rounded-2xl p-3 ${unlocked ? "bg-white" : "bg-[#EEF2F6] opacity-60"}">
+        <img src="${monsterImg(x.id)}" alt="" class="w-20 h-20 rounded-xl border-2 border-[#1E2A33] shrink-0"/>
+        <div class="flex-1 min-w-0 text-left">
+          <div class="k-display text-lg">${x.name}</div>
+          <div class="text-xs font-bold text-[#5B6B78]">血量 ${x.hp}・通關得 ${x.reward} 金幣${x.repeat ? "（可以一直挑戰）" : "（只能通關一次）"}</div>
+          <div class="text-sm font-bold mt-1"><span class="k-chip k-chip--math">技能</span> ${x.skillName}：${x.skillDesc}</div>
+        </div>
+        <div class="shrink-0">${btn}</div>
+      </div>`;
   }).join("");
+  $("modalBoss").classList.remove("hidden");
+}
+function startBoss(id) {
+  if (G.lockUntil > Date.now()) { showGuessLock(); return; }
+  const x = MON(id);
+  if (!bossOpen() || !bossUnlocked(x.lv) || bossDone(x.lv)) return;
+  openTeamPicker(id);
+}
+function bossDamage(d) {   // 依難度調整玩家造成的傷害
+  const lv = battle.foe.lv;
+  if (lv === 1) return { d: Math.floor(d * 0.85), note: "（魔法護罩：85%）" };
+  if (lv === 2) {
+    const r = BOSS_RANDOM_RATES[Math.floor(Math.random() * BOSS_RANDOM_RATES.length)];
+    return { d: Math.max(1, Math.round(d * r)), note: `（扭曲空間：${Math.round(r * 100)}%）` };
+  }
+  return { d, note: "" };
+}
+async function winBoss() {
+  const x = battle.foe;
+  const first = !G.boss.cleared[x.lv];
+  G.boss.cleared[x.lv] = true;
+  if (x.repeat) G.boss.hellWins = (G.boss.hellWins || 0) + 1;
+  battle = null;
+  G.active = null;
+  $("battle").classList.add("hidden");
+  document.body.style.overflow = "";
+  await save(x.reward);   // 不算在每日上限
+  renderAll();
+  const next = BOSS_LEVELS[x.lv];
+  let text = `得到 ${x.reward} 金幣！（不算在每天的上限裡）`;
+  if (next && first) text += `\n下一關「${next.name}」開放了！`;
+  if (x.repeat) text += `\n地獄級一共贏了 ${G.boss.hellWins} 次，可以再挑戰！`;
+  showResult({ img: monsterImg(x.id), title: `打敗了${x.name}！`, text });
 }
 
 function enterBuilding(id) {
@@ -401,7 +484,7 @@ function openTeamPicker(guardianId) {
   if (teamPick.length === 0) teamPick = ready.slice(0, 2);
   $("btnTeamGo").textContent = guardianId ? "出戰" : "決定";
   $("teamHint").textContent = guardianId
-    ? `對手：${MON(guardianId).name}（血量 ${MON(guardianId).hp}）。先選的夥伴站前面，答錯時前面的先受傷。`
+    ? `對手：${MON(guardianId).name}（血量 ${MON(guardianId).hp}）。${MON(guardianId).lv ? "技能：" + MON(guardianId).skillDesc + " " : ""}先選的夥伴站前面，答錯時前面的先受傷。`
     : "先選的夥伴站前面，答錯時前面的先受傷。";
   renderTeamPick();
   $("modalTeam").classList.remove("hidden");
@@ -574,9 +657,11 @@ function setFoeHeader() {
     $("foeTag").textContent = RARITY[f.rarity].name + "・" + "★".repeat(tierOf(f.b)) + (G.everCaught[f.id] ? "" : "・新怪獸");
     $("foeTag").className = "k-chip " + (f.rarity === 2 ? "k-chip--yellow" : f.rarity === 1 ? "k-chip--math" : "");
   } else {
-    $("foeTag").textContent = f.final ? "最終魔王" : "守護精靈・" + "★".repeat(tierOf(f.b));
+    $("foeTag").textContent = f.lv ? "最終守護精靈" : (f.final ? "最終魔王" : "守護精靈・" + "★".repeat(tierOf(f.b)));
     $("foeTag").className = "k-chip k-chip--yellow";
   }
+  $("foeSkill").classList.toggle("hidden", !f.lv);
+  if (f.lv) $("foeSkill").innerHTML = `<span class="k-chip k-chip--math">技能</span> <b>${f.skillName}</b>：${f.skillDesc}`;
 }
 
 async function startWild() {
@@ -608,7 +693,7 @@ async function beginGuardianBattle(gid) {
   const team = G.team.filter(canFight).slice(0, 2);
   battle = {
     kind: "guard", foe: g, hp: g.hp, maxHp: g.hp, team,
-    used: {}, shield: false, power: false, pool: g.final ? "all" : g.b, asked: []
+    used: {}, shield: false, power: false, pool: (g.final || g.lv) ? "all" : g.b, asked: []
   };
   setFoeHeader();
   openBattle();
@@ -677,7 +762,10 @@ function renderBattleSide() {
           </div>
         </div>`;
     }).join("");
-    $("battleHint").textContent = `每答對一題攻擊 ${damagePerHit()} 點；答錯時，站在前面的夥伴少 1 顆愛心。`;
+    const lv = b.foe.lv;
+    const atk = lv === 1 ? `${Math.floor(damagePerHit() * 0.85)} 點（被削弱成 85%）` : lv === 2 ? `${damagePerHit()} 點的 50%～120%` : `${damagePerHit()} 點`;
+    const hurt = lv === 3 ? "站在前面的夥伴少 2 顆愛心" : lv === 4 ? "出戰的夥伴全部倒下" : "站在前面的夥伴少 1 顆愛心";
+    $("battleHint").textContent = `每答對一題攻擊 ${atk}；答錯時，${hurt}。`;
   }
 }
 
@@ -706,21 +794,30 @@ async function useSkill(id) {
   await save();
 }
 
-// 前面的夥伴受傷；愛心扣完：怪獸消失一隻，守護精靈去休息
-function hurtFront() {
-  const front = aliveTeam()[0];
-  if (!front) return "";
-  G.hurt[front] = (G.hurt[front] || 0) + 1;
-  const name = MON(front).name;
-  if (heartsLeft(front) > 0) return `${name} 少了 1 顆愛心。`;
-  delete G.hurt[front];
-  if (isGuardian(front)) {
-    G.restUntil[front] = Date.now() + GUARDIAN_REST_HOURS * HOUR;
+// 夥伴倒下：怪獸消失一隻，守護精靈去休息
+function knockOut(id) {
+  delete G.hurt[id];
+  const name = MON(id).name;
+  if (isGuardian(id)) {
+    G.restUntil[id] = Date.now() + GUARDIAN_REST_HOURS * HOUR;
     return `${name} 倒下了，要休息 ${GUARDIAN_REST_HOURS} 小時才能再出戰。`;
   }
-  G.caught[front] = Math.max(0, (G.caught[front] || 0) - 1);
-  if (!G.caught[front]) G.team = G.team.filter(x => x !== front);
+  G.caught[id] = Math.max(0, (G.caught[id] || 0) - 1);
+  if (!G.caught[id]) G.team = G.team.filter(x => x !== id);
   return `${name} 倒下了，永遠離開了你…`;
+}
+// 前面的夥伴受傷 n 顆愛心（最多扣到這隻倒下，不會打到第二隻）
+function hurtFront(n = 1) {
+  const front = aliveTeam()[0];
+  if (!front) return "";
+  const hit = Math.min(n, heartsLeft(front));
+  G.hurt[front] = (G.hurt[front] || 0) + hit;
+  if (heartsLeft(front) > 0) return `${MON(front).name} 少了 ${hit} 顆愛心。`;
+  return knockOut(front);
+}
+// 地獄級：出戰的夥伴全部倒下
+function hurtAll() {
+  return aliveTeam().map(id => knockOut(id)).join(" ");
 }
 
 /* ================= 作答 ================= */
@@ -773,14 +870,21 @@ async function answer(btn) {
     }
   } else {
     if (ok) {
-      const d = damagePerHit();
+      let d = damagePerHit(), note = "";
+      if (b.foe.lv) ({ d, note } = bossDamage(d));
       b.power = false;
       b.hp -= d;
       hitFoe();
-      title = `答對了！攻擊 ${d} 點`;
+      title = `答對了！攻擊 ${d} 點${note}`;
     } else if (b.shield) {
       b.shield = false;
       title = "答錯了，但是護盾擋住了！";
+    } else if (b.foe.lv === 4) {
+      title = "答錯了！高第使出「建築雨」！";
+      extra = hurtAll();
+    } else if (b.foe.lv === 3) {
+      title = "答錯了！高第使出「重擊」！";
+      extra = hurtFront(2);
     } else {
       title = "答錯了！";
       extra = hurtFront();
@@ -824,11 +928,13 @@ async function afterAnswer() {
     }
     if (b.canThrow) { showWeakened(); return; }
   } else {
-    if (b.hp <= 0) { await winGuardian(); return; }
+    if (b.hp <= 0) { if (b.foe.lv) await winBoss(); else await winGuardian(); return; }
     if (aliveTeam().length === 0) {
       const name = b.foe.name;
       await closeBattle();
-      showResult({ title: "這次輸了", text: `出戰的夥伴都倒下了。${name} 好強！把解析再讀一讀，收服更強的夥伴再來挑戰。` });
+      showResult({ title: "這次輸了", text: b.foe.lv
+        ? `出戰的夥伴都倒下了。${name} 好強！把解析再讀一讀，夥伴休息好或再收服新的夥伴，就可以再挑戰。`
+        : `出戰的夥伴都倒下了。${name} 好強！把解析再讀一讀，收服更強的夥伴再來挑戰。` });
       return;
     }
   }
