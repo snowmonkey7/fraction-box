@@ -397,7 +397,9 @@ function monCard(id) {
   return `
     <${tag} class="text-center block w-full ${seen ? "k-mon-card" : ""}" ${seen ? `onclick="openMonInfo('${id}')" aria-label="看${m.name}的資料"` : ""}>
       <div class="k-mon-img border-[2.5px] border-[#1E2A33] relative ${gone || isResting(id) ? "opacity-40" : ""}">
-        <img src="${seen ? monsterImg(id) : silhouetteImg(id)}" alt="${seen ? m.name : "還沒收服"}" loading="lazy" ${!seen && id === HERO.id ? `style="filter:brightness(0);opacity:.35"` : ""}/>${cnt}
+        ${!seen && id === HERO.id
+          ? `<div class="w-full flex items-center justify-center bg-[#EEF1F4] text-4xl font-black text-[#B5C0C9]" style="aspect-ratio:1/1">？</div>`
+          : `<img src="${seen ? monsterImg(id) : silhouetteImg(id)}" alt="${seen ? m.name : "還沒收服"}" loading="lazy" />`}${cnt}
       </div>
       <div class="text-xs font-bold mt-1 leading-tight ${seen ? "" : "text-[#8C9AA6]"}">${seen ? m.name : "？？？"}</div>
       <div class="leading-none mt-0.5">${sub}</div>
