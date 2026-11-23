@@ -5,7 +5,7 @@
 const DRAW_COST = 2;          // 免費次數用完後，一次 2 金幣
 const FREE_PER_DAY = 3;
 const PITY = 30;              // 第 30 次必出稀有
-const RATE = { R: 0.05, U: 0.25 };  // 其餘是常見 70%
+const RATE = { R: 0.05, U: 0.35 };  // 其餘是常見 60%
 const REGIONS = ["全部", "台灣", "日本", "韓國", "印度", "義大利", "世界"];
 
 let STU = null, F = null;
