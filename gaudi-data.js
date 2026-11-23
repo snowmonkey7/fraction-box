@@ -11,7 +11,9 @@ const INCENSE_PRICE = 20;           // 傳說薰香：探索時一定遇到這�
 const STARTER_BALLS = 3;            // 第一次進遊戲送幾顆普通球
 const CAUGHT_NEEDED = [2, 3, 4];    // 要先收服這棟幾隻不同的怪獸，才能挑戰第 1、2、3 隻守護精靈
 const GUARDIAN_REST_HOURS = 20;     // 守護精靈夥伴愛心扣完後，要休息幾小時才能再出戰
-const BASE_DAMAGE = 4;              // 每次答對的基本傷害（再加上出戰夥伴的攻擊力）
+const BASE_DAMAGE = 5;              // 每次答對的基本傷害（再加上出戰夥伴的攻擊力）
+const ATK_PER_TIER = 4;             // 夥伴攻擊力 = 建築星等 × 4 ＋ 加成
+const GUARDIAN_ATK_BONUS = 8;       // 守護精靈夥伴的攻擊加成（怪獸的加成看稀有度）
 
 // 建築：tier 是星等，越後面的建築，怪獸和守護精靈都越強
 const BUILDINGS = [
@@ -48,8 +50,8 @@ const WILD = [
 // 稀有度：出現機率、愛心、擊敗得幾金幣、兩種捕捉的成功率、攻擊加成
 const RARITY = [
   { name: "普通", chance: 0.25, hearts: 1, defeatCoins: 2, catchN: 0.9, catchS: 1.0, atkBonus: 0 },
-  { name: "稀有", chance: 0.18, hearts: 2, defeatCoins: 3, catchN: 0.5, catchS: 0.9, atkBonus: 2 },
-  { name: "傳說", chance: 0.07, hearts: 3, defeatCoins: 5, catchN: 0,   catchS: 0.7, atkBonus: 4 }
+  { name: "稀有", chance: 0.18, hearts: 2, defeatCoins: 3, catchN: 0.5, catchS: 0.9, atkBonus: 3 },
+  { name: "傳說", chance: 0.07, hearts: 3, defeatCoins: 5, catchN: 0,   catchS: 0.7, atkBonus: 6 }
 ];
 // 野生怪獸要答對幾題才會變虛弱：[星等][稀有度]
 const WEAKEN_HITS = { 1: [2, 3, 4], 2: [3, 3, 4], 3: [3, 4, 5], 4: [4, 5, 6] };
@@ -63,30 +65,30 @@ const SKILLS = {
   heal:   { name: "回復",         desc: "幫受傷最重的夥伴補 1 顆愛心" }
 };
 const GUARDIANS = [
-  { id: "g12", b: "mila",    name: "海帶",         hp: 40,  hearts: 1, skill: "cut" },
-  { id: "g11", b: "mila",    name: "外星人",       hp: 50,  hearts: 2, skill: "shield" },
-  { id: "g10", b: "mila",    name: "大海怪",       hp: 60,  hearts: 3, skill: "power" },
-  { id: "g9",  b: "batllo",  name: "恐龍骨頭",     hp: 90,  hearts: 1, skill: "shield" },
-  { id: "g8",  b: "batllo",  name: "磁磚精靈",     hp: 110, hearts: 2, skill: "cut" },
-  { id: "g7",  b: "batllo",  name: "巨龍",         hp: 130, hearts: 3, skill: "power" },
-  { id: "g6",  b: "guell",   name: "糖霜精靈",     hp: 150, hearts: 1, skill: "cut" },
-  { id: "g5",  b: "guell",   name: "薑餅屋",       hp: 175, hearts: 2, skill: "heal" },
-  { id: "g4",  b: "guell",   name: "彩色大蜥蜴",   hp: 200, hearts: 3, skill: "power" },
-  { id: "g3",  b: "sagrada", name: "彩繪玻璃精靈", hp: 240, hearts: 1, skill: "heal" },
-  { id: "g2",  b: "sagrada", name: "石柱樹人",     hp: 270, hearts: 2, skill: "shield" },
+  { id: "g12", b: "mila",    name: "海帶",         hp: 38,  hearts: 1, skill: "cut" },
+  { id: "g11", b: "mila",    name: "外星人",       hp: 80,  hearts: 2, skill: "shield" },
+  { id: "g10", b: "mila",    name: "大海怪",       hp: 110,  hearts: 3, skill: "power" },
+  { id: "g9",  b: "batllo",  name: "恐龍骨頭",     hp: 140,  hearts: 1, skill: "shield" },
+  { id: "g8",  b: "batllo",  name: "磁磚精靈",     hp: 160, hearts: 2, skill: "cut" },
+  { id: "g7",  b: "batllo",  name: "巨龍",         hp: 180, hearts: 3, skill: "power" },
+  { id: "g6",  b: "guell",   name: "糖霜精靈",     hp: 210, hearts: 1, skill: "cut" },
+  { id: "g5",  b: "guell",   name: "薑餅屋",       hp: 240, hearts: 2, skill: "heal" },
+  { id: "g4",  b: "guell",   name: "彩色大蜥蜴",   hp: 260, hearts: 3, skill: "power" },
+  { id: "g3",  b: "sagrada", name: "彩繪玻璃精靈", hp: 300, hearts: 1, skill: "heal" },
+  { id: "g2",  b: "sagrada", name: "石柱樹人",     hp: 330, hearts: 2, skill: "shield" },
   { id: "g1",  b: "sagrada", name: "聖家堂守護神", hp: 400, hearts: 3, skill: "power", final: true }
 ];
 
 // 最終守護精靈「高第」：全部圖鑑（20 種怪獸＋12 隻守護精靈）收集完才出現
 // 依序解鎖；初級、中級、高級打贏一次就結束，地獄級可以一直挑戰。獎勵金幣不算在每日上限內。
 const BOSS_LEVELS = [
-  { id: "boss1", lv: 1, b: "sagrada", name: "高第‧初級", hp: 400, reward: 10, repeat: false,
+  { id: "boss1", lv: 1, b: "sagrada", name: "高第‧初級", hp: 350, reward: 10, repeat: false,
     skillName: "魔法護罩", skillDesc: "你的攻擊被削弱 15%，只能造成 85% 的傷害。" },
-  { id: "boss2", lv: 2, b: "sagrada", name: "高第‧中級", hp: 520, reward: 15, repeat: false,
+  { id: "boss2", lv: 2, b: "sagrada", name: "高第‧中級", hp: 400, reward: 15, repeat: false,
     skillName: "扭曲空間", skillDesc: "你的攻擊會隨機變成 50%～120% 的傷害。" },
-  { id: "boss3", lv: 3, b: "sagrada", name: "高第‧高級", hp: 640, reward: 20, repeat: false,
+  { id: "boss3", lv: 3, b: "sagrada", name: "高第‧高級", hp: 450, reward: 20, repeat: false,
     skillName: "重擊", skillDesc: "答錯時，高第的攻擊會讓前面的夥伴少 2 顆愛心（不會打到第二隻）。" },
-  { id: "boss4", lv: 4, b: "sagrada", name: "高第‧地獄", hp: 760, reward: 25, repeat: true,
+  { id: "boss4", lv: 4, b: "sagrada", name: "高第‧地獄", hp: 480, reward: 25, repeat: true,
     skillName: "建築雨", skillDesc: "答錯時，高第把所有建築物丟向你，出戰的夥伴全部倒下！" }
 ];
 const BOSS_RANDOM_RATES = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2];   // 中級：傷害倍率，平均機率
@@ -95,9 +97,9 @@ const tierOf = bId => (BUILDINGS.find(b => b.id === bId) || { tier: 1 }).tier;
 // 夥伴的攻擊力：建築星等越高越強；稀有、傳說再加成；守護精靈比同棟怪獸強
 function attackOf(id) {
   const m = WILD.find(x => x.id === id);
-  if (m) return tierOf(m.b) * 3 + RARITY[m.rarity].atkBonus;
+  if (m) return tierOf(m.b) * ATK_PER_TIER + RARITY[m.rarity].atkBonus;
   const g = GUARDIANS.find(x => x.id === id);
-  return g ? tierOf(g.b) * 3 + 6 : 0;
+  return g ? tierOf(g.b) * ATK_PER_TIER + GUARDIAN_ATK_BONUS : 0;
 }
 function maxHeartsOf(id) {
   const m = WILD.find(x => x.id === id);
