@@ -114,8 +114,8 @@ function maxHeartsOf(id) {
   return g ? g.hearts : 1;
 }
 
-function monsterImg(id) { return "images/gaudi/" + id + ".jpg"; }
-function silhouetteImg(id) { return "images/gaudi/s_" + id + ".png"; }  // 還沒收服時顯示的剪影
+function monsterImg(id) { return "images/gaudi/" + (id === "gHero" ? "boss1" : id) + ".jpg"; }   // 紀念夥伴高第用初級高第的圖
+function silhouetteImg(id) { return id === "gHero" ? monsterImg(id) : "images/gaudi/s_" + id + ".png"; }  // 還沒收服時顯示的剪影
 
 const PASSAGES = {
  "mila_r": {

@@ -42,6 +42,8 @@ function ensureGaudi(s) {
   if (!g.boss || typeof g.boss !== "object") g.boss = {};
   if (!g.boss.cleared || typeof g.boss.cleared !== "object") g.boss.cleared = {};
   g.boss.hellWins = Number(g.boss.hellWins) || 0;
+  // 補發：已經打贏地獄級高第 5 次以上、還沒拿到紀念夥伴的同學
+  if (g.boss.hellWins >= HERO_NEED && !g.beaten[HERO.id]) { g.beaten[HERO.id] = true; g.heroNew = true; }
   if (g.active && typeof g.active !== "object") g.active = null;
   if (g.dayKey !== todayKey()) { g.dayKey = todayKey(); g.dayCoins = 0; }
   s.gaudi = g;
@@ -126,6 +128,12 @@ window.onPageReady = async () => {
     openHelp(true);
   }
   if (G.lockUntil > Date.now()) showGuessLock();
+  if (G.heroNew) {                // 補發紀念夥伴高第
+    delete G.heroNew;
+    await save();
+    showResult({ img: monsterImg(HERO.id), title: "高第成為你的夥伴了！",
+      text: `你已經打敗地獄級高第 ${HERO_NEED} 次以上！\n高第決定跟著你：攻擊 ${HERO.atk}、${HERO.hearts} 顆愛心，招式「${SKILLS.magic.name}」：${SKILLS.magic.desc}。\n快去「我的夥伴」看看牠吧！` });
+  }
 };
 
 async function giveStarterIfNeeded() {
@@ -389,7 +397,7 @@ function monCard(id) {
   return `
     <${tag} class="text-center block w-full ${seen ? "k-mon-card" : ""}" ${seen ? `onclick="openMonInfo('${id}')" aria-label="看${m.name}的資料"` : ""}>
       <div class="k-mon-img border-[2.5px] border-[#1E2A33] relative ${gone || isResting(id) ? "opacity-40" : ""}">
-        <img src="${seen ? monsterImg(id) : silhouetteImg(id)}" alt="${seen ? m.name : "還沒收服"}" loading="lazy" />${cnt}
+        <img src="${seen ? monsterImg(id) : silhouetteImg(id)}" alt="${seen ? m.name : "還沒收服"}" loading="lazy" ${!seen && id === HERO.id ? `style="filter:brightness(0);opacity:.35"` : ""}/>${cnt}
       </div>
       <div class="text-xs font-bold mt-1 leading-tight ${seen ? "" : "text-[#8C9AA6]"}">${seen ? m.name : "？？？"}</div>
       <div class="leading-none mt-0.5">${sub}</div>
