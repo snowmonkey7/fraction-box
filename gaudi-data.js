@@ -62,7 +62,8 @@ const SKILLS = {
   cut:    { name: "刪去錯誤選項", desc: "拿掉一個錯的選項" },
   shield: { name: "護盾",         desc: "下一次答錯不會受傷" },
   power:  { name: "全力一擊",     desc: "下一次答對，傷害變兩倍" },
-  heal:   { name: "回復",         desc: "幫受傷最重的夥伴補 1 顆愛心" }
+  heal:   { name: "回復",         desc: "幫受傷最重的夥伴補 1 顆愛心" },
+  magic:  { name: "魔法建築",     desc: "下一次答錯不會受傷，而且下一次答對傷害變兩倍" }
 };
 const GUARDIANS = [
   { id: "g12", b: "mila",    name: "海帶",         hp: 38,  hearts: 1, skill: "cut" },
@@ -91,6 +92,9 @@ const BOSS_LEVELS = [
   { id: "boss4", lv: 4, b: "sagrada", name: "高第‧地獄", hp: 480, reward: 25, repeat: true,
     skillName: "建築雨", skillDesc: "答錯時，高第把所有建築物丟向你，出戰的夥伴全部倒下！" }
 ];
+// 紀念夥伴「高第」：地獄級高第通關 HERO_NEED 次就會得到（存在 G.beaten.gHero，之後其他遊戲也能讀取）
+const HERO_NEED = 5;
+const HERO = { id: "gHero", b: "sagrada", name: "高第", hp: 0, hearts: 4, skill: "magic", atk: 30, hero: true };
 const BOSS_RANDOM_RATES = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2];   // 中級：傷害倍率，平均機率
 
 const tierOf = bId => (BUILDINGS.find(b => b.id === bId) || { tier: 1 }).tier;
@@ -98,12 +102,14 @@ const tierOf = bId => (BUILDINGS.find(b => b.id === bId) || { tier: 1 }).tier;
 function attackOf(id) {
   const m = WILD.find(x => x.id === id);
   if (m) return tierOf(m.b) * ATK_PER_TIER + RARITY[m.rarity].atkBonus;
+  if (id === HERO.id) return HERO.atk;
   const g = GUARDIANS.find(x => x.id === id);
   return g ? tierOf(g.b) * ATK_PER_TIER + GUARDIAN_ATK_BONUS : 0;
 }
 function maxHeartsOf(id) {
   const m = WILD.find(x => x.id === id);
   if (m) return RARITY[m.rarity].hearts;
+  if (id === HERO.id) return HERO.hearts;
   const g = GUARDIANS.find(x => x.id === id);
   return g ? g.hearts : 1;
 }

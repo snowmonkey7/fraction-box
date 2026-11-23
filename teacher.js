@@ -819,7 +819,7 @@ function renderFoodTeacher(list) {
       <td class="py-2.5 px-3 font-bold">${seen} / ${FOOD_INGS.length}</td>
       <td class="py-2.5 px-3 font-bold">${found} / ${FOOD_DISHES.length}</td>
       <td class="py-2.5 px-3 font-bold">${made} 份<div class="text-[11px] text-slate-500">完美 ${Number(f.perfects) || 0} / ${Number(f.plates) || 0} 次</div></td>
-      <td class="py-2.5 px-3 font-bold">${typeof SHOP_LEVELS !== "undefined" ? SHOP_LEVELS[[...SHOP_LEVELS.keys()].reverse().find(i => (Number(f.pop) || 0) >= SHOP_LEVELS[i].need) || 0].name : ""}<div class="text-[11px] text-slate-500">人氣 ${Number(f.pop) || 0}・家鄉幣 ${Number(f.homeTotal) || 0}</div></td>
+      <td class="py-2.5 px-3 font-bold">${typeof SHOP_LEVELS !== "undefined" ? SHOP_LEVELS[Math.max(Number(f.shopLv) || 0, [...SHOP_LEVELS.keys()].reverse().find(i => (Number(f.pop) || 0) >= SHOP_LEVELS[i].need) || 0)].name : ""}<div class="text-[11px] text-slate-500">人氣 ${Number(f.pop) || 0}・家鄉幣 ${Number(f.homeTotal) || 0}</div></td>
       <td class="py-2.5 px-3 font-bold">${a} 題</td>
       <td class="py-2.5 px-3 font-black ${acc >= 80 ? "text-emerald-600" : (acc >= 60 ? "text-amber-600" : "text-slate-500")}">${a ? acc + "%" : "—"}</td>
       <td class="py-2.5 px-3 font-bold text-slate-600">${worst ? `${foodTypeName(worst[0])}（${worst[1]}）` : "—"}</td>

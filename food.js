@@ -36,6 +36,8 @@ function F_SHOP_DEFAULT(f) {
   if (!s.layout || typeof s.layout !== "object") s.layout = {};
   if (!Array.isArray(s.log)) s.log = [];
   f.shop = s;
+  if (f.shopLv == null) f.shopLv = Math.max(0, SHOP_LEVELS.findIndex(L => L.cols === s.cols));   // 舊資料：用原本店的大小當等級，不會降級
+
 }
 const freeLeft = () => Math.max(0, FREE_PER_DAY - (F.freeDay === todayKey() ? F.freeUsed : 0));
 const foundCount = () => FOOD_DISHES.filter(d => F.found[d.id]).length;
@@ -91,8 +93,8 @@ const HELP_PAGES = [
       <p class="mt-2">組合不對<b>不扣食材</b>，還會給你提示。解鎖後才看得到每份要用多少食材。</p>` },
   { t: "🍽️ 做菜和對稱擺盤", b: `<p>選要做幾份，系統會算出要用多少食材。</p>
       <p class="mt-2">最後把配料擺盤：盤子的一半已經擺好，你要把另一半擺成和它<b>對稱</b>。擺對了就是「<b>完美料理</b>」，賣的價錢是 <b>1.5 倍</b>！擺錯也做得出來，只是「普通」。</p>` },
-  { t: "🏪 開店賺家鄉幣", b: `<p>把料理放上<b>菜單</b>，客人每 30 秒來買一份，沒上線也會賣（最多累積 8 小時）。每天最多賺 1000 家鄉幣。</p>
-      <p class="mt-2">家鄉幣可以轉<b>金幣扭蛋機</b>（100 家鄉幣一次），也可以買裝潢。裝潢擺得左右對稱，每賣一份人氣再多 1。<b>人氣</b>越高，店就越大！</p>` }
+  { t: "🏪 開店賺家鄉幣", b: `<p>把料理放上<b>菜單</b>，客人會自己來買（小店 2 分鐘一位、中型餐廳 1 分 30 秒、大餐廳 45 秒），沒上線也會賣（最多累積 8 小時）。每天最多賺 1000 家鄉幣。</p>
+      <p class="mt-2">家鄉幣可以轉<b>金幣扭蛋機</b>（100 家鄉幣一次），也可以買裝潢。每件擺出來的裝潢，每賣一份料理人氣就多 +1～+4（越貴加越多）；裝潢擺成<b>左右對稱</b>，人氣再 <b>×2</b>！<b>人氣</b>越高，店就越大！賣完的料理會自動從菜單拿下來。</p>` }
 ];
 let helpPage = 0;
 function openHelp(i) { helpPage = i; document.getElementById("modalHelp").classList.remove("hidden"); renderHelp(); }
@@ -560,10 +562,13 @@ function beginPlate(items, batch) {
   sample(given, 3).forEach(i => { g[i] = pick(types); });
   if (Math.random() < 0.5) g[pick(onAxis)] = pick(types);   // 有時候對稱軸上也放一個
   const ids = Object.keys(items);
-  PLATE = { items, batch, d: ids[0], axis, mir, given: new Set(given), g, tool: types[0], done: false, wrong: [] };
+  const prev = (batch && PLATE && PLATE.items === items) ? PLATE : null;   // 同一批的下一道
+  const idx = prev ? prev.idx + 1 : 0;
+  PLATE = { items, batch, ids, idx, res: prev ? prev.res : {}, d: ids[idx], axis, mir, given: new Set(given), g, tool: types[0], done: false, wrong: [] };
   if (batch) document.getElementById("modalDish").classList.remove("hidden");
   renderPlate();
 }
+function nextPlate() { if (PLATE && PLATE.batch && PLATE.idx < PLATE.ids.length - 1) beginPlate(PLATE.items, true); }
 function plateXY(i, R) { const a = i * Math.PI / 6; return [160 + R * Math.sin(a), 160 - R * Math.cos(a)]; }
 function plateSvg() {
   const P = PLATE, R = 124;
@@ -593,16 +598,15 @@ function plateSvg() {
   </svg>`;
 }
 function plateTitle() {
-  const e = Object.entries(PLATE.items);
-  if (!PLATE.batch) return `${dishById(e[0][0]).name} × ${e[0][1]}`;
-  return `一次做 ${e.length} 道料理，共 ${e.reduce((a, x) => a + x[1], 0)} 份`;
+  const P = PLATE, nm = `${dishById(P.d).name} × ${P.items[P.d]}`;
+  return P.batch && P.ids.length > 1 ? `${nm}（第 ${P.idx + 1} / ${P.ids.length} 道）` : nm;
 }
 function renderPlate() {
   const P = PLATE;
   const sideName = P.axis === "v" ? ["左", "右"] : ["上", "下"];
   document.getElementById("dishBody").innerHTML = `
     <h2 class="k-display text-2xl text-center">對稱擺盤：${plateTitle()}</h2>
-    ${P.batch ? `<p class="text-center text-xs font-bold text-[#5B6B78]">這次擺盤的結果，會套用到這一批的全部料理。</p>` : ""}
+    ${P.batch && P.ids.length > 1 ? `<p class="text-center text-xs font-bold text-[#5B6B78]">每一道料理都要自己擺一次盤，擺對的那一道才是完美料理。</p>` : ""}
     <p class="text-center text-sm font-bold text-[#5B6B78] mt-1">${sideName[0]}半邊（黃色）已經擺好了。紅色虛線是對稱軸，請把${sideName[1]}半邊擺成和它對稱。</p>
     <div class="mt-3">${plateSvg()}</div>
     ${P.done ? "" : `
@@ -613,7 +617,7 @@ function renderPlate() {
     </div>
     <p class="text-center text-xs font-bold text-[#5B6B78] mt-2">先選配料，再點盤子上的虛線圈。點同一種配料可以拿掉。</p>
     <div class="flex justify-center gap-2 mt-4">
-      <button onclick="${P.batch ? "closeModal('modalDish');openBatch(true)" : "renderDish()"}" class="k-btn px-5 py-2" style="background:#fff">上一步</button>
+      ${P.idx > 0 ? "" : `<button onclick="${P.batch ? "closeModal('modalDish');openBatch(true)" : "renderDish()"}" class="k-btn px-5 py-2" style="background:#fff">上一步</button>`}
       <button onclick="serveDish()" class="k-btn k-btn--yellow px-7 py-2">擺好了，上菜！</button>
     </div>`}`;
 }
@@ -625,38 +629,39 @@ function plateTap(i) {
 }
 async function serveDish() {
   if (busy || !PLATE || PLATE.done) return;
-  const P = PLATE, items = P.items;
-  if (!canMakeAll(items)) { alert("食材不夠了，請重新選份數。"); if (P.batch) { closeModal("modalDish"); openBatch(true); } else renderDish(); return; }
+  const P = PLATE, id = P.d, n = P.items[id], d = dishById(id);
+  if (!canMakeAll({ [id]: n })) { alert("食材不夠了，請重新選份數。"); if (P.batch) { closeModal("modalDish"); openBatch(true); } else renderDish(); return; }
   const wrong = [];
   for (let i = 0; i < 12; i++) if (!P.given.has(i) && P.g[i] !== P.g[P.mir(i)]) wrong.push(i);
   const ok = wrong.length === 0;
   busy = true;
-  Object.entries(items).forEach(([id, n]) => {
-    const d = dishById(id);
-    recKeys(d).forEach(k => { F.inv[k] = (F.inv[k] || 0) - d.rec[k] * n; });
-    F.made[id] = (F.made[id] || 0) + n;
-    if (ok) F.perf[id] = (F.perf[id] || 0) + n; else F.stock[id] = (F.stock[id] || 0) + n;
-  });
+  recKeys(d).forEach(k => { F.inv[k] = (F.inv[k] || 0) - d.rec[k] * n; });
+  F.made[id] = (F.made[id] || 0) + n;
+  if (ok) F.perf[id] = (F.perf[id] || 0) + n; else F.stock[id] = (F.stock[id] || 0) + n;
   F.plates = (F.plates || 0) + 1; if (ok) F.perfects = (F.perfects || 0) + 1;
   const saved = await save();
   busy = false;
   if (!saved) return;
-  P.done = true; P.wrong = wrong;
+  P.done = true; P.wrong = wrong; P.res[id] = ok;
   renderPantry(); renderBook(); renderShop();
-  const ids = Object.keys(items);
+  const more = P.batch && P.idx < P.ids.length - 1;
+  const doneIds = P.ids.filter(x => x in P.res);
   const free = shopLevel().menu - F.shop.menu.length;
-  const toMenu = ids.filter(id => !F.shop.menu.includes(id)).slice(0, Math.max(0, free));
-  const list = ids.map(id => { const d = dishById(id); return `<span class="fd-chip" style="margin:.15rem">${d.name} × ${items[id]}・每份 ${ok ? Math.floor(d.price * 1.5) : d.price}</span>`; }).join("");
+  const toMenu = doneIds.filter(x => !F.shop.menu.includes(x)).slice(0, Math.max(0, free));
+  const chip = x => { const dd = dishById(x), pf = P.res[x]; return `<span class="fd-chip" style="margin:.15rem;white-space:nowrap">${dd.name} × ${P.items[x]}・每份 ${pf ? Math.floor(dd.price * 1.5) : dd.price} ${pf ? `<span class="fd-rar fd-perf">完美</span>` : "普通"}</span>`; };
+  const summary = P.batch && P.ids.length > 1 && !more
+    ? `<div class="fd-note mt-3" style="background:#fff"><b>這一批做好了：</b><div class="mt-1 flex flex-wrap justify-center">${doneIds.map(chip).join("")}</div></div>` : "";
   document.getElementById("dishBody").innerHTML = `
     <div class="text-center">
-      ${ok ? `<p class="k-display text-3xl">✨ 完美料理！</p><p class="font-bold text-[#5B6B78] mt-1">配料完全對稱，賣的價錢是 1.5 倍！</p>`
-           : `<p class="k-display text-3xl">做好了！</p><p class="font-bold text-[#5B6B78] mt-1">有 ${wrong.length} 個位置沒有對稱（紅圈），這次是普通料理。</p>`}
+      ${ok ? `<p class="k-display text-3xl">✨ 完美料理！</p><p class="font-bold text-[#5B6B78] mt-1">${d.name}的配料完全對稱，賣的價錢是 1.5 倍！</p>`
+           : `<p class="k-display text-3xl">做好了！</p><p class="font-bold text-[#5B6B78] mt-1">有 ${wrong.length} 個位置沒有對稱（紅圈），這次${d.name}是普通料理。</p>`}
       <div class="mt-3">${plateSvg()}</div>
-      <div class="mt-2">${list} ${ok ? `<span class="fd-rar fd-perf">完美</span>` : ""}</div>
+      ${summary || `<div class="mt-2">${chip(id)}</div>`}
       <div class="flex flex-wrap justify-center gap-2 mt-4">
-        ${toMenu.length ? `<button onclick="menuAddMany(${JSON.stringify(toMenu).replace(/"/g, "'")});closeModal('modalDish');switchTab('shop')" class="k-btn k-btn--sky px-5 py-2">放上菜單${P.batch ? `（${toMenu.length} 道）` : ""}</button>` : ""}
+        ${more ? `<button onclick="nextPlate()" class="k-btn k-btn--yellow px-6 py-2">下一道：${dishById(P.ids[P.idx + 1]).name} →</button>` : `
+        ${toMenu.length ? `<button onclick="menuAddMany(${JSON.stringify(toMenu).replace(/"/g, "'")});closeModal('modalDish');switchTab('shop')" class="k-btn k-btn--sky px-5 py-2">放上菜單${toMenu.length > 1 ? `（${toMenu.length} 道）` : ""}</button>` : ""}
         <button onclick="${P.batch ? "closeModal('modalDish');openBatch()" : "renderDish()"}" class="k-btn px-5 py-2" style="background:#fff">再做一些</button>
-        <button onclick="closeModal('modalDish')" class="k-btn k-btn--yellow px-6 py-2">好</button>
+        <button onclick="closeModal('modalDish')" class="k-btn k-btn--yellow px-6 py-2">好</button>`}
       </div>
     </div>`;
 }
@@ -732,14 +737,24 @@ function batchGo() {
 /* =========================================================
    我的餐廳：菜單自動販賣、人氣、裝潢
    ========================================================= */
-const SALE_MS = 30 * 1000;            // 有料理在菜單上時，每 30 秒來一位客人
+const SALE_SEC = [120, 90, 45];        // 客人多久來一位：小店 2 分、中型 1 分 30 秒、大餐廳 45 秒
+const saleMs = () => SALE_SEC[curLv()] * 1000;
 const OFFLINE_MAX = 8 * 3600 * 1000;  // 沒上線最多累積 8 小時
 const HOME_CAP = 1000;                // 每天最多賺 1000 家鄉幣
 const COIN_COST = 100;
 const COIN_TABLE = [[2, 0.50], [3, 0.30], [5, 0.15], [7, 0.04], [10, 0.01]];
 
 function levelOf(pop) { let l = 0; SHOP_LEVELS.forEach((L, i) => { if ((pop || 0) >= L.need) l = i; }); return l; }
-const shopLevel = () => SHOP_LEVELS[levelOf(F.pop)];
+const curLv = () => Math.max(F.shopLv || 0, levelOf(F.pop));   // 升上去就不會再降級
+const shopLevel = () => SHOP_LEVELS[curLv()];
+const decorPop = d => d.price <= 40 ? 1 : d.price <= 60 ? 2 : d.price <= 100 ? 3 : 4;   // 裝潢越貴，人氣加越多
+function decorBonus() { return Object.values(F.shop.layout).reduce((a, id) => { const d = decorById(id); return a + (d ? decorPop(d) : 0); }, 0); }
+function popPerSale(perfect) { return ((perfect ? 2 : 1) + decorBonus()) * (decorSym() ? 2 : 1); }
+function dropSoldOut() {   // 賣完的料理自動拿下菜單
+  const s = F.shop, n = s.menu.length;
+  s.menu = s.menu.filter(id => (F.stock[id] || 0) + (F.perf[id] || 0) > 0);
+  return s.menu.length !== n;
+}
 function ensureCols() {
   const L = shopLevel(), s = F.shop;
   if (s.cols === L.cols) return;
@@ -751,7 +766,7 @@ function ensureCols() {
 function placedCount(id) { return Object.values(F.shop.layout).filter(v => v === id).length; }
 function decorSym() {
   const lay = F.shop.layout, cols = F.shop.cols;
-  if (Object.keys(lay).length < 2) return false;
+  if (Object.keys(lay).length < 1) return false;   // 沒有擺不算對稱
   for (let r = 0; r < SHOP_ROWS; r++) for (let c = 0; c < cols; c++) {
     if ((lay[r + "," + c] || null) !== (lay[r + "," + (cols - 1 - c)] || null)) return false;
   }
@@ -763,10 +778,9 @@ function tickShop() {
   const s = F.shop, now = Date.now();
   if (!s.last || s.last > now) { s.last = now; return 0; }
   if (now - s.last > OFFLINE_MAX) s.last = now - OFFLINE_MAX;
-  const lv0 = levelOf(F.pop);
+  const lv0 = curLv();
   let sold = 0;
-  const sym = decorSym();
-  while (now - s.last >= SALE_MS) {
+  while (now - s.last >= saleMs()) {
     const avail = sellable();
     if (!avail.length || F.homeToday >= HOME_CAP) { s.last = now; break; }
     const id = pick(avail), d = dishById(id);
@@ -774,13 +788,15 @@ function tickShop() {
     if (perfect) F.perf[id] -= 1; else F.stock[id] -= 1;
     const earn = Math.min(perfect ? Math.floor(d.price * 1.5) : d.price, HOME_CAP - F.homeToday);
     F.home += earn; F.homeToday += earn; F.homeTotal = (F.homeTotal || 0) + earn;
-    const pop = (perfect ? 2 : 1) + (sym ? 1 : 0);
+    const pop = popPerSale(perfect);
     F.pop = (F.pop || 0) + pop;
-    s.last += SALE_MS; s.sold = (s.sold || 0) + 1; sold++;
+    s.last += saleMs(); s.sold = (s.sold || 0) + 1; sold++;
     s.log.unshift({ t: s.last, d: id, p: perfect ? 1 : 0, e: earn, pop });
   }
   s.log = s.log.slice(0, 15);
-  if (levelOf(F.pop) > lv0) { ensureCols(); window.__levelUp = levelOf(F.pop); }
+  if (sold) dropSoldOut();
+  F.shopLv = curLv();
+  if (F.shopLv > lv0) { ensureCols(); window.__levelUp = F.shopLv; }
   return sold;
 }
 let shopSaving = false;
@@ -816,8 +832,8 @@ function renderCountdown() {
   const el = document.getElementById("nextCustomer");
   if (!el || !F) return;
   if (F.homeToday >= HOME_CAP) { el.textContent = "今天的家鄉幣已經賺滿了，明天客人會再來！"; return; }
-  if (!sellable().length) { el.textContent = F.shop.menu.length ? "菜單上的料理都賣完了，快去做菜補貨！" : "把料理放上菜單，客人就會來買。"; return; }
-  const left = Math.max(0, F.shop.last + SALE_MS - Date.now());
+  if (!sellable().length) { el.textContent = F.shop.menu.length ? "菜單上的料理都賣完了，快去做菜補貨！" : (F.shop.sold ? "料理都賣完了，快去做菜補貨，再放上菜單！" : "把料理放上菜單，客人就會來買。"); return; }
+  const left = Math.max(0, F.shop.last + saleMs() - Date.now());
   const m = Math.floor(left / 60000), sec = Math.floor(left / 1000) % 60;
   el.textContent = m ? `下一位客人大約 ${m} 分 ${sec} 秒後來` : `下一位客人大約 ${sec} 秒後來`;
   if (left === 0) shopLoop();
@@ -827,11 +843,12 @@ let SHOP_EDIT = false;
 function toggleEdit() { SHOP_EDIT = !SHOP_EDIT; renderShop(); }
 function renderShop() {
   if (!F) return;
+  if (dropSoldOut()) save();
   ensureCols();
-  const lv = levelOf(F.pop), L = SHOP_LEVELS[lv], next = SHOP_LEVELS[lv + 1];
+  const lv = curLv(), L = SHOP_LEVELS[lv], next = SHOP_LEVELS[lv + 1];
   document.getElementById("shopName").textContent = `${L.title}（${L.name}）`;
   document.getElementById("shopNext").textContent = next ? `人氣 ${F.pop}，到 ${next.need} 會升級成「${next.name}」` : `人氣 ${F.pop}，已經是最大的餐廳了！`;
-  document.getElementById("popBar").style.width = (next ? Math.min(100, (F.pop - L.need) / (next.need - L.need) * 100) : 100) + "%";
+  document.getElementById("popBar").style.width = (next ? Math.max(0, Math.min(100, (F.pop - L.need) / (next.need - L.need) * 100)) : 100) + "%";
   document.getElementById("homeToday").textContent = F.homeToday || 0;
   document.getElementById("homeBar").style.width = Math.min(100, (F.homeToday || 0) / HOME_CAP * 100) + "%";
   document.getElementById("btnEdit").textContent = SHOP_EDIT ? "✔ 擺好了" : "🪑 擺裝潢";
@@ -847,10 +864,11 @@ function renderShop() {
   const stage = document.getElementById("shopStage");
   stage.classList.toggle("is-edit", SHOP_EDIT);
   stage.innerHTML = shopBgSvg(lv, SHOP_EDIT) + slots;
-  const sym = decorSym();
+  const sym = decorSym(), bonus = decorBonus();
+  const popLine = `每賣出一份：普通料理人氣 +${popPerSale(false)}、完美料理 +${popPerSale(true)}（料理 1 或 2，裝潢 +${bonus}${sym ? "，對稱 ×2" : ""}）。客人每 ${SALE_SEC[lv] >= 60 ? `${Math.floor(SALE_SEC[lv] / 60)} 分${SALE_SEC[lv] % 60 ? ` ${SALE_SEC[lv] % 60} 秒` : "鐘"}` : `${SALE_SEC[lv]} 秒`}來一位。`;
   document.getElementById("symBadge").innerHTML = sym
-    ? `<div class="fd-note" style="background:#DFF5E8">✨ 裝潢左右對稱！每賣出一份料理，人氣多 +1。</div>`
-    : `<div class="fd-note" style="background:#fff">${SHOP_EDIT ? "紅色的格子和對面的格子擺得不一樣。" : ""}把裝潢擺成<b>以紅色虛線為對稱軸的左右對稱</b>（至少 2 件），每賣出一份料理人氣多 +1。</div>`;
+    ? `<div class="fd-note" style="background:#DFF5E8">✨ 裝潢左右對稱，人氣 ×2！<br/><span class="text-xs">${popLine}</span></div>`
+    : `<div class="fd-note" style="background:#fff">${SHOP_EDIT ? "紅色的格子和對面的格子擺得不一樣。" : ""}${bonus ? "" : "每件裝潢都能讓人氣變多。"}把裝潢擺成<b>以紅色虛線為對稱軸的左右對稱</b>，人氣還會 <b>×2</b>！<br/><span class="text-xs">${popLine}</span></div>`;
   // 菜單
   const menu = F.shop.menu;
   let mh = menu.map((id, idx) => {
@@ -858,7 +876,7 @@ function renderShop() {
     return `<div class="fd-menu ${a + b ? "" : "is-out"}"><img src="${FOOD_IMG}dish/${id}.webp" alt=""/>
       <div class="flex-1 min-w-0"><div class="font-black">${d.name}</div>
         <div class="text-xs font-bold text-[#5B6B78]">${a + b ? `普通 ${a}（${d.price}）・完美 ${b}（${Math.floor(d.price * 1.5)}）` : "賣完了，去做菜補貨"}</div></div>
-      <button onclick="menuRemove(${idx})" class="k-btn k-btn--sm" style="background:#fff">拿下</button></div>`;
+      ${a + b ? `<button onclick="menuRemove(${idx})" class="k-btn k-btn--sm" style="background:#fff">拿下</button>` : ""}</div>`;
   }).join("");
   for (let i = menu.length; i < L.menu; i++) mh += `<div class="fd-menu is-empty" onclick="openMenuPick()">＋ 放上料理</div>`;
   if (next) mh += `<p class="text-xs font-bold text-[#9AA8B3]">升級成「${next.name}」後，菜單可以放 ${next.menu} 道。</p>`;
@@ -912,7 +930,7 @@ function pickSlot(r, c) {
     <h2 class="k-display text-2xl mb-1">${r === 0 ? "牆上" : "地上"}的位置</h2>
     <p class="text-sm font-bold text-[#5B6B78] mb-4">${mirrorId && mirrorId !== cur ? `對面的格子放的是「${decorById(mirrorId).name}」。` : "選一件你有的裝潢放上去。"}</p>
     ${owned.length ? `<div class="grid grid-cols-3 sm:grid-cols-4 gap-3">${owned.map(d => `
-      <button class="fd-tile ${mirrorId === d.id ? "is-pick" : ""}" onclick="placeDecor('${k}','${d.id}')">${decorSvg(d.id, 90)}<div class="nm">${d.name}</div>
+      <button class="fd-tile ${mirrorId === d.id ? "is-pick" : ""}" onclick="placeDecor('${k}','${d.id}')">${decorSvg(d.id, 90)}<div class="nm">${d.name}</div><div class="text-xs font-bold text-[#E8513F]">人氣 +${decorPop(d)}</div>
         <span class="fd-count">${(F.decor[d.id] || 0) - placedCount(d.id)}</span></button>`).join("")}</div>`
       : `<p class="fd-note" style="background:#fff">你沒有可以放在${r === 0 ? "牆上" : "地上"}的裝潢了，去裝潢店買吧！</p>`}
     <div class="flex flex-wrap justify-end gap-2 mt-5">
@@ -931,14 +949,14 @@ async function placeDecor(k, id) {
 function openDecorShop() {
   const grp = k => DECOR.filter(d => d.k === k).map(d => {
     const own = F.decor[d.id] || 0, can = (F.home || 0) >= d.price;
-    return `<div class="fd-tile">${decorSvg(d.id, 90)}<div class="nm">${d.name}</div>
+    return `<div class="fd-tile">${decorSvg(d.id, 90)}<div class="nm">${d.name}</div><div class="text-xs font-bold text-[#E8513F]">人氣 +${decorPop(d)}</div>
       ${own ? `<span class="fd-count">${own}</span>` : ""}
       <button onclick="buyDecor('${d.id}')" class="k-btn ${can ? "k-btn--yellow" : ""} k-btn--sm w-full mt-1" style="${can ? "" : "background:#fff;opacity:.6"}">${d.price} 鄉</button></div>`;
   }).join("");
   document.getElementById("pickBody").innerHTML = `
     <div class="flex items-center justify-between gap-2"><h2 class="k-display text-2xl">🛋️ 裝潢店</h2>
       <span class="k-wallet text-base bg-white"><span class="fd-home">鄉</span>${F.home || 0}</span></div>
-    <p class="text-sm font-bold text-[#5B6B78] mt-1 mb-4">用家鄉幣買裝潢。每一件裝潢都是線對稱圖形喔！想讓餐廳左右對稱，同一件通常要買 2 個。</p>
+    <p class="text-sm font-bold text-[#5B6B78] mt-1 mb-4">用家鄉幣買裝潢。每一件裝潢都是線對稱圖形喔！每擺出一件，每賣一份料理人氣就多加上面的數字；擺成左右對稱再 ×2！</p>
     <h3 class="k-display text-lg mb-2">掛在牆上</h3>
     <div class="grid grid-cols-3 sm:grid-cols-4 gap-3">${grp("w")}</div>
     <h3 class="k-display text-lg mt-5 mb-2">放在地上</h3>

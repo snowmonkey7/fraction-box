@@ -13,7 +13,7 @@ let helpPage = 0;
 
 const $ = id => document.getElementById(id);
 const BLD = id => BUILDINGS.find(b => b.id === id);
-const MON = id => WILD.find(m => m.id === id) || GUARDIANS.find(m => m.id === id) || BOSS_LEVELS.find(m => m.id === id);
+const MON = id => WILD.find(m => m.id === id) || GUARDIANS.find(m => m.id === id) || BOSS_LEVELS.find(m => m.id === id) || (id === HERO.id ? HERO : undefined);
 const isGuardian = id => id.startsWith("g");
 const HOUR = 3600 * 1000;
 
@@ -328,6 +328,8 @@ async function winBoss() {
   const first = !G.boss.cleared[x.lv];
   G.boss.cleared[x.lv] = true;
   if (x.repeat) G.boss.hellWins = (G.boss.hellWins || 0) + 1;
+  const gotHero = x.repeat && G.boss.hellWins >= HERO_NEED && !G.beaten[HERO.id];
+  if (gotHero) G.beaten[HERO.id] = true;
   battle = null;
   G.active = null;
   $("battle").classList.add("hidden");
@@ -339,6 +341,14 @@ async function winBoss() {
   if (next && first) text += `\n下一關「${next.name}」開放了！`;
   if (x.repeat) text += `\n地獄級一共贏了 ${G.boss.hellWins} 次，可以再挑戰！`;
   showResult({ img: monsterImg(x.id), title: `打敗了${x.name}！`, text });
+  if (gotHero) {
+    const done = window.closeResult;
+    window.closeResult = function () {
+      window.closeResult = done; done();
+      showResult({ img: monsterImg(HERO.id), title: "高第成為你的夥伴了！",
+        text: `你已經打敗地獄級高第 ${HERO_NEED} 次！\n高第決定跟著你：攻擊 ${HERO.atk}、${HERO.hearts} 顆愛心，招式「${SKILLS.magic.name}」：${SKILLS.magic.desc}。\n這是高第的魔法世界的紀念夥伴，之後的新遊戲也會帶著牠喔！` });
+    };
+  }
 }
 
 function enterBuilding(id) {
@@ -392,8 +402,8 @@ function openMonInfo(id) {
   refreshResting();
   const m = MON(id), guard = isGuardian(id), n = countOf(id);
   const b = BLD(m.b);
-  const kind = guard ? "守護精靈" : `${RARITY[m.rarity].name}怪獸`;
-  const kindColor = guard ? "#E0A21B" : ["#8FA3B3", "#4A90E2", "#B455D6"][m.rarity];
+  const kind = m.hero ? "紀念夥伴" : guard ? "守護精靈" : `${RARITY[m.rarity].name}怪獸`;
+  const kindColor = m.hero ? "#E8513F" : guard ? "#E0A21B" : ["#8FA3B3", "#4A90E2", "#B455D6"][m.rarity];
   let status;
   if (n === 0) status = `<span class="text-[#8C9AA6]">都消失了，再去${b.name}探索就有機會遇到</span>`;
   else if (isResting(id)) status = `<span class="text-[#C23A26]">${restText(id)}</span>`;
@@ -460,7 +470,16 @@ function renderDex() {
         ${WILD.filter(m => m.b === b.id).map(m => monCard(m.id)).join("")}
         ${b.guardians.map(g => monCard(g)).join("")}
       </div>
-    </div>`).join("");
+    </div>`).join("") + `
+    <div>
+      <h4 class="k-display text-lg mb-2">👑 紀念夥伴</h4>
+      <div class="flex items-center gap-4">
+        <div class="w-24 shrink-0">${monCard(HERO.id)}</div>
+        <p class="text-sm font-bold text-[#5B6B78]">${G.beaten[HERO.id]
+          ? "你打敗地獄級高第 " + HERO_NEED + " 次，高第成為你的夥伴了！之後的新遊戲也會帶著牠喔。"
+          : `打敗「高第‧地獄」${HERO_NEED} 次就能得到（現在 ${Math.min(G.boss.hellWins, HERO_NEED)} / ${HERO_NEED} 次）。`}</p>
+      </div>
+    </div>`;
 }
 
 function renderTeamNow() {
@@ -471,14 +490,14 @@ function renderTeamNow() {
 }
 
 function memberLabel(id) {
-  const r = isGuardian(id) ? "守護精靈" : RARITY[MON(id).rarity].name;
+  const r = id === HERO.id ? "紀念夥伴" : isGuardian(id) ? "守護精靈" : RARITY[MON(id).rarity].name;
   return `${r}・攻擊 ${attackOf(id)}`;
 }
 
 function openTeamPicker(guardianId) {
   refreshResting();
   pendingGuardian = guardianId;
-  const all = [...WILD, ...GUARDIANS].map(m => m.id).filter(id => countOf(id) > 0);
+  const all = [HERO, ...GUARDIANS, ...WILD].map(m => m.id).filter(id => countOf(id) > 0);
   const ready = all.filter(canFight);
   if (ready.length === 0) {
     showResult({ title: "沒有可以出戰的夥伴", text: all.length ? "你的守護精靈都在休息，先去探索收服怪獸吧。" : "先到建築裡「出發探索」，收服怪獸當夥伴。" });
@@ -495,7 +514,7 @@ function openTeamPicker(guardianId) {
 }
 
 function renderTeamPick() {
-  const all = [...WILD, ...GUARDIANS].map(m => m.id).filter(id => countOf(id) > 0);
+  const all = [HERO, ...GUARDIANS, ...WILD].map(m => m.id).filter(id => countOf(id) > 0);
   $("teamPickGrid").innerHTML = all.map(id => {
     const idx = teamPick.indexOf(id);
     const ok = canFight(id);
@@ -818,6 +837,9 @@ async function useSkill(id) {
   } else if (skill === "shield") {
     b.shield = true;
   } else if (skill === "power") {
+    b.power = true;
+  } else if (skill === "magic") {
+    b.shield = true;
     b.power = true;
   } else if (skill === "heal") {
     const hurtOnes = aliveTeam().filter(x => (G.hurt[x] || 0) > 0).sort((x, y) => heartsLeft(x) - heartsLeft(y));

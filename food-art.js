@@ -37,8 +37,8 @@ function decorSvg(id, size = 100) {
 /* 餐廳等級：人氣到了自動升級 */
 const SHOP_LEVELS = [
   { name: "小店",     need: 0,   cols: 4, menu: 3, title: "對稱小吃店", awn: "#E8513F", wall: "#FBE3C4", wall2: "#F6CFA3", floor: "#E9C79B", line: "#D1A877" },
-  { name: "中型餐廳", need: 150, cols: 6, menu: 4, title: "對稱美食館", awn: "#2E9E6A", wall: "#F4E6D6", wall2: "#E9CDB0", floor: "#D9B48A", line: "#B98E62" },
-  { name: "大餐廳",   need: 500, cols: 8, menu: 6, title: "對稱大飯店", awn: "#3F6FD8", wall: "#FFF1D6", wall2: "#F2D9A6", floor: "#C9D5DF", line: "#A9B8C6" }
+  { name: "中型餐廳", need: 1500, cols: 6, menu: 4, title: "對稱美食館", awn: "#2E9E6A", wall: "#F4E6D6", wall2: "#E9CDB0", floor: "#D9B48A", line: "#B98E62" },
+  { name: "大餐廳",   need: 5000, cols: 8, menu: 6, title: "對稱大飯店", awn: "#3F6FD8", wall: "#FFF1D6", wall2: "#F2D9A6", floor: "#C9D5DF", line: "#A9B8C6" }
 ];
 // 背景尺寸：每格 100，左右各留 20；牆 1 排、地板 2 排
 const SHOP_ROWS = 3;
