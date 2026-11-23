@@ -32,6 +32,7 @@ function ensureGaudi(s) {
   if (!g.balls || typeof g.balls !== "object") g.balls = { n: 0, s: 0 };
   g.balls.n = Number(g.balls.n) || 0;
   g.balls.s = Number(g.balls.s) || 0;
+  g.incense = Number(g.incense) || 0;
   ["correctIds", "team", "wrongTimes", "logs"].forEach(k => { if (!Array.isArray(g[k])) g[k] = []; });
   // 舊進度：收服過的怪獸也記進圖鑑
   Object.keys(g.caught).forEach(id => { if (g.caught[id] > 0) g.everCaught[id] = true; });
@@ -101,6 +102,7 @@ window.onPageReady = async () => {
   document.querySelectorAll(".jsDailyCap").forEach(e => (e.textContent = GAUDI_DAILY_COIN_CAP));
   document.querySelectorAll(".jsPriceN").forEach(e => (e.textContent = BALL_PRICE.n));
   document.querySelectorAll(".jsPriceS").forEach(e => (e.textContent = BALL_PRICE.s));
+  document.querySelectorAll(".jsPriceI").forEach(e => (e.textContent = INCENSE_PRICE));
   document.querySelectorAll(".jsGuessLimit").forEach(e => (e.textContent = GUESS_WRONG_LIMIT));
   document.querySelectorAll(".jsRestHours").forEach(e => (e.textContent = GUARDIAN_REST_HOURS));
   document.querySelectorAll(".jsCap").forEach(e => (e.textContent = GAUDI_DAILY_COIN_CAP));
@@ -152,6 +154,8 @@ function renderStatus() {
   $("gAcc").textContent = (G.answered ? Math.round(G.correct / G.answered * 100) : 0) + "%";
   $("gBallN").textContent = G.balls.n;
   $("gBallS").textContent = G.balls.s;
+  document.querySelectorAll(".jsIncense").forEach(e => (e.textContent = G.incense));
+  if ($("btnIncense")) $("btnIncense").classList.toggle("opacity-60", G.incense < 1);
   $("gDayCoins").textContent = G.dayCoins;
   $("gCaughtCount").textContent = WILD.filter(m => G.everCaught[m.id]).length;
 }
@@ -525,17 +529,39 @@ async function confirmTeam() {
 }
 
 /* ================= 商店 ================= */
-async function buyBall(kind) {
-  const price = BALL_PRICE[kind];
+const BALL_NAME = { n: "普通球", s: "超級球" };
+// inBattle：在捕捉畫面直接買，買完不跳視窗，直接更新按鈕
+async function buyBall(kind, qty = 1, inBattle = false) {
+  if (shopBusy) return;
+  const price = BALL_PRICE[kind] * qty;
   if ((stu.coins || 0) < price) {
-    showResult({ title: "金幣不夠", text: `需要 ${price} 金幣，你現在有 ${stu.coins || 0} 金幣。多答對幾題就能賺到！` });
+    showResult({ title: "金幣不夠", text: `${qty} 顆${BALL_NAME[kind]}要 ${price} 金幣，你現在有 ${stu.coins || 0} 金幣。多答對幾題就能賺到！` });
     return;
   }
-  G.balls[kind] += 1;
+  shopBusy = true;
+  G.balls[kind] += qty;
+  if (inBattle) syncActive();
   await save(-price);
+  shopBusy = false;
   renderStatus();
-  showResult({ title: "買好了！", text: `${kind === "n" ? "普通球" : "超級球"} +1（剩 ${stu.coins} 金幣）` });
+  if (inBattle) { showWeakened(); $("weakHint").textContent = `買好了！${BALL_NAME[kind]} +${qty}（剩 ${stu.coins} 金幣）`; return; }
+  showResult({ title: "買好了！", text: `${BALL_NAME[kind]} +${qty}（剩 ${stu.coins} 金幣）` });
 }
+async function buyIncense(qty = 1) {
+  if (shopBusy) return;
+  const price = INCENSE_PRICE * qty;
+  if ((stu.coins || 0) < price) {
+    showResult({ title: "金幣不夠", text: `${qty} 個傳說薰香要 ${price} 金幣，你現在有 ${stu.coins || 0} 金幣。` });
+    return;
+  }
+  shopBusy = true;
+  G.incense += qty;
+  await save(-price);
+  shopBusy = false;
+  renderStatus();
+  showResult({ title: "買好了！", text: `傳說薰香 +${qty}（你現在有 ${G.incense} 個，剩 ${stu.coins} 金幣）\n到建築裡按「使用薰香探索」，一定會遇到傳說怪獸！` });
+}
+let shopBusy = false;
 
 /* ================= 排行榜 ================= */
 async function renderRank() {
@@ -664,16 +690,27 @@ function setFoeHeader() {
   if (f.lv) $("foeSkill").innerHTML = `<span class="k-chip k-chip--math">技能</span> <b>${f.skillName}</b>：${f.skillDesc}`;
 }
 
-async function startWild() {
+async function startWild(useIncense = false) {
   if (G.lockUntil > Date.now()) { showGuessLock(); return; }
   const pool = WILD.filter(m => m.b === curBld);
   let r = Math.random(), mon = pool[0];
   for (const m of pool) { r -= RARITY[m.rarity].chance; if (r < 0) { mon = m; break; } }
+  if (useIncense) {
+    if (G.incense < 1) {
+      showResult({ title: "你沒有傳說薰香", text: `到「商店」用 ${INCENSE_PRICE} 金幣就能買一個。` });
+      return;
+    }
+    const legend = pool.filter(m => m.rarity === 2);
+    mon = legend[Math.floor(Math.random() * legend.length)];
+    G.incense -= 1;
+    renderStatus();
+  }
   const hp = WEAKEN_HITS[tierOf(mon.b)][mon.rarity];
   battle = { kind: "wild", foe: mon, hp, maxHp: hp, wrong: 0, pool: curBld, asked: [], canThrow: false };
   setFoeHeader();
   openBattle();
   showQuestion();
+  if (useIncense) { syncActive(); await save(); }
 }
 
 function startGuardian(gid) {
@@ -956,7 +993,9 @@ function showWeakened() {
   $("btnCatchN").disabled = r.catchN <= 0 || G.balls.n < 1;
   $("btnCatchS").disabled = G.balls.s < 1;
   ["btnCatchN", "btnCatchS"].forEach(id => ($(id).style.opacity = $(id).disabled ? ".45" : ""));
-  $("weakHint").textContent = (G.balls.n + G.balls.s === 0) ? "你沒有寶貝球了，可以到商店用金幣買。" : "";
+  $("weakHint").textContent = (G.balls.n + G.balls.s === 0) ? "你沒有寶貝球了，可以在下面直接用金幣買。" : "";
+  $("weakBuyN").classList.toggle("hidden", r.catchN <= 0);
+  $("weakBuyCoins").textContent = stu.coins || 0;
   $("weakArea").classList.remove("hidden");
   renderBattleSide();
 }

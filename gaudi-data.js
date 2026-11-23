@@ -7,6 +7,7 @@
 /* ---------------- 可以調整的數值 ---------------- */
 const GAUDI_DAILY_COIN_CAP = 50;    // 這個遊戲每天最多拿幾個金幣
 const BALL_PRICE = { n: 3, s: 10 }; // 普通球（初級捕捉）、超級球（高級捕捉）的價格
+const INCENSE_PRICE = 20;           // 傳說薰香：探索時一定遇到這棟建築的傳說怪獸
 const STARTER_BALLS = 3;            // 第一次進遊戲送幾顆普通球
 const CAUGHT_NEEDED = [2, 3, 4];    // 要先收服這棟幾隻不同的怪獸，才能挑戰第 1、2、3 隻守護精靈
 const GUARDIAN_REST_HOURS = 20;     // 守護精靈夥伴愛心扣完後，要休息幾小時才能再出戰
