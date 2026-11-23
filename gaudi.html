@@ -51,6 +51,12 @@
     /* ---- 剪影（還沒收服的怪獸） ---- */
     .k-mon-img { aspect-ratio: 1/1; border-radius: 12px; background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; }
     .k-mon-img img { width: 100%; height: 100%; object-fit: contain; }
+    .k-mon-card { cursor: pointer; border-radius: 14px; transition: transform .08s; }
+    .k-mon-card:hover .k-mon-img { box-shadow: 0 0 0 3px var(--crayon); }
+    .k-mon-card:active { transform: scale(.95); }
+    @keyframes mon-zoom { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .mon-zoom { animation: mon-zoom .3s cubic-bezier(.2,.9,.3,1.2) both; }
+    @media (prefers-reduced-motion: reduce) { .mon-zoom { animation: none; } }
 
     /* ---- 戰鬥 ---- */
     .k-hp { height: 18px; border: 3px solid var(--ink); border-radius: 999px; background: #fff; overflow: hidden; }
@@ -328,6 +334,14 @@
     <h3 id="resTitle" class="k-display text-2xl"></h3>
     <p id="resText" class="text-sm font-bold text-[#33434F] mt-2 leading-relaxed"></p>
     <button id="resBtn" onclick="closeResult()" class="mt-5 k-btn k-btn--yellow w-full py-3 text-lg">好</button>
+  </div>
+</div>
+
+<!-- ==================== 彈窗：夥伴資料 ==================== -->
+<div id="modalMonInfo" class="hidden fixed inset-0 k-overlay z-50 flex items-center justify-center p-4" onclick="if(event.target===this)closeModal('modalMonInfo')">
+  <div class="k-modal max-w-sm w-full p-6 text-center animate-pop-in max-h-[94vh] overflow-y-auto">
+    <div id="monInfoBody"></div>
+    <button onclick="closeModal('modalMonInfo')" class="mt-5 k-btn k-btn--yellow w-full py-3 text-lg">好</button>
   </div>
 </div>
 

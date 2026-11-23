@@ -288,14 +288,46 @@ function monCard(id) {
   if (seen && !isGuardian(id)) sub = n > 0 ? heartsHtml(id, true) : `<span class="text-[11px] font-bold text-[#8C9AA6]">都消失了</span>`;
   if (seen && isGuardian(id)) sub = isResting(id) ? `<span class="text-[11px] font-bold text-[#C23A26]">休息中</span>` : heartsHtml(id, true);
   const cnt = !isGuardian(id) && n > 1 ? `<span class="k-toy-count">×${n}</span>` : "";
+  const tag = seen ? "button" : "div";
   return `
-    <div class="text-center">
+    <${tag} class="text-center block w-full ${seen ? "k-mon-card" : ""}" ${seen ? `onclick="openMonInfo('${id}')" aria-label="看${m.name}的資料"` : ""}>
       <div class="k-mon-img border-[2.5px] border-[#1E2A33] relative ${gone || isResting(id) ? "opacity-40" : ""}">
         <img src="${seen ? monsterImg(id) : silhouetteImg(id)}" alt="${seen ? m.name : "還沒收服"}" loading="lazy" />${cnt}
       </div>
       <div class="text-xs font-bold mt-1 leading-tight ${seen ? "" : "text-[#8C9AA6]"}">${seen ? m.name : "？？？"}</div>
       <div class="leading-none mt-0.5">${sub}</div>
+    </${tag}>`;
+}
+
+/* ---------- 點夥伴：放大看資料 ---------- */
+function openMonInfo(id) {
+  if (!everOwned(id)) return;
+  refreshResting();
+  const m = MON(id), guard = isGuardian(id), n = countOf(id);
+  const b = BLD(m.b);
+  const kind = guard ? "守護精靈" : `${RARITY[m.rarity].name}怪獸`;
+  const kindColor = guard ? "#E0A21B" : ["#8FA3B3", "#4A90E2", "#B455D6"][m.rarity];
+  let status;
+  if (n === 0) status = `<span class="text-[#8C9AA6]">都消失了，再去${b.name}探索就有機會遇到</span>`;
+  else if (isResting(id)) status = `<span class="text-[#C23A26]">${restText(id)}</span>`;
+  else status = `<span class="text-[#2E9E6A]">可以出戰</span>`;
+  const skill = guard
+    ? `<b>${SKILLS[m.skill].name}</b><div class="text-sm text-[#5B6B78] mt-0.5">${SKILLS[m.skill].desc}（每場戰鬥可以用一次）</div>`
+    : `<span class="text-[#5B6B78]">沒有招式</span><div class="text-xs text-[#8C9AA6] mt-0.5">只有打敗守護精靈得到的夥伴才有招式。</div>`;
+  const row = (k, v) => `<div class="flex gap-3 py-2 border-t-2 border-dashed border-[#E3E8ED]"><div class="w-16 shrink-0 font-black text-[#5B6B78]">${k}</div><div class="flex-1 font-bold">${v}</div></div>`;
+  $("monInfoBody").innerHTML = `
+    <div class="k-mon-img mon-zoom border-[3px] border-[#1E2A33] mx-auto" style="width:min(260px,70vw)"><img src="${monsterImg(id)}" alt="${m.name}"/></div>
+    <h3 class="k-display text-3xl mt-3">${m.name}</h3>
+    <div class="mt-1"><span class="k-chip" style="background:${kindColor};color:#fff">${kind}</span>
+      <span class="k-chip">${b.name} ${"★".repeat(b.tier)}</span></div>
+    <div class="text-left mt-4">
+      ${row("血量", n ? `${heartsHtml(id)} <span class="ml-1">${heartsLeft(id)} / ${maxHeartsOf(id)} 顆愛心</span>` : `<span class="text-[#8C9AA6]">滿血時有 ${maxHeartsOf(id)} 顆愛心</span>`)}
+      ${row("攻擊", `每答對一題攻擊 <b>${attackOf(id)}</b> 點`)}
+      ${row("招式", skill)}
+      ${!guard ? row("數量", `${n} 隻`) : ""}
+      ${row("狀態", status)}
     </div>`;
+  $("modalMonInfo").classList.remove("hidden");
 }
 
 function renderBuilding() {
