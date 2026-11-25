@@ -9,7 +9,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="theme.css?v=20261125" />
+  <link rel="stylesheet" href="theme.css?v=20261126" />
   <style>
     .k-mon-img { aspect-ratio: 1/1; border-radius: 10px; background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; }
     .k-mon-img img { width: 100%; height: 100%; object-fit: contain; }
@@ -52,6 +52,10 @@
     @keyframes pv-pop { from { transform: scale(1.8); opacity: 0; } 30% { transform: scale(1); opacity: 1; } }
     .pv-tbar { height: 10px; border-radius: 999px; background: #EAF1F7; overflow: hidden; border: 2px solid var(--ink); }
     .pv-tbar > div { height: 100%; background: var(--crayon); transition: width .25s linear; }
+    .pv-fig { background: #fff; border: 3px solid var(--ink); border-radius: 16px; padding: .5rem; }
+    .pv-fig svg { max-width: 100%; height: auto; }
+    .k-opt.pv-opt-fig { justify-content: center; padding: .5rem; }
+    .k-opt.pv-opt-fig svg { max-width: 100%; height: auto; }
     .pv-score { font-family: var(--display); font-size: 1.6rem; }
     .fr { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; line-height: 1.1; margin: 0 .15em; font-weight: 900; }
     .fr > span:first-child { border-bottom: 2.5px solid currentColor; padding: 0 .2em; }
@@ -116,7 +120,7 @@
         <li><b>選角</b>：兩人輪流選，順序是「先、後、後、先、後、先、先、後」，每人選 4 隻。對手選走的那一種，你就不能選。</li>
         <li><b>禁角</b>：選完後，從對手的 4 隻裡選 1 隻，讓牠不能上場。最後 3 打 3。</li>
         <li><b>題目</b>：複習數學第六、七單元（分數加減、線對稱圖形）和國語第七、八課。</li>
-        <li><b>搶答</b>：兩邊同一題，倒數 3、2、1 後開始。<b>先答對的人攻擊</b>；答錯這題就不能再答。</li>
+        <li><b>搶答</b>：兩邊同一題，題目一出來就可以搶答。<b>先答對的人攻擊</b>；答錯這題就不能再答。</li>
         <li><b>輸贏</b>：先打倒對手 3 隻就贏。一場最多 <b>5 分鐘</b>，時間到比剩下幾隻，一樣多就比剩下的血量。</li>
         <li>對戰不會讓你的夥伴受傷或消失，放心打！</li>
       </ol>
@@ -188,10 +192,11 @@
   </section>
 </main>
 
-<script src="config.js?v=20261125"></script>
-<script src="common.js?v=20261125"></script>
-<script src="gaudi-data.js?v=20261125"></script>
-<script src="pvp-q.js?v=20261125"></script>
-<script src="pvp.js?v=20261125"></script>
+<script src="config.js?v=20261126"></script>
+<script src="common.js?v=20261126"></script>
+<script src="gaudi-data.js?v=20261126"></script>
+<script src="sym-q.js?v=20261126"></script>
+<script src="pvp-q.js?v=20261126"></script>
+<script src="pvp.js?v=20261126"></script>
 </body>
 </html>

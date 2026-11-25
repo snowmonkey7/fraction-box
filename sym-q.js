@@ -1,8 +1,9 @@
 /* =========================================================
    對稱美食街｜線對稱題庫（康軒五上 第七單元 線對稱圖形）
-   題目每次隨機組合產生，分成 11 種題型：
+   題目每次隨機組合產生，以圖形題和方格繪製題為主：
    1. 找線對稱圖形　2. 數對稱軸　3. 虛線是不是對稱軸
-   4. 對稱點／對稱邊／對稱角　5. 線對稱的性質　6. 方格上畫完另一半（操作題）
+   4. 對稱點／對稱邊／對稱角　6. 方格上畫完另一半（操作題，圖形可分開、有空格）
+   9. 選出正確的另一半　10. 方格上的對稱點　11. 方格圖案是不是線對稱
    ========================================================= */
 
 const QS = "#1E2A33";
@@ -208,97 +209,64 @@ function qPairs() {
   };
 }
 
-// 5. 線對稱的性質（含計算）
-function qProperty() {
-  const t = rnd(10);
-  if (t === 0) {
-    const d = 2 + rnd(8);
-    const right = d * 2 + " 公分";
-    const opts = shuffle([right, d + " 公分", d * 4 + " 公分", d * 2 + 2 + " 公分"]);
-    return { key: "prop:dist", type: "choice",
-      prompt: `線對稱圖形中，A 點和 B 點是對稱點。A 點到對稱軸的距離是 ${d} 公分，A 點和 B 點相距幾公分？`,
-      options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
-      explain: `對稱點到對稱軸的距離一樣，B 點也離對稱軸 ${d} 公分，所以 AB = ${d} + ${d} = ${d * 2} 公分。` };
-  }
-  if (t === 1) {
-    const ab = 6 + rnd(10) * 2;
-    const right = ab / 2 + " 公分";
-    const opts = shuffle([right, ab + " 公分", ab * 2 + " 公分", ab / 2 + 1 + " 公分"]);
-    return { key: "prop:half", type: "choice",
-      prompt: `線對稱圖形中，C 點和 D 點是對稱點，CD 長 ${ab} 公分。C 點到對稱軸的距離是幾公分？`,
-      options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
-      explain: `對稱軸會把 CD 平分成一樣長的兩段，${ab} ÷ 2 = ${ab / 2} 公分。` };
-  }
-  if (t === 2) {
-    const len = 3 + rnd(12);
-    const right = len + " 公分";
-    const opts = shuffle([right, len * 2 + " 公分", (len + 1) + " 公分", Math.max(1, len - 2) + " 公分"]);
-    return { key: "prop:edge", type: "choice",
-      prompt: `線對稱圖形中，邊 AB 和邊 EF 是對稱邊。邊 AB 長 ${len} 公分，邊 EF 長幾公分？`,
-      options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
-      explain: "對稱邊的長度相等。" };
-  }
-  if (t === 3) {
-    const ang = pick([35, 40, 55, 60, 65, 72, 80, 105, 110, 120]);
-    const right = ang + " 度";
-    const opts = shuffle([right, (180 - ang) + " 度", (90 - ang > 0 ? 90 - ang : ang + 20) + " 度", ang * 2 + " 度"]);
-    return { key: "prop:angle", type: "choice",
-      prompt: `線對稱圖形中，角 B 和角 F 是對稱角。角 B 是 ${ang} 度，角 F 是幾度？`,
-      options: [...new Set(opts)].map(x => ({ text: x })), answer: [...new Set(opts)].indexOf(right),
-      explain: "對稱角的大小相等。" };
-  }
-  const facts = [
-    { q: "線對稱圖形中，兩個對稱點的連線和對稱軸有什麼關係？", a: "互相垂直", w: ["互相平行", "一樣長", "沒有關係"],
-      e: "對稱點的連線和對稱軸互相垂直，而且被對稱軸平分。" },
-    { q: "對稱點的連線和對稱軸相交的角是幾度？", a: "90 度", w: ["45 度", "60 度", "180 度"], e: "對稱點連線和對稱軸互相垂直，所以是 90 度。" },
-    { q: "下面關於線對稱圖形的說法，哪一個是<b>對的</b>？", a: "對稱邊一樣長", w: ["對稱角加起來一定是 90 度", "每個線對稱圖形都只有 1 條對稱軸", "對稱點到對稱軸的距離不一樣"],
-      e: "對稱邊一樣長、對稱角一樣大、對稱點到對稱軸的距離相等；對稱軸可能有很多條。" },
-    { q: "把一張紙對摺後剪下一個圖形再打開，打開後的圖形一定是什麼？", a: "線對稱圖形", w: ["正方形", "圓形", "三角形"],
-      e: "摺痕就是對稱軸，兩邊剪下的形狀完全一樣，所以一定是線對稱圖形。" },
-    { q: "一個圖形沿著一條直線對摺後，兩邊完全重合，這條直線叫做什麼？", a: "對稱軸", w: ["對角線", "對稱邊", "垂直線"],
-      e: "能讓圖形對摺後完全重合的那條直線叫做對稱軸。" },
-    { q: "線對稱圖形中，對稱點和對稱軸的距離有什麼關係？", a: "距離相等", w: ["一個比較遠", "加起來是 10 公分", "沒有關係"],
-      e: "兩個對稱點到對稱軸的距離一定相等。" }
-  ];
-  const f = facts[t - 4] || pick(facts);
-  const opts = shuffle([f.a, ...f.w]);
-  return { key: "prop:fact" + facts.indexOf(f), type: "choice", prompt: f.q,
-    options: opts.map(x => ({ text: x })), answer: opts.indexOf(f.a), explain: f.e };
-}
-
 // 6. 方格操作題：塗滿另一半，讓圖形變成線對稱圖形
-function qGrid() {
-  const vertical = Math.random() < 0.65;           // 對稱軸是直的（左右對稱）或橫的（上下對稱）
-  const cols = vertical ? 8 : 6, rows = vertical ? 6 : 8;
-  const half = vertical ? cols / 2 : rows / 2;
-  // 在左半邊（或上半邊）產生一個連在一起的形狀，而且要碰到對稱軸
-  const cells = new Set();
-  const key = (r, c) => r + "," + c;
-  let r0 = vertical ? 1 + rnd(rows - 2) : half - 1, c0 = vertical ? half - 1 : 1 + rnd(cols - 2);
-  cells.add(key(r0, c0));
-  const target = 4 + rnd(4);
-  let guard = 0;
-  while (cells.size < target && guard++ < 200) {
-    const [r, c] = pick([...cells]).split(",").map(Number);
-    const [dr, dc] = pick([[1, 0], [-1, 0], [0, 1], [0, -1]]);
-    const nr = r + dr, nc = c + dc;
-    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
-    if (vertical ? nc >= half : nr >= half) continue;
-    cells.add(key(nr, nc));
+//    圖形可以分成好幾塊、中間有空格，也不一定碰到對稱軸
+function randomHalf(rows, cols, vertical, half) {
+  const cells = new Set(), key = (r, c) => r + "," + c;
+  const inHalf = (r, c) => r >= 0 && c >= 0 && r < rows && c < cols && (vertical ? c < half : r < half);
+  const target = 6 + rnd(5);                       // 6～10 格
+  const seeds = 2 + rnd(2);                        // 2～3 塊
+  for (let s = 0; s < seeds; s++) {
+    let r, c, g = 0;
+    do { r = rnd(vertical ? rows : half); c = rnd(vertical ? half : cols); } while (cells.has(key(r, c)) && g++ < 50);
+    cells.add(key(r, c));
   }
-  const given = [...cells];
-  const answer = given.map(k => {
-    const [r, c] = k.split(",").map(Number);
-    return vertical ? key(r, cols - 1 - c) : key(rows - 1 - r, c);
-  });
+  let guard = 0;
+  while (cells.size < target && guard++ < 400) {
+    const [r, c] = pick([...cells]).split(",").map(Number);
+    const [dr, dc] = pick([[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]);
+    if (inHalf(r + dr, c + dc)) cells.add(key(r + dr, c + dc));
+  }
+  return [...cells];
+}
+function mirrorCell(k, g) {
+  const [r, c] = k.split(",").map(Number);
+  return g.vertical ? r + "," + (g.cols - 1 - c) : (g.rows - 1 - r) + "," + c;
+}
+function qGrid() {
+  const vertical = Math.random() < 0.6;            // 對稱軸是直的（左右對稱）或橫的（上下對稱）
+  const cols = vertical ? 10 : 7, rows = vertical ? 7 : 10;
+  const half = vertical ? cols / 2 : rows / 2;
+  const g = { rows, cols, vertical, half };
+  const given = randomHalf(rows, cols, vertical, half);
+  g.given = given;
+  g.answer = given.map(k => mirrorCell(k, g));
   return {
     key: "grid:" + (vertical ? "v" : "h"), type: "grid",
-    prompt: `紅線是對稱軸。請點方格，把${vertical ? "右邊" : "下面"}塗好，讓整個圖形變成線對稱圖形。`,
-    grid: { rows, cols, vertical, half, given, answer },
-    explain: `每一格的對稱格，到對稱軸的距離要一樣，而且在${vertical ? "同一列" : "同一行"}。`
+    prompt: `紅線是對稱軸。把${vertical ? "右邊" : "下面"}塗好，讓整個圖形變成線對稱圖形。`,
+    grid: g,
+    explain: `每一格都要塗在對稱軸另一邊、${vertical ? "同一列" : "同一行"}、離紅線一樣遠的地方。`
   };
 }
-
+// 小方格圖（選項、題目用）
+function gridSvg(g, cellsA, cellsB, size = 150, opt = {}) {
+  const cw = 100 / Math.max(g.rows, g.cols);
+  const W = g.cols * cw, H = g.rows * cw;
+  const pad = opt.extra ? cw * .9 : 3;
+  let out = `<svg viewBox="${-pad} ${-pad} ${W + pad * 2} ${H + pad * 2}" width="${size}" height="${size * (H + pad * 2) / (W + pad * 2)}">`;
+  out += `<rect x="0" y="0" width="${W}" height="${H}" fill="#fff"/>`;
+  const fill = (k, color) => { const [r, c] = k.split(",").map(Number); return `<rect x="${c * cw}" y="${r * cw}" width="${cw}" height="${cw}" fill="${color}"/>`; };
+  (cellsA || []).forEach(k => { out += fill(k, "#5BB8F0"); });
+  (cellsB || []).forEach(k => { out += fill(k, "#FFC83D"); });
+  for (let r = 0; r <= g.rows; r++) out += `<line x1="0" y1="${r * cw}" x2="${W}" y2="${r * cw}" stroke="#C9D5DF" stroke-width=".6"/>`;
+  for (let c = 0; c <= g.cols; c++) out += `<line x1="${c * cw}" y1="0" x2="${c * cw}" y2="${H}" stroke="#C9D5DF" stroke-width=".6"/>`;
+  out += `<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="${QS}" stroke-width="1.6"/>`;
+  if (!opt.noAxis) out += g.vertical
+    ? `<line x1="${W / 2}" y1="-3" x2="${W / 2}" y2="${H + 3}" stroke="#E5484D" stroke-width="2"/>`
+    : `<line x1="-3" y1="${H / 2}" x2="${W + 3}" y2="${H / 2}" stroke="#E5484D" stroke-width="2"/>`;
+  if (opt.extra) out += opt.extra(cw);
+  return out + "</svg>";
+}
 
 // 7. 正多邊形和其他圖形的對稱軸（課本 7-1 第 7、8 題）
 function qPolyAxes() {
@@ -355,87 +323,101 @@ function qTF() {
     options: [{ text: "對 ○" }, { text: "錯 ×" }], answer: f[1] ? 0 : 1, explain: f[2] };
 }
 
-// 9. 方格紙、方格點上的對稱點（課本 7-3）
-function qGridDist() {
-  const d = 1 + rnd(6), t = rnd(3);
-  if (t === 0) {
-    const right = d + " 格";
-    const opts = shuffle([right, ...sample([...new Set([d + 1, d * 2, Math.max(1, d - 1), d + 2])].filter(x => x !== d).map(x => x + " 格"), 3)]);
-    return { key: "dist:1", type: "choice",
-      prompt: `在方格紙上，點 A 和對稱軸相距 ${d} 格。點 A 的對稱點 F，應該在對稱軸另一邊的幾格處？`,
-      options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
-      explain: `對稱點到對稱軸的距離相等，所以點 F 也要和對稱軸相距 ${d} 格。` };
+// 9. 看圖選另一半：哪一個是正確的另一半？
+function qGridChoose() {
+  const vertical = Math.random() < 0.6;
+  const cols = vertical ? 8 : 6, rows = vertical ? 6 : 8;
+  const g = { rows, cols, vertical, half: vertical ? cols / 2 : rows / 2 };
+  const given = randomHalf(rows, cols, vertical, g.half).slice(0, 7);
+  const right = given.map(k => mirrorCell(k, g));
+  const sig = a => [...a].sort().join("|");
+  // 錯的另一半：直接平移過去（沒有翻面）、少一格、多一格、整個上下顛倒
+  const shift = given.map(k => { const [r, c] = k.split(",").map(Number); return vertical ? r + "," + (c + g.half) : (r + g.half) + "," + c; });
+  const flipOther = right.map(k => { const [r, c] = k.split(",").map(Number); return vertical ? (rows - 1 - r) + "," + c : r + "," + (cols - 1 - c); });
+  const missing = right.slice(1);
+  const otherSide = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { const k = r + "," + c; if ((vertical ? c >= g.half : r >= g.half) && !right.includes(k)) otherSide.push(k); }
+  const extra = [...right, pick(otherSide)];
+  const moved = right.map((k, i) => {
+    if (i) return k;
+    const [r, c] = k.split(",").map(Number);
+    const n = vertical ? (r + 1 < rows ? r + 1 : r - 1) + "," + c : r + "," + (c + 1 < cols ? c + 1 : c - 1);
+    return right.includes(n) ? k : n;
+  });
+  const cands = [];
+  [shift, flipOther, missing, extra, moved].forEach(a => { if (sig(a) !== sig(right) && !cands.some(b => sig(b) === sig(a))) cands.push(a); });
+  if (cands.length < 3) return qGrid2Fallback();
+  const opts = shuffle([right, ...sample(cands, 3)]);
+  return {
+    key: "gridPick:" + (vertical ? "v" : "h"), type: "choice", grid4: true,
+    prompt: `藍色是一半，紅線是對稱軸。哪一個圖把另一半（黃色）畫對了？`,
+    figure: gridSvg(g, given, [], 190),
+    options: opts.map(a => ({ html: gridSvg(g, given, a, 120) })), answer: opts.indexOf(right),
+    explain: "每一個黃格都要和藍格對稱：在紅線的另一邊、離紅線一樣遠，像照鏡子一樣翻過去。"
+  };
+}
+function qGrid2Fallback() { return qFindSym(); }
+
+// 10. 方格上的對稱點：A 點的對稱點是哪一點？
+function qGridPoint() {
+  const vertical = Math.random() < 0.6;
+  const cols = vertical ? 8 : 6, rows = vertical ? 6 : 8;   // 格線交點：0..cols、0..rows
+  const g = { rows, cols, vertical };
+  const ax = vertical ? cols / 2 : rows / 2;
+  let px, py;
+  if (vertical) { px = rnd(ax); py = 1 + rnd(rows - 1); } else { py = rnd(ax); px = 1 + rnd(cols - 1); }
+  const mir = vertical ? [cols - px, py] : [px, rows - py];
+  const d = vertical ? ax - px : ax - py;
+  const cand = [];
+  const add = p => { if (p[0] >= 0 && p[1] >= 0 && p[0] <= cols && p[1] <= rows && !(p[0] === mir[0] && p[1] === mir[1]) && !(p[0] === px && p[1] === py) && !cand.some(q => q[0] === p[0] && q[1] === p[1])) cand.push(p); };
+  if (vertical) {
+    add([ax + d + 1, py]); add([ax + d - 1, py]); add([px + ax, py]); add([mir[0], py + 1]); add([mir[0], py - 1]); add([ax + d + 2, py]);
+  } else {
+    add([px, ax + d + 1]); add([px, ax + d - 1]); add([px, py + ax]); add([px + 1, mir[1]]); add([px - 1, mir[1]]); add([px, ax + d + 2]);
   }
-  if (t === 1) {
-    const right = d * 2 + " 格";
-    const opts = shuffle([right, ...sample([...new Set([d, d * 2 + 1, d * 3, d + 1])].filter(x => x !== d * 2).map(x => x + " 格"), 3)]);
-    return { key: "dist:2", type: "choice",
-      prompt: `在方格紙上，點 B 和對稱軸相距 ${d} 格。點 B 和它的對稱點相距幾格？`,
-      options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
-      explain: `兩個對稱點各離對稱軸 ${d} 格，加起來是 ${d} + ${d} = ${d * 2} 格。` };
-  }
-  const total = 2 * d;
-  const right = d + " 格";
-  const opts = shuffle([right, ...sample([...new Set([total, d + 1, Math.max(1, d - 1), total + 1])].filter(x => x !== d).map(x => x + " 格"), 3)]);
-  return { key: "dist:3", type: "choice",
-    prompt: `在方格點上，點 C 和它的對稱點 G 相距 ${total} 格，而且 CG 和對稱軸垂直。點 C 和對稱軸相距幾格？`,
-    options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
-    explain: `對稱軸把 CG 平分，${total} ÷ 2 = ${d} 格。` };
+  const pts = shuffle([mir, ...sample(cand, 3)]);
+  const nums = ["①", "②", "③", "④"];
+  const extra = cw => {
+    let s = `<circle cx="${px * cw}" cy="${py * cw}" r="${cw * .28}" fill="#1E2A33"/><text x="${px * cw + cw * .36}" y="${py * cw - cw * .22}" text-anchor="start" font-size="${cw * .55}" font-weight="900" fill="#1E2A33" font-family="Arial">A</text>`;
+    pts.forEach((p, i) => { s += `<circle cx="${p[0] * cw}" cy="${p[1] * cw}" r="${cw * .26}" fill="#FFC83D" stroke="#1E2A33" stroke-width=".8"/><text x="${p[0] * cw + cw * .36}" y="${p[1] * cw - cw * .22}" text-anchor="start" font-size="${cw * .5}" font-weight="900" fill="#E5484D">${nums[i]}</text>`; });
+    return s;
+  };
+  return {
+    key: "gridPt:" + (vertical ? "v" : "h"), type: "choice",
+    prompt: "紅線是對稱軸。黑色 A 點的對稱點是哪一點？",
+    figure: gridSvg(g, [], [], 290, { extra }),
+    options: nums.map(n => ({ text: n })), answer: pts.indexOf(mir),
+    explain: `A 點離紅線 ${d} 格，它的對稱點要在紅線另一邊、也離紅線 ${d} 格，而且在同一條${vertical ? "橫線" : "直線"}上。`
+  };
 }
 
-// 10. 用對稱邊算周長（課本 7-2 做做看）
-function qPerimeter() {
-  const a = 5 + rnd(20), b = 5 + rnd(20), c = 4 + rnd(16);
-  if (Math.random() < 0.5) {
-    const P = 2 * (a + b + c);
-    const right = P + " 公分";
-    const opts = shuffle([right, (a + b + c) + " 公分", (P + a) + " 公分", (2 * (a + b) + c) + " 公分"]);
-    return { key: "peri:1", type: "choice",
-      prompt: `一個六邊形是線對稱圖形，對稱軸通過兩個頂點。它的三組對稱邊，一邊分別長 ${a} 公分、${b} 公分、${c} 公分。這個六邊形的周長是多少？`,
-      options: [...new Set(opts)].map(x => ({ text: x })), answer: [...new Set(opts)].indexOf(right),
-      explain: `對稱邊一樣長，每一組有 2 條邊：(${a} + ${b} + ${c}) × 2 = ${P} 公分。` };
+// 11. 方格圖案是不是線對稱？
+function qGridIsSym() {
+  const vertical = Math.random() < 0.6;
+  const cols = vertical ? 8 : 6, rows = vertical ? 6 : 8;
+  const g = { rows, cols, vertical, half: vertical ? cols / 2 : rows / 2 };
+  const given = randomHalf(rows, cols, vertical, g.half).slice(0, 7);
+  let other = given.map(k => mirrorCell(k, g));
+  const yes = Math.random() < 0.5;
+  if (!yes) {
+    const i = rnd(other.length);
+    const [r, c] = other[i].split(",").map(Number);
+    const n = vertical ? (r + 1 < rows ? r + 1 : r - 1) + "," + c : r + "," + (c + 1 < cols ? c + 1 : c - 1);
+    if (other.includes(n) || given.includes(n)) other = other.filter((_, j) => j !== i); else other[i] = n;
   }
-  const P = 2 * (a + b + c);
-  const right = c + " 公分";
-  const opts = shuffle([right, ...sample([...new Set([2 * c, c + 2, Math.max(1, c - 2), a + b])].filter(x => x !== c).map(x => x + " 公分"), 3)]);
-  return { key: "peri:2", type: "choice",
-    prompt: `一個六邊形是線對稱圖形，周長 ${P} 公分。它有三組對稱邊，其中兩組的邊長是 ${a} 公分和 ${b} 公分。第三組的一條邊長幾公分？`,
-    options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
-    explain: `${P} ÷ 2 = ${a + b + c}，${a + b + c} − ${a} − ${b} = ${c} 公分。` };
-}
-
-// 11. 等腰三角形與對稱角（課本 數學想一想）
-function qTriAngle() {
-  const t = rnd(3);
-  const base = pick([30, 35, 40, 45, 50, 55, 60, 65, 70, 75]);
-  if (t === 0) {
-    const right = base + " 度";
-    const opts = shuffle([right, ...sample([...new Set([180 - base, 90 - base, 180 - 2 * base, base + 10])].filter(x => x > 0 && x !== base).map(x => x + " 度"), 3)]);
-    return { key: "tri:1", type: "choice",
-      prompt: `三角形 ABC 是線對稱圖形，對稱軸通過頂點 A。∠B 是 ${base} 度，∠C 是幾度？`,
-      options: opts.map(x => ({ text: x })), answer: opts.indexOf(right),
-      explain: `∠B 和 ∠C 是對稱角，對稱角一樣大，所以 ∠C = ${base} 度。` };
-  }
-  if (t === 1) {
-    const apex = 180 - 2 * base;
-    const right = apex + " 度";
-    const opts = shuffle([right, ...sample([base, 180 - base, 90 - base > 0 ? 90 - base : base + 20, apex + 10].filter(x => x > 0 && x !== apex).map(x => x + " 度"), 3)]);
-    return { key: "tri:2", type: "choice",
-      prompt: `三角形 ABC 是線對稱圖形，對稱軸通過頂點 A。∠B 是 ${base} 度，∠A 是幾度？`,
-      options: [...new Set(opts)].map(x => ({ text: x })), answer: [...new Set(opts)].indexOf(right),
-      explain: `∠C 和 ∠B 一樣是 ${base} 度。三角形三個角加起來是 180 度：180 − ${base} − ${base} = ${apex} 度。` };
-  }
-  const opts = shuffle(["90 度", "45 度", "60 度", "180 度"]);
-  return { key: "tri:3", type: "choice",
-    prompt: "把等腰三角形 ABC 沿著對稱軸對摺，對稱軸和底邊 BC 相交形成 ∠1 和 ∠2。已知 ∠1 = ∠2，∠1 + ∠2 = 180 度，∠1 是幾度？",
-    options: opts.map(x => ({ text: x })), answer: opts.indexOf("90 度"),
-    explain: "∠1 和 ∠2 一樣大，加起來是 180 度，所以各是 90 度，對稱軸和底邊互相垂直。" };
+  return {
+    key: "gridSym:" + (vertical ? "v" : "h"), type: "choice",
+    prompt: "以紅線為對稱軸，這個方格圖案是線對稱圖形嗎？",
+    figure: gridSvg(g, [...given, ...other], [], 210),
+    options: [{ text: "是" }, { text: "不是" }], answer: yes ? 0 : 1,
+    explain: yes ? "每一格在紅線另一邊都有離紅線一樣遠的格子，對摺後會完全重合。" : "有格子在紅線另一邊找不到對稱的格子，對摺後不會完全重合。"
+  };
 }
 
 const Q_MAKERS = [
-  { f: qFindSym, w: 3 }, { f: qCountAxes, w: 2 }, { f: qIsAxis, w: 2 },
-  { f: qPairs, w: 3 }, { f: qProperty, w: 3 }, { f: qGrid, w: 2 },
-  { f: qPolyAxes, w: 2 }, { f: qTF, w: 2 }, { f: qGridDist, w: 2 }, { f: qPerimeter, w: 2 }, { f: qTriAngle, w: 2 }
+  { f: qFindSym, w: 3 }, { f: qCountAxes, w: 3 }, { f: qIsAxis, w: 2 }, { f: qPairs, w: 2 },
+  { f: qGrid, w: 4 }, { f: qGridChoose, w: 3 }, { f: qGridPoint, w: 2 }, { f: qGridIsSym, w: 2 },
+  { f: qPolyAxes, w: 1 }, { f: qTF, w: 1 }
 ];
 // 產生一組題目（題型盡量不重複）
 function makeQuestionSet(n = 3) {
@@ -452,5 +434,5 @@ function makeQuestionSet(n = 3) {
   }
   return out;
 }
-const Q_TYPE_NAMES = { find: "找線對稱圖形", axes: "數對稱軸", isAxis: "判斷對稱軸", pair: "對稱點、邊、角", prop: "線對稱的性質", grid: "方格畫另一半",
+const Q_TYPE_NAMES = { find: "找線對稱圖形", axes: "數對稱軸", isAxis: "判斷對稱軸", pair: "對稱點、邊、角", prop: "線對稱的性質", grid: "方格畫另一半", gridPick: "選出正確的另一半", gridPt: "方格上的對稱點", gridSym: "方格圖案是否對稱",
   poly: "多邊形的對稱軸", tf: "觀念是非題", dist: "方格上的對稱點", peri: "對稱邊與周長", tri: "等腰三角形的角" };

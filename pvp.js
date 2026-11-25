@@ -16,7 +16,6 @@ const PVP_COINS = { win: 7, lose: 3, draw: 5 };   // 公平競技的金幣
 const PVP_PICK_ORDER = ["A", "B", "B", "A", "B", "A", "A", "B"];
 const PVP_TEAM = 4;               // 每人選幾隻
 const PVP_MATCH_SEC = 300;        // 一場最多幾秒（5 分鐘）
-const PVP_Q_SEC = 20;             // 每題作答時間
 const PVP_PICK_SEC = 25;          // 每次選角時間
 const PVP_BAN_SEC = 20;           // 禁角時間
 const PVP_GONE_SEC = 45;          // 對手多久沒有回應就算斷線
@@ -430,12 +429,34 @@ function startFight(d) {
    ========================================================= */
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function seededShuffle(arr, seed) { const a = arr.slice(), r = rng(seed); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
-let ORDER = null, ORDER_SEED = null;
+let ORDER = null, ORDER_SEED = null, QCACHE = {};
+// 線對稱（數學第七單元）用圖形出題，只用 4 個選項的題型
+const SYM_MAKERS = [qFindSym, qCountAxes, qPairs, qGridChoose, qGridChoose, qGridPoint, qGridPoint, qPolyAxes];
+function symQuestion(seed) {
+  const real = Math.random;
+  Math.random = rng(seed);                 // 兩台平板用同一個種子，畫出來的題目一樣
+  try {
+    for (let i = 0; i < 20; i++) {
+      const x = SYM_MAKERS[Math.floor(Math.random() * SYM_MAKERS.length)]();
+      if (x.type === "choice" && x.options.length === 4) return x;
+    }
+    return qCountAxes();
+  } finally { Math.random = real; }
+}
+// 每一題整理成：題目 HTML、圖、4 個選項 HTML、正確答案是第幾個
 function questionAt(k) {
-  if (ORDER_SEED !== R.seed) { ORDER = seededShuffle([...PVP_QUESTIONS.keys()], R.seed); ORDER_SEED = R.seed; }
+  if (ORDER_SEED !== R.seed) { ORDER = seededShuffle([...PVP_QUESTIONS.keys()], R.seed); ORDER_SEED = R.seed; QCACHE = {}; }
+  if (QCACHE[k]) return QCACHE[k];
   const q = PVP_QUESTIONS[ORDER[k % ORDER.length]];
-  const opts = seededShuffle([q.a, ...q.w], R.seed + k * 7919);
-  return { q: q.q, opts, a: q.a };
+  let out;
+  if (q.gen) {
+    const x = symQuestion(R.seed + k * 7919);
+    out = { q: x.prompt, fig: x.figure || "", opts: x.options.map(o => o.html || escapeHtml(o.text)), ans: x.answer, figOpts: !!x.options[0].html };
+  } else {
+    const opts = seededShuffle([q.a, ...q.w], R.seed + k * 7919);
+    out = { q: fmtQ(q.q), fig: "", opts: opts.map(fmtQ), ans: opts.indexOf(q.a), figOpts: false };
+  }
+  return (QCACHE[k] = out);
 }
 // 題目文字：換行、直式分數 [[分子/分母]]、帶分數 [[整數 分子/分母]]
 function fmtQ(t) {
@@ -444,26 +465,20 @@ function fmtQ(t) {
 }
 const front = side => R.hp[side].findIndex(h => h > 0);
 
-// 題目的時間軸（從這一題出現在這台平板開始算）
-const SHOW_LAST = 1.4, COUNT = 3;
+// 題目的時間軸：先顯示上一題的結果 1.5 秒，接著直接出題（沒有倒數、沒有作答時間限制）
+const SHOW_LAST = 1.5;
 function qPhase(t) {
   const s = (t - L.kAt) / 1000;
-  const pre = L.showLast ? SHOW_LAST : 0;
-  if (s < pre) return { st: "last" };
-  if (s < pre + COUNT) return { st: "count", n: Math.ceil(pre + COUNT - s) };
-  return { st: "ask", left: pre + COUNT + PVP_Q_SEC - s };
+  if (L.showLast && s < SHOW_LAST) return { st: "last" };
+  return { st: "ask" };
 }
 function renderQuestionClock(t) {
   const p = qPhase(t);
-  if (p.st !== L.qst || (p.st === "count" && p.n !== L.qn)) { L.qst = p.st; L.qn = p.n; renderFightCenter(); }
-  if (p.st === "ask") {
-    $("qTimerBar").style.width = Math.max(0, p.left / PVP_Q_SEC * 100) + "%";
-    if (p.left <= (L.answered === "wrong" ? 0 : -1) && L.toK !== R.k) { L.toK = R.k; timeoutQ(R.k); }
-  }
+  if (p.st !== L.qst) { L.qst = p.st; renderFightCenter(); }
 }
 async function answer(i) {
   if (R.phase !== "fight" || L.answered || qPhase(now()).st !== "ask") return;
-  const k = R.k, Q = questionAt(k), ok = Q.opts[i] === Q.a;
+  const k = R.k, Q = questionAt(k), ok = i === Q.ans;
   L.answered = ok ? "right" : "wrong"; L.picked = i;
   STU.pvp.ans += 1; if (ok) STU.pvp.cor += 1;
   renderFightCenter();
@@ -644,19 +659,18 @@ function renderFightCenter() {
         <p class="font-bold mt-2">${escapeHtml(monName(l.atk))} 攻擊 ${escapeHtml(monName(l.tgt))}，造成 <b>${l.dmg}</b> 點傷害${l.ko ? `，<b>${escapeHtml(monName(l.tgt))}倒下了！</b>` : "！"}</p>`;
     } else html = `<div class="pv-big">${l.why === "time" ? "時間到！" : "兩個人都答錯了！"}</div><p class="font-bold mt-2">這題沒有人攻擊，換下一題。</p>`;
     const LQ = questionAt(l.k);
-    html += `<p class="text-sm font-bold text-[#5B6B78] mt-3">正確答案：<b class="text-[#1E2A33]">${fmtQ(LQ.a)}</b></p>`;
+    html += `<div class="text-sm font-bold text-[#5B6B78] mt-3">正確答案：<b class="text-[#1E2A33] inline-block align-middle">${LQ.opts[LQ.ans]}</b></div>`;
     box.innerHTML = `<div class="text-center py-6">${html}</div>`;
-  } else if (p.st === "count") {
-    box.innerHTML = `<div class="text-center py-10"><p class="font-bold text-[#5B6B78]">第 ${R.k + 1} 題，準備搶答！</p><div class="pv-count">${p.n}</div></div>`;
   } else {
     const Q = questionAt(R.k);
     const locked = !!L.answered;
     box.innerHTML = `
-      <div class="pv-tbar"><div id="qTimerBar"></div></div>
-      <p class="text-lg font-black leading-relaxed mt-3">${fmtQ(Q.q)}</p>
-      <div class="grid sm:grid-cols-2 gap-3 mt-4">${Q.opts.map((o, i) => `
-        <button class="k-opt ${L.picked === i ? (L.answered === "right" ? "is-right" : "is-wrong") : ""}" ${locked ? "disabled" : ""} onclick="answer(${i})">
-          <span class="k-opt-key">${"ABCD"[i]}</span><span class="k-opt-txt">${fmtQ(o)}</span></button>`).join("")}</div>
+      <p class="text-xs font-bold text-[#5B6B78]">第 ${R.k + 1} 題・搶答！</p>
+      <p class="text-lg font-black leading-relaxed mt-1">${Q.q}</p>
+      ${Q.fig ? `<div class="flex justify-center mt-3"><div class="pv-fig">${Q.fig}</div></div>` : ""}
+      <div class="grid ${Q.figOpts ? "grid-cols-2" : "sm:grid-cols-2"} gap-3 mt-4">${Q.opts.map((o, i) => `
+        <button class="k-opt ${Q.figOpts ? "pv-opt-fig" : ""} ${L.picked === i ? (L.answered === "right" ? "is-right" : "is-wrong") : ""}" ${locked ? "disabled" : ""} onclick="answer(${i})">
+          <span class="k-opt-key">${"ABCD"[i]}</span><span class="k-opt-txt">${o}</span></button>`).join("")}</div>
       <p class="text-center font-bold mt-3 min-h-[1.5rem] ${L.answered === "wrong" ? "text-[#E8513F]" : "text-[#2E9E6A]"}">${L.answered === "wrong" ? "答錯了！這題不能再答，等對手作答…" : L.answered === "right" ? "答對了！" : ""}</p>`;
   }
 }
