@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PvP 競技場</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="theme.css" />
+  <style>
+    .k-mon-img { aspect-ratio: 1/1; border-radius: 10px; background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .k-mon-img img { width: 100%; height: 100%; object-fit: contain; }
+    .k-note { border: 3px solid var(--ink); border-radius: 16px; background: #FFF4CC; padding: .75rem 1rem; font-weight: 700; }
+    .k-note--ok { background: #DDF5E7; }
+
+    .pv-arena { background: #2B3A67; color: #fff; border: 3px solid var(--ink); border-radius: 26px; box-shadow: 6px 6px 0 var(--ink); }
+    .pv-chip { width: 100%; text-align: center; }
+    .pv-chip .k-mon-img { border: 2.5px solid var(--ink); }
+    .pv-pool { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: .6rem; }
+
+    .pv-pick { position: relative; background: #fff; border: 3px solid var(--ink); border-radius: 16px; padding: .4rem; box-shadow: 0 4px 0 var(--ink); transition: transform .06s; }
+    .pv-pick:not(:disabled):hover { background: #FFFBEA; }
+    .pv-pick:not(:disabled):active { transform: translateY(4px); box-shadow: 0 0 0 var(--ink); }
+    .pv-pick.is-used { opacity: .45; }
+    .pv-pick.is-mine { opacity: 1; background: #DDF5E7; }
+    .pv-pick.is-ban { background: #FFE3DE; }
+    .pv-pick:disabled { cursor: default; }
+    .pv-tag { position: absolute; top: -8px; right: -6px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 900; padding: 1px 7px; border-radius: 999px; }
+    .pv-tag--ban { background: var(--tomato); font-size: 14px; }
+
+    .pv-order { display: grid; grid-template-columns: repeat(8, 1fr); gap: .35rem; }
+    .pv-slot { aspect-ratio: 1/1; border: 3px solid var(--ink); border-radius: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; font-size: 12px; font-weight: 900; }
+    .pv-slot img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+    .pv-slot.is-me { background: #FFE9A8; }
+    .pv-slot.is-op { background: #D7EEFC; }
+    .pv-slot.is-cur { outline: 4px solid var(--tomato); outline-offset: 2px; animation: pv-pulse 1s ease-in-out infinite; }
+    @keyframes pv-pulse { 50% { outline-color: transparent; } }
+
+    .pv-team { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+    .pv-mon { background: #fff; color: var(--ink); border: 3px solid var(--ink); border-radius: 14px; padding: .35rem; text-align: center; transition: transform .2s; }
+    .pv-mon.is-front { box-shadow: 0 0 0 4px var(--crayon); transform: translateY(-3px); }
+    .pv-mon.is-ko { opacity: .35; filter: grayscale(1); }
+    .pv-hp { height: 10px; border: 2px solid var(--ink); border-radius: 999px; background: #fff; overflow: hidden; margin-top: 3px; }
+    .pv-hp > div { height: 100%; background: var(--leaf); transition: width .45s ease; }
+    .pv-hp > div.is-low { background: var(--tomato); }
+
+    .pv-count { font-family: var(--display); font-size: 6rem; line-height: 1; color: var(--tomato); animation: pv-pop .9s ease both; }
+    .pv-big { font-family: var(--display); font-size: 2rem; }
+    @keyframes pv-pop { from { transform: scale(1.8); opacity: 0; } 30% { transform: scale(1); opacity: 1; } }
+    .pv-tbar { height: 10px; border-radius: 999px; background: #EAF1F7; overflow: hidden; border: 2px solid var(--ink); }
+    .pv-tbar > div { height: 100%; background: var(--crayon); transition: width .25s linear; }
+    .pv-score { font-family: var(--display); font-size: 1.6rem; }
+    .fr { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; line-height: 1.1; margin: 0 .15em; font-weight: 900; }
+    .fr > span:first-child { border-bottom: 2.5px solid currentColor; padding: 0 .2em; }
+    .fr > span { font-size: .92em; }
+    .fr-w { font-weight: 900; margin-left: .1em; }
+    @media (prefers-reduced-motion: reduce) { .pv-count, .pv-slot.is-cur { animation: none; } }
+  </style>
+</head>
+<body class="k-page select-none">
+<header class="k-board sticky top-0 z-30">
+  <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+    <div class="min-w-0">
+      <h1 class="k-board-title text-2xl md:text-3xl truncate">PvP 競技場</h1>
+      <p class="k-board-sub text-xs font-medium mt-0.5">帶著高第魔法建築的夥伴，和同學搶答對戰</p>
+    </div>
+    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <span class="k-wallet text-base bg-white"><span class="k-coin"></span><span id="pCoins">0</span></span>
+      <span id="syncBadge" class="k-chip bg-slate-100 text-slate-600">連線檢查中...</span>
+      <button onclick="location.href='index.html'" class="k-btn k-btn--chalk k-btn--sm">遊戲目錄</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+  <p id="viewLoading" class="text-center font-bold text-[#5B6B78] py-16">載入中…</p>
+  <section id="viewBlock" class="hidden k-card p-8 text-center">
+    <p id="blockTitle" class="k-display text-2xl"></p>
+    <p id="blockText" class="font-bold text-[#5B6B78] mt-2"></p>
+  </section>
+
+  <!-- ==================== 大廳 ==================== -->
+  <section id="viewLobby" class="hidden space-y-5">
+    <div class="k-card p-4 md:p-5 flex flex-wrap items-center justify-between gap-4">
+      <span class="k-nametag text-lg"><span id="pStuId" class="k-nt-id"></span><span id="pStuName" class="k-nt-name"></span></span>
+      <div class="flex flex-wrap gap-3 text-sm font-bold">
+        <div class="px-3 py-1.5 rounded-xl border-2 border-dashed border-[#9AA8B4] bg-white text-center"><div class="text-xs text-[#5B6B78]">公平競技</div><div id="recFair" class="k-display text-lg">0 勝 0 敗</div></div>
+        <div class="px-3 py-1.5 rounded-xl border-2 border-dashed border-[#9AA8B4] bg-white text-center"><div class="text-xs text-[#5B6B78]">自訂對戰</div><div id="recCustom" class="k-display text-lg">0 勝 0 敗</div></div>
+        <div class="px-3 py-1.5 rounded-xl border-2 border-dashed border-[#9AA8B4] bg-white text-center"><div class="text-xs text-[#5B6B78]">競技場賺到</div><div class="k-display text-lg"><span id="recCoins">0</span> 金幣</div></div>
+      </div>
+    </div>
+    <div id="lobbyMsg"></div>
+
+    <div class="grid md:grid-cols-2 gap-5">
+      <div class="k-card p-5">
+        <h2 class="k-display text-2xl">⚔️ 公平競技</h2>
+        <p class="text-sm font-bold text-[#5B6B78] mt-1">隨機配對一位同學。<b>贏了 7 金幣，輸了也有 3 金幣</b>（平手各 5）。</p>
+        <button id="btnFair" onclick="startFair()" class="k-btn k-btn--yellow w-full py-3 text-lg mt-4">開始配對</button>
+      </div>
+      <div class="k-card p-5">
+        <h2 class="k-display text-2xl">🤝 自訂對戰</h2>
+        <p class="text-sm font-bold text-[#5B6B78] mt-1">找你想挑戰的同學：一個人建房間，另一個人輸入房號。<b>不給金幣</b>。</p>
+        <div class="grid grid-cols-2 gap-3 mt-4">
+          <button id="btnCreate" onclick="createCustom()" class="k-btn k-btn--sky py-3 text-lg">建立房間</button>
+          <button id="btnJoin" onclick="joinCustom()" class="k-btn py-3 text-lg" style="background:#fff">輸入房號</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="k-card p-5">
+      <h2 class="k-display text-xl">怎麼對戰？</h2>
+      <ol class="list-decimal pl-5 mt-2 space-y-1 text-sm font-bold text-[#33434F]">
+        <li><b>選角</b>：兩人輪流選，順序是「先、後、後、先、後、先、先、後」，每人選 4 隻。對手選走的那一種，你就不能選。</li>
+        <li><b>禁角</b>：選完後，從對手的 4 隻裡選 1 隻，讓牠不能上場。最後 3 打 3。</li>
+        <li><b>題目</b>：複習數學第六、七單元（分數加減、線對稱圖形）和國語第七、八課。</li>
+        <li><b>搶答</b>：兩邊同一題，倒數 3、2、1 後開始。<b>先答對的人攻擊</b>；答錯這題就不能再答。</li>
+        <li><b>輸贏</b>：先打倒對手 3 隻就贏。一場最多 <b>5 分鐘</b>，時間到比剩下幾隻，一樣多就比剩下的血量。</li>
+        <li>對戰不會讓你的夥伴受傷或消失，放心打！</li>
+      </ol>
+    </div>
+
+    <div class="k-card p-5">
+      <h2 class="k-display text-xl">我可以上場的夥伴</h2>
+      <p class="text-xs font-bold text-[#5B6B78] mt-1 mb-3">「攻」是答對一次造成的傷害，「血」是對戰時的血量。</p>
+      <div id="myPoolList" class="pv-pool"></div>
+    </div>
+  </section>
+
+  <!-- ==================== 等待 ==================== -->
+  <section id="viewWait" class="hidden">
+    <div class="k-card p-8 text-center max-w-lg mx-auto">
+      <div class="text-5xl animate-bounce">⚔️</div>
+      <p id="waitTitle" class="k-display text-3xl mt-3">配對中…</p>
+      <p id="waitText" class="font-bold text-[#5B6B78] mt-2"></p>
+      <p id="waitCode" class="hidden k-display text-6xl tracking-[.3em] mt-4"></p>
+      <button onclick="cancelWait()" class="k-btn k-btn--tomato px-6 py-2 mt-6">取消</button>
+    </div>
+  </section>
+
+  <!-- ==================== 對戰房間 ==================== -->
+  <section id="viewRoom" class="hidden space-y-4">
+    <div class="pv-arena p-4 flex flex-wrap items-center justify-between gap-2">
+      <div id="vsA" class="text-lg"></div>
+      <div class="text-center"><div class="k-display text-2xl text-[#FFD34E]">VS</div><div id="roomMode" class="text-xs font-bold opacity-80"></div></div>
+      <div id="vsB" class="text-lg text-right"></div>
+    </div>
+
+    <!-- 選角 -->
+    <div id="pPick" class="hidden k-card p-4 sm:p-5 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <p id="pickWho" class="k-display text-xl"></p>
+        <span class="k-chip k-chip--yellow">⏱ <span id="pickTimer"></span></span>
+      </div>
+      <div id="pickOrder" class="pv-order"></div>
+      <p class="text-xs font-bold text-[#5B6B78]">黃色是你的、藍色是對手的。時間到會自動幫你選一隻。<span id="opPool"></span></p>
+      <div id="pickGrid" class="pv-pool"></div>
+    </div>
+
+    <!-- 禁角 -->
+    <div id="pBan" class="hidden k-card p-4 sm:p-5 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <p id="banWho" class="k-display text-xl"></p>
+        <span class="k-chip k-chip--yellow">⏱ <span id="banTimer"></span></span>
+      </div>
+      <div><p class="font-black mb-2">對手的夥伴</p><div id="banOp" class="grid grid-cols-4 gap-3 max-w-lg"></div></div>
+      <div><p class="font-black mb-2">你的夥伴（對手也會禁掉你 1 隻）</p><div id="banMe" class="grid grid-cols-4 gap-3 max-w-lg"></div></div>
+    </div>
+
+    <!-- 對戰 -->
+    <div id="pFight" class="hidden space-y-4">
+      <div class="grid grid-cols-[1fr_auto_1fr] gap-3 items-start">
+        <div><p class="text-xs font-black mb-1">你的隊伍・搶到 <span id="scoreMe" class="pv-score">0</span></p><div id="teamMe" class="pv-team"></div></div>
+        <div class="text-center pt-5"><div class="text-xs font-bold text-[#5B6B78]">剩下</div><div id="matchClock" class="k-display text-2xl">5:00</div></div>
+        <div><p class="text-xs font-black mb-1 text-right">對手・搶到 <span id="scoreOp" class="pv-score">0</span></p><div id="teamOp" class="pv-team"></div></div>
+      </div>
+      <div id="qBox" class="k-card p-5 min-h-[16rem]"></div>
+      <div class="text-right"><button onclick="surrender()" class="k-btn k-btn--sm" style="background:#fff">離開對戰</button></div>
+    </div>
+
+    <!-- 結果 -->
+    <div id="pEnd" class="hidden k-card p-8 text-center">
+      <div id="endBody"></div>
+      <button onclick="backLobby()" class="k-btn k-btn--yellow px-8 py-3 text-lg mt-6">回到大廳</button>
+    </div>
+  </section>
+</main>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script src="gaudi-data.js"></script>
+<script src="pvp-q.js"></script>
+<script src="pvp.js"></script>
+</body>
+</html>
