@@ -437,6 +437,11 @@ function questionAt(k) {
   const opts = seededShuffle([q.a, ...q.w], R.seed + k * 7919);
   return { q: q.q, opts, a: q.a };
 }
+// 題目文字：換行、直式分數 [[分子/分母]]、帶分數 [[整數 分子/分母]]
+function fmtQ(t) {
+  return escapeHtml(t).replace(/\n/g, "<br/>").replace(/\[\[(?:(\d+) )?(\d+)\/(\d+)\]\]/g, (m, w, n, d) =>
+    `${w ? `<span class="fr-w">${w}</span>` : ""}<span class="fr"><span>${n}</span><span>${d}</span></span>`);
+}
 const front = side => R.hp[side].findIndex(h => h > 0);
 
 // 題目的時間軸（從這一題出現在這台平板開始算）
@@ -638,7 +643,9 @@ function renderFightCenter() {
       html = `<div class="pv-big ${mine ? "text-[#2E9E6A]" : "text-[#E8513F]"}">${mine ? "你搶到了！" : "對手搶到了！"}</div>
         <p class="font-bold mt-2">${escapeHtml(monName(l.atk))} 攻擊 ${escapeHtml(monName(l.tgt))}，造成 <b>${l.dmg}</b> 點傷害${l.ko ? `，<b>${escapeHtml(monName(l.tgt))}倒下了！</b>` : "！"}</p>`;
     } else html = `<div class="pv-big">${l.why === "time" ? "時間到！" : "兩個人都答錯了！"}</div><p class="font-bold mt-2">這題沒有人攻擊，換下一題。</p>`;
-    box.innerHTML = `<div class="text-center py-8">${html}</div>`;
+    const LQ = questionAt(l.k);
+    html += `<p class="text-sm font-bold text-[#5B6B78] mt-3">正確答案：<b class="text-[#1E2A33]">${fmtQ(LQ.a)}</b></p>`;
+    box.innerHTML = `<div class="text-center py-6">${html}</div>`;
   } else if (p.st === "count") {
     box.innerHTML = `<div class="text-center py-10"><p class="font-bold text-[#5B6B78]">第 ${R.k + 1} 題，準備搶答！</p><div class="pv-count">${p.n}</div></div>`;
   } else {
@@ -646,10 +653,10 @@ function renderFightCenter() {
     const locked = !!L.answered;
     box.innerHTML = `
       <div class="pv-tbar"><div id="qTimerBar"></div></div>
-      <p class="text-lg font-black leading-relaxed mt-3">${escapeHtml(Q.q)}</p>
+      <p class="text-lg font-black leading-relaxed mt-3">${fmtQ(Q.q)}</p>
       <div class="grid sm:grid-cols-2 gap-3 mt-4">${Q.opts.map((o, i) => `
         <button class="k-opt ${L.picked === i ? (L.answered === "right" ? "is-right" : "is-wrong") : ""}" ${locked ? "disabled" : ""} onclick="answer(${i})">
-          <span class="k-opt-key">${"ABCD"[i]}</span><span class="k-opt-txt">${escapeHtml(o)}</span></button>`).join("")}</div>
+          <span class="k-opt-key">${"ABCD"[i]}</span><span class="k-opt-txt">${fmtQ(o)}</span></button>`).join("")}</div>
       <p class="text-center font-bold mt-3 min-h-[1.5rem] ${L.answered === "wrong" ? "text-[#E8513F]" : "text-[#2E9E6A]"}">${L.answered === "wrong" ? "答錯了！這題不能再答，等對手作答…" : L.answered === "right" ? "答對了！" : ""}</p>`;
   }
 }
