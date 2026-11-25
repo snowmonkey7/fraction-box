@@ -465,8 +465,8 @@ function fmtQ(t) {
 }
 const front = side => R.hp[side].findIndex(h => h > 0);
 
-// 題目的時間軸：先顯示上一題的結果 1.5 秒，接著直接出題（沒有倒數、沒有作答時間限制）
-const SHOW_LAST = 1.5;
+// 題目的時間軸：先顯示上一題的結果 5 秒，接著直接出題（沒有倒數、沒有作答時間限制）
+const SHOW_LAST = 5;           // 每題結果顯示幾秒
 function qPhase(t) {
   const s = (t - L.kAt) / 1000;
   if (L.showLast && s < SHOW_LAST) return { st: "last" };
