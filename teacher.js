@@ -78,7 +78,7 @@ function exitTeacherView() {
 }
 
 function switchTeacherTab(name) {
-  ["fraction", "gaudi", "food"].forEach(t => {
+  ["fraction", "gaudi", "food", "pvp"].forEach(t => {
     document.getElementById("tchPane_" + t).classList.toggle("hidden", t !== name);
     document.getElementById("tchTabBtn_" + t).className = t === name
       ? "px-4 py-2 rounded-xl font-black text-sm bg-slate-800 text-white shadow"
@@ -111,6 +111,7 @@ async function refreshTeacherData() {
   renderGaudiTeacher(list);
   renderDressTeacher(list);
   renderFoodTeacher(list);
+  renderPvpTeacher(list);
 
   // 統計數據
   // 測試帳號不列入班級統計
@@ -902,4 +903,69 @@ async function giveCoinsBulkFood() {
     await refreshTeacherData();
     document.getElementById("fdBulkMsg").textContent = `已${n > 0 ? "加" : "扣"}金幣給 ${ids.length} 位`;
   } catch (e) { reportError("調整金幣", e); msg.textContent = ""; }
+}
+
+
+/* =========================================================
+   PvP 競技場
+   ========================================================= */
+const PVP_NEED_T = ["g9", "g8", "g7"];
+function pvpPoolCount(g) {
+  g = g || {};
+  const b = g.beaten || {}, c = g.caught || {};
+  return Object.keys(b).filter(k => b[k]).length + Object.keys(c).filter(k => (Number(c[k]) || 0) > 0).length;
+}
+function renderPvpTeacher(list) {
+  let elig = 0, fair = 0, ans = 0, cor = 0, coins = 0;
+  const rows = list.map(s => {
+    const p = s.pvp || {}, g = s.gaudi || {};
+    const ok = PVP_NEED_T.every(id => g.beaten && g.beaten[id]);
+    const n = k => Number(p[k]) || 0;
+    const isTest = isTestAccount(s.id);
+    if (!isTest) { if (ok) elig += 1; fair += n("fw") + n("fl") + n("fd"); ans += n("ans"); cor += n("cor"); coins += n("coins"); }
+    const rec = (w, l, d) => `${n(w)} 勝 ${n(l)} 敗${n(d) ? ` ${n(d)} 平` : ""}`;
+    return `<tr class="hover:bg-slate-50">
+      <td class="py-2.5 px-3 font-black">${escapeHtml(s.id)}</td>
+      <td class="py-2.5 px-3 font-bold text-slate-600">${escapeHtml(s.name)}${isTest ? ' <span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">測試</span>' : ""}</td>
+      <td class="py-2.5 px-3 font-bold ${ok ? "text-emerald-600" : "text-slate-400"}">${ok ? "可以" : "還沒打完巴特羅之家"}</td>
+      <td class="py-2.5 px-3 font-bold">${pvpPoolCount(g)} 隻</td>
+      <td class="py-2.5 px-3 font-bold">${rec("fw", "fl", "fd")}</td>
+      <td class="py-2.5 px-3 font-bold">${rec("cw", "cl", "cd")}</td>
+      <td class="py-2.5 px-3 font-bold text-amber-600">${n("coins")}</td>
+      <td class="py-2.5 px-3 font-bold">${n("ans")} 次${n("ans") ? `・${Math.round(n("cor") / n("ans") * 100)}%` : ""}</td>
+    </tr>`;
+  });
+  document.getElementById("pvStatElig").textContent = `${elig} 人`;
+  document.getElementById("pvStatFair").textContent = `${Math.round(fair / 2)} 場`;
+  document.getElementById("pvStatAcc").textContent = `${ans ? Math.round(cor / ans * 100) : 0}%`;
+  document.getElementById("pvStatCoins").textContent = coins;
+  document.getElementById("pvTableBody").innerHTML = rows.join("") || `<tr><td colspan="8" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
+  loadPvpOpen();
+}
+let PVP_OPEN = false;
+const pvpOpenRef = () => db.collection(COLLECTION_NAME).doc("_pvpopen_" + currentTeacher.id);
+async function loadPvpOpen() {
+  if (!currentTeacher) return;
+  if (!isCloudMode || cloudError) { document.getElementById("pvpOpenState").textContent = "要連上雲端才能使用"; return; }
+  try {
+    const s = await pvpOpenRef().get();
+    PVP_OPEN = !!(s.exists && s.data().open);
+  } catch (e) { console.warn(e); }
+  showPvpOpen();
+}
+function showPvpOpen() {
+  const st = document.getElementById("pvpOpenState"), btn = document.getElementById("pvpOpenBtn");
+  st.textContent = PVP_OPEN ? "🟢 開放中" : "🔒 關閉中";
+  st.className = "text-lg font-black " + (PVP_OPEN ? "text-emerald-600" : "text-slate-500");
+  btn.textContent = PVP_OPEN ? "關閉競技場" : "開放競技場";
+  btn.className = "font-bold px-5 py-2.5 rounded-xl text-white " + (PVP_OPEN ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-600 hover:bg-emerald-700");
+}
+async function togglePvpOpen() {
+  if (!isCloudMode || cloudError) { alert("要連上雲端才能使用競技場。"); return; }
+  const next = !PVP_OPEN;
+  try {
+    await withTimeout(pvpOpenRef().set({ open: next, t: Date.now(), by: currentTeacher.name }));
+    PVP_OPEN = next;
+    showPvpOpen();
+  } catch (e) { reportError("切換競技場開關", e); }
 }

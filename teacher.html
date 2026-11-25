@@ -115,6 +115,39 @@
       <button id="tchTabBtn_fraction" onclick="switchTeacherTab('fraction')" class="px-4 py-2 rounded-xl font-black text-sm bg-slate-800 text-white shadow">📋 全班名單・分數盲盒店</button>
       <button id="tchTabBtn_gaudi" onclick="switchTeacherTab('gaudi')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🏛️ 高第的魔法建築</button>
       <button id="tchTabBtn_food" onclick="switchTeacherTab('food')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🍱 對稱美食街</button>
+      <button id="tchTabBtn_pvp" onclick="switchTeacherTab('pvp')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">⚔️ PvP 競技場</button>
+    </div>
+
+    <div id="tchPane_pvp" class="hidden space-y-6">
+      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h3 class="text-lg font-black text-slate-800">競技場開關（全班）</h3>
+          <p class="text-xs text-slate-500 mt-1">打開後，全班同學才能進入競技場配對或建房間。關掉後不能再開新的對戰，正在打的那一場可以打完。<br/>要先在高第的魔法建築打完巴特羅之家（解鎖奎爾公園）的同學才能參加。</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="pvpOpenState" class="text-lg font-black text-slate-500">讀取中…</span>
+          <button id="pvpOpenBtn" onclick="togglePvpOpen()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-5 py-2.5 rounded-xl">…</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">可以參加的人數</div><div id="pvStatElig" class="text-2xl font-black text-slate-800 mt-1">0 人</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">公平競技場數（全班合計）</div><div id="pvStatFair" class="text-2xl font-black text-sky-600 mt-1">0 場</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">搶答正確率</div><div id="pvStatAcc" class="text-2xl font-black text-emerald-600 mt-1">0%</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">競技場發出的金幣</div><div id="pvStatCoins" class="text-2xl font-black text-amber-600 mt-1">0</div></div>
+      </div>
+      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+        <h3 class="text-lg font-black text-slate-800">學生戰績</h3>
+        <p class="text-xs text-slate-500 mt-1 mb-4">公平競技贏 7 金幣、輸 3 金幣、平手各 5；自訂對戰不給金幣。「搶答」是按下答案的次數和答對率。標示「測試」的帳號不列入上方統計。</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left border-collapse">
+            <thead><tr class="bg-slate-100 text-slate-700">
+              <th class="py-2.5 px-3">座號</th><th class="py-2.5 px-3">姓名</th><th class="py-2.5 px-3">可以參加</th><th class="py-2.5 px-3">夥伴數</th>
+              <th class="py-2.5 px-3">公平競技</th><th class="py-2.5 px-3">自訂對戰</th><th class="py-2.5 px-3">賺到金幣</th><th class="py-2.5 px-3">搶答</th>
+            </tr></thead>
+            <tbody id="pvTableBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <div id="tchPane_food" class="hidden space-y-6">

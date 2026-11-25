@@ -327,7 +327,7 @@ async function saveStudentProgress(studentObj, coinDelta = 0) {
 }
 
 // 每個遊戲各自存在學生資料裡的一個欄位（例如高第遊戲存在 gaudi）
-const GAME_FIELDS = ["gaudi", "dress", "food"];
+const GAME_FIELDS = ["gaudi", "dress", "food", "pvp"];
 // 只有老師能改的欄位：gaudiOpen = 高第遊戲開放到第幾棟（0 = 不能進入，1～4 = 開放到第幾棟）
 const TEACHER_ONLY_FIELDS = ["gaudiOpen", "dressOpen", "foodOpen"];
 // dressOpen = 換裝扭蛋開放幾台扭蛋機（0 = 不能玩）
