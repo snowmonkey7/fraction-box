@@ -9,7 +9,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="theme.css?v=20261126" />
+  <link rel="stylesheet" href="theme.css?v=20261128" />
   <style>
     /* ---- 地圖上的建築按鈕 ---- */
     .k-bld {
@@ -76,10 +76,15 @@
     .k-opt-txt { font-size: 1.12rem; font-weight: 700; line-height: 1.5; }
     .k-opt.is-cut { opacity: .25; text-decoration: line-through; pointer-events: none; }
     .k-skill.is-used { opacity: .4; pointer-events: none; }
-    .k-ball { width: 1.25em; height: 1.25em; border-radius: 50%; border: 2.5px solid var(--ink); display: inline-block; position: relative; overflow: hidden; flex-shrink: 0; background: #fff; }
-    .k-ball::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 50%; background: var(--tomato); border-bottom: 2.5px solid var(--ink); }
-    .k-ball.is-super::before { background: #8A63D2; }
-    .k-ball::after { content: ""; position: absolute; left: 50%; top: 50%; width: 32%; height: 32%; border-radius: 50%; background: #fff; border: 2px solid var(--ink); transform: translate(-50%, -50%); }
+    /* 捕捉道具：普通餐袋、高級書包 */
+    .k-ball { width: 1.3em; height: 1.3em; display: inline-block; flex-shrink: 0; vertical-align: middle; background: center / contain no-repeat url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHBhdGggZD0iTTIyIDIwIHEwIC0xNCAxMCAtMTQgcTEwIDAgMTAgMTQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzFFMkEzMyIgc3Ryb2tlLXdpZHRoPSI1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNMTAgMjIgaDQ0IGwtNCAzNCBxLTEgNCAtNSA0IGgtMjYgcS00IDAgLTUgLTQgeiIgZmlsbD0iIzRGQjI4NiIgc3Ryb2tlPSIjMUUyQTMzIiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMTIgMzEgaDQwIiBzdHJva2U9IiNGRkY0RDYiIHN0cm9rZS13aWR0aD0iNCIvPjxwYXRoIGQ9Ik0zMiAzNyBxNCAwIDkgMTAgcTIgNSAtMyA2IGgtMTIgcS01IC0xIC0zIC02IHE1IC0xMCA5IC0xMCB6IiBmaWxsPSIjZmZmIiBzdHJva2U9IiMxRTJBMzMiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxyZWN0IHg9IjI3LjUiIHk9IjQ3IiB3aWR0aD0iOSIgaGVpZ2h0PSI2IiBmaWxsPSIjMUUyQTMzIi8+PC9zdmc+"); }
+    .k-ball.is-super { background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHBhdGggZD0iTTI0IDEyIHEwIC03IDggLTcgcTggMCA4IDciIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzFFMkEzMyIgc3Ryb2tlLXdpZHRoPSI0LjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxyZWN0IHg9IjExIiB5PSIxMSIgd2lkdGg9IjQyIiBoZWlnaHQ9IjQ5IiByeD0iMTQiIGZpbGw9IiM4QTYzRDIiIHN0cm9rZT0iIzFFMkEzMyIgc3Ryb2tlLXdpZHRoPSI0Ii8+PHBhdGggZD0iTTExIDMwIHEyMSA5IDQyIDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzFFMkEzMyIgc3Ryb2tlLXdpZHRoPSIzLjUiLz48cmVjdCB4PSIyMCIgeT0iMzgiIHdpZHRoPSIyNCIgaGVpZ2h0PSIxNiIgcng9IjUiIGZpbGw9IiNGRkM4M0QiIHN0cm9rZT0iIzFFMkEzMyIgc3Ryb2tlLXdpZHRoPSIzLjUiLz48cGF0aCBkPSJNMjYgNDQgaDEyIiBzdHJva2U9IiMxRTJBMzMiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PGNpcmNsZSBjeD0iMzIiIGN5PSIyNSIgcj0iMy4yIiBmaWxsPSIjRkZDODNEIiBzdHJva2U9IiMxRTJBMzMiIHN0cm9rZS13aWR0aD0iMi41Ii8+PC9zdmc+"); }
+    .fr { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; line-height: 1.1; margin: 0 .15em; font-weight: 900; }
+    .fr > span:first-child { border-bottom: 2.5px solid currentColor; padding: 0 .2em; }
+    .fr > span { font-size: .92em; }
+    .fr-w { font-weight: 900; margin-left: .1em; }
+    .k-fig { background: #fff; border: 3px solid var(--ink); border-radius: 16px; padding: .5rem; max-width: 250px; }
+    .k-fig svg { width: 100%; height: auto; display: block; }
     .k-ready { box-shadow: 0 4px 0 var(--ink), 0 0 0 5px var(--crayon); }
     @media (prefers-reduced-motion: reduce) { .k-hit { animation: none; } }
     @media (max-width: 640px) {
@@ -122,7 +127,7 @@
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <div class="px-3 py-1.5 rounded-xl border-2 border-dashed border-[#9AA8B4] bg-white text-center">
-          <div class="text-xs font-bold text-[#5B6B78]">我的寶貝球</div>
+          <div class="text-xs font-bold text-[#5B6B78]">捕捉道具</div>
           <div class="k-display text-lg mt-0.5 flex items-center gap-2 justify-center">
             <span class="k-ball"></span><span id="gBallN">0</span>
             <span class="k-ball is-super ml-1"></span><span id="gBallS">0</span>
@@ -134,7 +139,7 @@
         </div>
         <div class="px-3 py-1.5 rounded-xl border-2 border-dashed border-[#9AA8B4] bg-white text-center">
           <div class="text-xs font-bold text-[#5B6B78]">收服</div>
-          <div class="k-display text-lg mt-0.5"><span id="gCaughtCount">0</span> / 20 隻</div>
+          <div class="k-display text-lg mt-0.5"><span id="gCaughtCount">0</span> / <span id="gCaughtTotal">20</span> 隻</div>
         </div>
       </div>
     </div>
@@ -179,7 +184,7 @@
           <div class="grid md:grid-cols-2 gap-5">
             <div class="k-card k-card--flat p-5">
               <h4 class="k-display text-xl">到附近探索</h4>
-              <p class="text-sm font-bold text-[#5B6B78] mt-1">會遇到住在這裡的野生怪獸。已收服 <b id="bvCaughtKinds">0</b> / 5 種。</p>
+              <p class="text-sm font-bold text-[#5B6B78] mt-1">會遇到住在這裡的野生怪獸。已收服 <b id="bvCaughtKinds">0</b> / <span id="bvWildTotal">5</span> 種。</p>
               <div id="bvWild" class="grid grid-cols-5 gap-2 mt-4"></div>
               <button onclick="startWild()" class="k-btn k-btn--leaf w-full mt-4 py-3 text-lg">出發探索</button>
               <button id="btnIncense" onclick="startWild(true)" class="k-btn w-full mt-2 py-2.5" style="background:#F4EEFF">🪔 使用薰香探索（一定遇到傳說怪獸・你有 <b class="jsIncense">0</b> 個）</button>
@@ -198,7 +203,7 @@
         <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
           <div>
             <h3 class="k-display text-2xl">我的夥伴</h3>
-            <p class="text-sm text-[#5B6B78] font-bold mt-0.5">黑色剪影是還沒收服的。</p>
+            <p class="text-sm text-[#5B6B78] font-bold mt-0.5">灰色剪影是還沒收服的。</p>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
             <span class="text-sm font-bold">出戰隊伍：</span>
@@ -211,33 +216,33 @@
 
       <!-- 商店 -->
       <div id="gPaneShop" class="hidden k-card k-tab-panel p-5 md:p-6">
-        <h3 class="k-display text-2xl">寶貝球商店</h3>
+        <h3 class="k-display text-2xl">道具商店</h3>
         <p class="text-sm text-[#5B6B78] font-bold mt-0.5 mb-5">金幣在所有遊戲都能用。你現在有 <b id="shopCoins">0</b> 金幣。</p>
         <div class="grid sm:grid-cols-2 gap-5">
           <div class="k-card k-card--flat p-5 flex flex-col">
             <div class="flex items-center gap-3"><span class="k-ball text-5xl"></span>
-              <div><div class="k-display text-2xl">普通球</div><div class="font-bold text-[#5B6B78]"><span class="jsPriceN">3</span> 金幣</div></div></div>
+              <div><div class="k-display text-2xl jsBallN">普通餐袋</div><div class="font-bold text-[#5B6B78]"><span class="jsPriceN">3</span> 金幣</div></div></div>
             <p class="text-sm mt-3 leading-relaxed flex-1">用來「初級捕捉」。普通怪獸很好抓，稀有的一半機會，<b>傳說怪獸抓不到</b>。</p>
             <div class="grid grid-cols-3 gap-2 mt-4">
-              <button onclick="buyBall('n',1)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 1 顆</span><span class="text-xs">3 金幣</span></button>
-              <button onclick="buyBall('n',5)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 5 顆</span><span class="text-xs">15 金幣</span></button>
-              <button onclick="buyBall('n',10)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 10 顆</span><span class="text-xs">30 金幣</span></button>
+              <button onclick="buyBall('n',1)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 1 個</span><span class="text-xs">3 金幣</span></button>
+              <button onclick="buyBall('n',5)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 5 個</span><span class="text-xs">15 金幣</span></button>
+              <button onclick="buyBall('n',10)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 10 個</span><span class="text-xs">30 金幣</span></button>
             </div>
           </div>
           <div class="k-card k-card--flat p-5 flex flex-col">
             <div class="flex items-center gap-3"><span class="k-ball is-super text-5xl"></span>
-              <div><div class="k-display text-2xl">超級球</div><div class="font-bold text-[#5B6B78]"><span class="jsPriceS">10</span> 金幣</div></div></div>
+              <div><div class="k-display text-2xl jsBallS">高級書包</div><div class="font-bold text-[#5B6B78]"><span class="jsPriceS">10</span> 金幣</div></div></div>
             <p class="text-sm mt-3 leading-relaxed flex-1">用來「高級捕捉」。普通怪獸一定抓得到，<b>傳說怪獸只有它抓得到</b>。</p>
             <div class="grid grid-cols-3 gap-2 mt-4">
-              <button onclick="buyBall('s',1)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 1 顆</span><span class="text-xs">10 金幣</span></button>
-              <button onclick="buyBall('s',5)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 5 顆</span><span class="text-xs">50 金幣</span></button>
-              <button onclick="buyBall('s',10)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 10 顆</span><span class="text-xs">100 金幣</span></button>
+              <button onclick="buyBall('s',1)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 1 個</span><span class="text-xs">10 金幣</span></button>
+              <button onclick="buyBall('s',5)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 5 個</span><span class="text-xs">50 金幣</span></button>
+              <button onclick="buyBall('s',10)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 10 個</span><span class="text-xs">100 金幣</span></button>
             </div>
           </div>
           <div class="k-card k-card--flat p-5 flex flex-col sm:col-span-2" style="background:#F4EEFF">
             <div class="flex items-center gap-3"><span class="text-5xl">🪔</span>
               <div><div class="k-display text-2xl">傳說薰香</div><div class="font-bold text-[#5B6B78]"><span class="jsPriceI">20</span> 金幣・你有 <b class="jsIncense">0</b> 個</div></div></div>
-            <p class="text-sm mt-3 leading-relaxed flex-1">在建築裡按「使用薰香探索」，<b>一定會遇到那棟建築的傳說怪獸</b>。用一次少一個；傳說怪獸要用<b>超級球</b>才抓得到，記得準備！</p>
+            <p class="text-sm mt-3 leading-relaxed flex-1">在建築裡按「使用薰香探索」，<b>一定會遇到那棟建築的傳說怪獸</b>。用一次少一個；傳說怪獸要用<b class="jsBallS">高級書包</b>才抓得到，記得準備！</p>
             <div class="grid grid-cols-2 gap-2 mt-4 sm:max-w-sm">
               <button onclick="buyIncense(1)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 1 個</span><span class="text-xs">20 金幣</span></button>
               <button onclick="buyIncense(5)" class="k-btn k-btn--yellow flex-col py-2"><span class="text-lg">買 5 個</span><span class="text-xs">100 金幣</span></button>
@@ -286,6 +291,7 @@
         <div id="myHearts" class="flex flex-wrap items-center gap-1 min-h-[1.5rem]"></div>
         <div id="myTeam" class="flex flex-wrap gap-2 mt-3"></div>
         <p id="battleHint" class="text-sm font-bold text-[#5B6B78] mt-2"></p>
+        <p id="skillMsg" class="hidden text-sm font-bold mt-2 p-2 rounded-xl border-2 border-dashed border-[#2E9E6A] bg-[#E9F8EF] text-[#1F7A4D]"></p>
       </div>
     </div>
 
@@ -308,13 +314,13 @@
       </div>
       <p id="weakHint" class="text-sm font-bold text-[#1F7A4D] mt-3"></p>
       <div class="mt-3 p-3 rounded-2xl border-2 border-dashed border-[#1E2A33]/30 bg-[#FFFBEA]">
-        <div class="text-sm font-bold text-[#5B6B78] mb-2">球不夠？直接用金幣買（你有 <b id="weakBuyCoins">0</b> 金幣）</div>
+        <div class="text-sm font-bold text-[#5B6B78] mb-2">道具不夠？直接用金幣買（你有 <b id="weakBuyCoins">0</b> 金幣）</div>
         <div class="flex flex-wrap gap-2">
           <span id="weakBuyN" class="flex gap-2">
-            <button onclick="buyBall('n',1,true)" class="k-btn k-btn--sm"><span class="k-ball"></span> 普通球 +1（3 金幣）</button>
+            <button onclick="buyBall('n',1,true)" class="k-btn k-btn--sm"><span class="k-ball"></span> 普通餐袋 +1（3 金幣）</button>
             <button onclick="buyBall('n',5,true)" class="k-btn k-btn--sm"><span class="k-ball"></span> +5（15 金幣）</button>
           </span>
-          <button onclick="buyBall('s',1,true)" class="k-btn k-btn--yellow k-btn--sm"><span class="k-ball is-super"></span> 超級球 +1（10 金幣）</button>
+          <button onclick="buyBall('s',1,true)" class="k-btn k-btn--yellow k-btn--sm"><span class="k-ball is-super"></span> 高級書包 +1（10 金幣）</button>
         </div>
       </div>
     </div>
@@ -329,6 +335,7 @@
         <span id="gqType" class="k-chip k-chip--chi"></span>
       </div>
       <p id="gqText" class="k-qtext"></p>
+      <div id="gqFig" class="hidden k-fig mx-auto mt-3"></div>
       <div id="gqOpts" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 mt-4 sm:mt-5"></div>
       <div id="gqFeedback" class="hidden k-feedback mt-5 p-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
@@ -412,10 +419,11 @@
   </div>
 </div>
 
-<script src="config.js?v=20261126"></script>
-<script src="common.js?v=20261126"></script>
-<script src="gaudi-data.js?v=20261126"></script>
-<script src="gaudi-art.js?v=20261126"></script>
-<script src="gaudi.js?v=20261126"></script>
+<script src="config.js?v=20261128"></script>
+<script src="common.js?v=20261128"></script>
+<script src="campus-data.js?v=20261128"></script>
+<script src="gaudi-data.js?v=20261128"></script>
+<script src="gaudi-art.js?v=20261128"></script>
+<script src="gaudi.js?v=20261128"></script>
 </body>
 </html>

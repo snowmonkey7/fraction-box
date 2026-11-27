@@ -327,7 +327,7 @@ async function saveStudentProgress(studentObj, coinDelta = 0) {
 }
 
 // 每個遊戲各自存在學生資料裡的一個欄位（例如高第遊戲存在 gaudi）
-const GAME_FIELDS = ["gaudi", "dress", "food", "pvp"];
+const GAME_FIELDS = ["gaudi", "dress", "food", "pvp", "campus"];
 // 只有老師能改的欄位：gaudiOpen = 高第遊戲開放到第幾棟（0 = 不能進入，1～4 = 開放到第幾棟）
 const TEACHER_ONLY_FIELDS = ["gaudiOpen", "dressOpen", "foodOpen"];
 // dressOpen = 換裝扭蛋開放幾台扭蛋機（0 = 不能玩）
@@ -374,6 +374,45 @@ async function saveGameData(studentObj, field, coinDelta = 0) {
     store[studentObj.id].updatedAt = data.updatedAt;
     if (coinDelta) store[studentObj.id].coins = (store[studentObj.id].coins || 0) + coinDelta;
     saveLocalStore(store);
+  }
+}
+
+// 一次寫入好幾個遊戲欄位（校園的魔法探險：共用的夥伴在 gaudi、自己的紀錄在 campus）
+async function saveGameFields(studentObj, fields, coinDelta = 0) {
+  const data = { updatedAt: Date.now() };
+  fields.forEach(f => { data[f] = studentObj[f]; });
+  if (coinDelta) studentObj.coins = (studentObj.coins || 0) + coinDelta;
+  if (isCloudMode) {
+    if (coinDelta) data.coins = firebase.firestore.FieldValue.increment(coinDelta);
+    await withTimeout(db.collection(COLLECTION_NAME).doc(studentObj.id).update(data));
+  } else {
+    const store = getLocalStore();
+    if (!store[studentObj.id]) throw { code: "not-found-account", message: "帳號已被刪除" };
+    fields.forEach(f => { store[studentObj.id][f] = data[f]; });
+    store[studentObj.id].updatedAt = data.updatedAt;
+    if (coinDelta) store[studentObj.id].coins = (store[studentObj.id].coins || 0) + coinDelta;
+    saveLocalStore(store);
+  }
+}
+
+// 校園的魔法探險：老師開放全班的開關（雲端存在 _campusopen_<老師>；沒連雲端時存在這台電腦）
+const campusOpenKey = tid => "_campusopen_" + tid;
+async function getCampusOpen(studentOrTeacherId, isTeacher) {
+  const t = isTeacher ? { id: studentOrTeacherId } : teacherOfStudent(studentOrTeacherId);
+  if (!t) return false;
+  try {
+    if (isCloudMode && !cloudError) {
+      const s = await withTimeout(db.collection(COLLECTION_NAME).doc(campusOpenKey(t.id)).get());
+      return !!(s.exists && s.data().open);
+    }
+    return localStorage.getItem("kz" + campusOpenKey(t.id)) === "1";
+  } catch (e) { console.warn(e); return false; }
+}
+async function setCampusOpen(teacherId, open, byName) {
+  if (isCloudMode && !cloudError) {
+    await withTimeout(db.collection(COLLECTION_NAME).doc(campusOpenKey(teacherId)).set({ open: !!open, t: Date.now(), by: byName || "" }));
+  } else {
+    localStorage.setItem("kz" + campusOpenKey(teacherId), open ? "1" : "0");
   }
 }
 

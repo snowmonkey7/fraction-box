@@ -78,7 +78,7 @@ function exitTeacherView() {
 }
 
 function switchTeacherTab(name) {
-  ["fraction", "gaudi", "food", "pvp"].forEach(t => {
+  ["fraction", "gaudi", "food", "pvp", "campus"].forEach(t => {
     document.getElementById("tchPane_" + t).classList.toggle("hidden", t !== name);
     document.getElementById("tchTabBtn_" + t).className = t === name
       ? "px-4 py-2 rounded-xl font-black text-sm bg-slate-800 text-white shadow"
@@ -112,6 +112,7 @@ async function refreshTeacherData() {
   renderDressTeacher(list);
   renderFoodTeacher(list);
   renderPvpTeacher(list);
+  renderCampusTeacher(list);
 
   // 統計數據
   // 測試帳號不列入班級統計
@@ -929,7 +930,7 @@ function renderPvpTeacher(list) {
       <td class="py-2.5 px-3 font-bold text-slate-600">${escapeHtml(s.name)}${isTest ? ' <span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">測試</span>' : ""}</td>
       <td class="py-2.5 px-3 font-bold ${ok ? "text-emerald-600" : "text-slate-400"}">${ok ? "可以" : "還沒打完巴特羅之家"}</td>
       <td class="py-2.5 px-3 font-bold">${pvpPoolCount(g)} 隻</td>
-      <td class="py-2.5 px-3 font-bold">${rec("fw", "fl", "fd")}</td>
+      <td class="py-2.5 px-3 font-bold">${rec("fw", "fl", "fd")}${n("sk2") || n("sk3") ? `<div class="text-[11px] text-amber-600">服裝：${[n("sk2") ? "中級" : "", n("sk3") ? "高級" : ""].filter(Boolean).join("、")}</div>` : `<div class="text-[11px] text-slate-400">服裝進度：累積 ${Math.min(n("sw"), 5)}/5・連勝 ${Math.min(n("st"), 5)}/5</div>`}</td>
       <td class="py-2.5 px-3 font-bold">${rec("cw", "cl", "cd")}</td>
       <td class="py-2.5 px-3 font-bold text-amber-600">${n("coins")}</td>
       <td class="py-2.5 px-3 font-bold">${n("ans")} 次${n("ans") ? `・${Math.round(n("cor") / n("ans") * 100)}%` : ""}</td>
@@ -968,4 +969,74 @@ async function togglePvpOpen() {
     PVP_OPEN = next;
     showPvpOpen();
   } catch (e) { reportError("切換競技場開關", e); }
+}
+
+
+/* =========================================================
+   校園的魔法探險（期中複習）
+   ========================================================= */
+let CAMPUS_OPEN_T = false;
+function renderCampusTeacher(list) {
+  if (typeof CAMPUS_WILD === "undefined") return;
+  const units = typeof CAMPUS_UNITS !== "undefined" ? CAMPUS_UNITS : {};
+  let players = 0, ans = 0, cor = 0, wins = 0;
+  const unitWrong = {};
+  const rows = list.map(s => {
+    const c = s.campus || {}, g = s.gaudi || {};
+    const a = Number(c.answered) || 0, k = Number(c.correct) || 0;
+    const caught = g.everCaught || {}, beaten = g.beaten || {};
+    const dex = CAMPUS_WILD.filter(m => caught[m.id]).length + CAMPUS_GUARDIANS.filter(m => beaten[m.id]).length;
+    const gN = CAMPUS_GUARDIANS.filter(m => beaten[m.id]).length;
+    const w = Number(c.boss && c.boss.wins) || 0;
+    const isTest = isTestAccount(s.id);
+    if (!isTest) {
+      if (a) players += 1;
+      ans += a; cor += k; wins += w;
+      Object.entries(c.wrongCounts || {}).forEach(([id, n]) => { const u = id.split("-")[0]; unitWrong[u] = (unitWrong[u] || 0) + (Number(n) || 0); });
+    }
+    const d = new Date(), todayKey = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    const today = c.dayKey === todayKey ? Number(c.dayCoins) || 0 : 0;
+    return `<tr class="hover:bg-slate-50">
+      <td class="py-2.5 px-3 font-black">${escapeHtml(s.id)}</td>
+      <td class="py-2.5 px-3 font-bold text-slate-600">${escapeHtml(s.name)}${isTest ? ' <span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">測試</span>' : ""}</td>
+      <td class="py-2.5 px-3 font-bold">${a} 題${a ? `・${Math.round(k / a * 100)}%` : ""}</td>
+      <td class="py-2.5 px-3 font-bold">${dex} / ${CAMPUS_WILD.length + CAMPUS_GUARDIANS.length}</td>
+      <td class="py-2.5 px-3 font-bold">${gN} / ${CAMPUS_GUARDIANS.length}</td>
+      <td class="py-2.5 px-3 font-bold">${w} 次${beaten.gInf ? ' <span class="text-[11px] text-amber-600">已得到∞號</span>' : ""}</td>
+      <td class="py-2.5 px-3 font-bold text-amber-600">${today}</td>
+    </tr>`;
+  });
+  const $t = id => document.getElementById(id);
+  if (!$t("cpTableBody")) return;
+  $t("cpStatPlayers").textContent = `${players} 人`;
+  $t("cpStatAcc").textContent = `${ans ? Math.round(cor / ans * 100) : 0}%`;
+  $t("cpStatAns").textContent = `${ans} 題`;
+  $t("cpStatBoss").textContent = `${wins} 次`;
+  const top = Object.entries(unitWrong).sort((x, y) => y[1] - x[1]);
+  $t("cpUnitWrong").innerHTML = top.length
+    ? top.map(([u, n]) => `<span class="inline-block bg-rose-50 text-rose-700 border border-rose-200 rounded-lg px-2 py-1 text-xs font-bold mr-1 mb-1">${escapeHtml(units[u] || u)}：答錯 ${n} 次</span>`).join("")
+    : `<span class="text-xs text-slate-400">還沒有答錯紀錄。</span>`;
+  $t("cpTableBody").innerHTML = rows.join("") || `<tr><td colspan="7" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
+  loadCampusOpen();
+}
+async function loadCampusOpen() {
+  if (!currentTeacher) return;
+  CAMPUS_OPEN_T = await getCampusOpen(currentTeacher.id, true);
+  showCampusOpen();
+}
+function showCampusOpen() {
+  const st = document.getElementById("campusOpenState"), btn = document.getElementById("campusOpenBtn");
+  if (!st) return;
+  st.textContent = CAMPUS_OPEN_T ? "🟢 開放中" : "🔒 關閉中";
+  st.className = "text-lg font-black " + (CAMPUS_OPEN_T ? "text-emerald-600" : "text-slate-500");
+  btn.textContent = CAMPUS_OPEN_T ? "關閉遊戲" : "開放遊戲";
+  btn.className = "font-bold px-5 py-2.5 rounded-xl text-white " + (CAMPUS_OPEN_T ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-600 hover:bg-emerald-700");
+}
+async function toggleCampusOpen() {
+  const next = !CAMPUS_OPEN_T;
+  try {
+    await setCampusOpen(currentTeacher.id, next, currentTeacher.name);
+    CAMPUS_OPEN_T = next;
+    showCampusOpen();
+  } catch (e) { reportError("切換校園的魔法探險開關", e); }
 }

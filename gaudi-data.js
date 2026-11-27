@@ -6,9 +6,9 @@
 
 /* ---------------- 可以調整的數值 ---------------- */
 const GAUDI_DAILY_COIN_CAP = 50;    // 這個遊戲每天最多拿幾個金幣
-const BALL_PRICE = { n: 3, s: 10 }; // 普通球（初級捕捉）、超級球（高級捕捉）的價格
+const BALL_PRICE = { n: 3, s: 10 }; // 普通餐袋（初級捕捉）、高級書包（高級捕捉）的價格
 const INCENSE_PRICE = 20;           // 傳說薰香：探索時一定遇到這棟建築的傳說怪獸
-const STARTER_BALLS = 3;            // 第一次進遊戲送幾顆普通球
+const STARTER_BALLS = 3;            // 第一次進遊戲送幾個普通餐袋
 const CAUGHT_NEEDED = [2, 3, 4];    // 要先收服這棟幾隻不同的怪獸，才能挑戰第 1、2、3 隻守護精靈
 const GUARDIAN_REST_HOURS = 20;     // 守護精靈夥伴愛心扣完後，要休息幾小時才能再出戰
 const BASE_DAMAGE = 5;              // 每次答對的基本傷害（再加上出戰夥伴的攻擊力）
@@ -97,25 +97,64 @@ const HERO_NEED = 5;
 const HERO = { id: "gHero", b: "sagrada", name: "高第", hp: 0, hearts: 4, skill: "magic", atk: 30, hero: true };
 const BOSS_RANDOM_RATES = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2];   // 中級：傷害倍率，平均機率
 
-const tierOf = bId => (BUILDINGS.find(b => b.id === bId) || { tier: 1 }).tier;
+// 校園的魔法探險（campus-data.js）的怪獸也算進來：兩個遊戲的夥伴共用
+const HAS_CAMPUS = typeof CAMPUS_WILD !== "undefined";
+const allWild = () => HAS_CAMPUS ? WILD.concat(CAMPUS_WILD) : WILD;
+const allGuardians = () => HAS_CAMPUS ? GUARDIANS.concat(CAMPUS_GUARDIANS) : GUARDIANS;
+const allHeroes = () => HAS_CAMPUS ? [HERO, INF_HERO] : [HERO];
+if (HAS_CAMPUS) Object.assign(SKILLS, CAMPUS_SKILLS);
+// 找任何一隻角色（兩個遊戲的野生怪獸、守護精靈、紀念夥伴）
+function anyMon(id) {
+  return allWild().find(m => m.id === id) || allGuardians().find(m => m.id === id) || allHeroes().find(m => m.id === id);
+}
+
+const tierOf = bId => {
+  if (HAS_CAMPUS && ROOMS.some(r => r.id === bId)) return CAMPUS_TIER;
+  return (BUILDINGS.find(b => b.id === bId) || { tier: 1 }).tier;
+};
 // 夥伴的攻擊力：建築星等越高越強；稀有、傳說再加成；守護精靈比同棟怪獸強
 function attackOf(id) {
-  const m = WILD.find(x => x.id === id);
+  const m = allWild().find(x => x.id === id);
   if (m) return tierOf(m.b) * ATK_PER_TIER + RARITY[m.rarity].atkBonus;
-  if (id === HERO.id) return HERO.atk;
+  const h = allHeroes().find(x => x.id === id);
+  if (h) return h.atk;
+  if (HAS_CAMPUS) { const c = CAMPUS_GUARDIANS.find(x => x.id === id); if (c) return CAMPUS_GUARD_ATK[c.n - 1]; }
   const g = GUARDIANS.find(x => x.id === id);
   return g ? tierOf(g.b) * ATK_PER_TIER + GUARDIAN_ATK_BONUS : 0;
 }
 function maxHeartsOf(id) {
-  const m = WILD.find(x => x.id === id);
+  const m = allWild().find(x => x.id === id);
   if (m) return RARITY[m.rarity].hearts;
-  if (id === HERO.id) return HERO.hearts;
-  const g = GUARDIANS.find(x => x.id === id);
+  const g = allGuardians().find(x => x.id === id) || allHeroes().find(x => x.id === id);
   return g ? g.hearts : 1;
 }
 
-function monsterImg(id) { return "images/gaudi/" + (id === "gHero" ? "boss1" : id) + ".jpg"; }   // 紀念夥伴高第用初級高第的圖
-function silhouetteImg(id) { return id === "gHero" ? monsterImg(id) : "images/gaudi/s_" + id + ".png"; }  // 還沒收服時顯示的剪影
+/* ---------- 紀念夥伴高第的服裝（PvP 獎勵） ----------
+   1 = 高第‧初級（預設）、2 = 高第‧中級、3 = 高第‧高級；只換樣子，攻擊和招式不變 */
+const HERO_SKINS = [
+  { lv: 1, name: "初級", img: "boss1" },
+  { lv: 2, name: "中級", img: "boss2" },
+  { lv: 3, name: "高級", img: "boss3" }
+];
+let HERO_SKIN = 1;            // 目前這位同學穿的服裝（各頁面讀進學生資料後設定）
+function setHeroSkin(lv) { HERO_SKIN = [1, 2, 3].includes(Number(lv)) ? Number(lv) : 1; }
+function heroSkinImg(lv) { return "images/gaudi/" + (HERO_SKINS.find(x => x.lv === Number(lv)) || HERO_SKINS[0]).img + ".jpg"; }
+
+// skin：只有 PvP 顯示對手的高第時才會傳；平常用自己穿的服裝
+function monsterImg(id, skin) {
+  if (id === "gHero") return heroSkinImg(skin || HERO_SKIN);
+  if (id === "gInf") return "images/campus/cboss.jpg";
+  if (HAS_CAMPUS && isCampusId(id)) return campusImg(id);
+  return "images/gaudi/" + id + ".jpg";
+}
+function silhouetteImg(id) {   // 還沒收服時顯示的剪影
+  if (id === "gHero" || id === "gInf") return monsterImg(id);
+  if (HAS_CAMPUS && isCampusId(id)) return campusSilhouette(id);
+  return "images/gaudi/s_" + id + ".png";
+}
+
+// 捕捉道具（舊名：普通球、超級球）
+const BALL_NAME = { n: "普通餐袋", s: "高級書包" };
 
 const PASSAGES = {
  "mila_r": {

@@ -276,7 +276,7 @@ const GAUDI_HELP = [
     text: `答對 1 題得 1 金幣，第一次打敗守護精靈多 5 金幣，擊敗怪獸也有金幣。每天最多 ${GAUDI_DAILY_COIN_CAP} 金幣，可以到商店買${BALL_NAME.n}和${BALL_NAME.s}。`
   }
 ];
-const CAMPUS_HELP = [
+const CAMPUS_HELP = () => [
   {
     title: "五間教室，想去哪就去哪",
     art: () => `<div class="flex justify-center gap-1">${ROOMS.map(r => `<div class="w-14">${ROOM_ART[r.id]}</div>`).join("")}</div>`,
@@ -304,7 +304,7 @@ const CAMPUS_HELP = [
     text: `答對 1 題得 1 金幣。這個遊戲每天最多 ${CAMPUS_DAILY_COIN_CAP} 金幣，和高第那邊分開算。答錯夥伴會受傷，不要亂猜喔！`
   }
 ];
-const HELP_PAGES = CAMPUS ? CAMPUS_HELP : GAUDI_HELP;
+const HELP_PAGES = CAMPUS ? CAMPUS_HELP() : GAUDI_HELP;
 
 function openHelp(first) {
   helpPage = 0;

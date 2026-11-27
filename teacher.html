@@ -10,7 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="theme.css?v=20261126" />
+  <link rel="stylesheet" href="theme.css?v=20261128" />
   <style>
     /* 直式分數排版 */
     .frac-expr {
@@ -116,6 +116,44 @@
       <button id="tchTabBtn_gaudi" onclick="switchTeacherTab('gaudi')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🏛️ 高第的魔法建築</button>
       <button id="tchTabBtn_food" onclick="switchTeacherTab('food')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🍱 對稱美食街</button>
       <button id="tchTabBtn_pvp" onclick="switchTeacherTab('pvp')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">⚔️ PvP 競技場</button>
+      <button id="tchTabBtn_campus" onclick="switchTeacherTab('campus')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🏫 校園的魔法探險</button>
+    </div>
+
+    <div id="tchPane_campus" class="hidden space-y-6">
+      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h3 class="text-lg font-black text-slate-800">校園的魔法探險開關（全班）</h3>
+          <p class="text-xs text-slate-500 mt-1">期中複習：國語第一～六課、數學第一～五單元。打開後全班都能進入，五間教室同時開放。<br/>夥伴、捕捉道具、薰香和高第的魔法建築共用；每日金幣上限另外計算（每天 50 金幣）。</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="campusOpenState" class="text-lg font-black text-slate-500">讀取中…</span>
+          <button id="campusOpenBtn" onclick="toggleCampusOpen()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-5 py-2.5 rounded-xl">…</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">玩過的人數</div><div id="cpStatPlayers" class="text-2xl font-black text-slate-800 mt-1">0 人</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">全班正確率</div><div id="cpStatAcc" class="text-2xl font-black text-emerald-600 mt-1">0%</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">全班作答題數</div><div id="cpStatAns" class="text-2xl font-black text-sky-600 mt-1">0 題</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">打贏怪獸∞號（全班合計）</div><div id="cpStatBoss" class="text-2xl font-black text-amber-600 mt-1">0 次</div></div>
+      </div>
+      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+        <h3 class="text-lg font-black text-slate-800">全班答錯最多的範圍</h3>
+        <p class="text-xs text-slate-500 mt-1 mb-3">依答錯次數由多到少排列，可以當作考前加強的參考。</p>
+        <div id="cpUnitWrong"></div>
+      </div>
+      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+        <h3 class="text-lg font-black text-slate-800">學生進度</h3>
+        <p class="text-xs text-slate-500 mt-1 mb-4">圖鑑一共 50 個（35 種怪獸、15 隻守護精靈），收集 45 個可以挑戰怪獸∞號，打贏 8 次得到紀念夥伴。標示「測試」的帳號不列入上方統計。</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left border-collapse">
+            <thead><tr class="bg-slate-100 text-slate-700">
+              <th class="py-2.5 px-3">座號</th><th class="py-2.5 px-3">姓名</th><th class="py-2.5 px-3">作答・正確率</th><th class="py-2.5 px-3">圖鑑</th>
+              <th class="py-2.5 px-3">守護精靈</th><th class="py-2.5 px-3">打贏∞號</th><th class="py-2.5 px-3">今天金幣</th>
+            </tr></thead>
+            <tbody id="cpTableBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <div id="tchPane_pvp" class="hidden space-y-6">
@@ -442,13 +480,14 @@
   </div>
 </div>
 
-<script src="config.js?v=20261126"></script>
-<script src="common.js?v=20261126"></script>
-<script src="fraction-data.js?v=20261126"></script>
-<script src="gaudi-data.js?v=20261126"></script>
-<script src="food-data.js?v=20261126"></script>
-<script src="food-q.js?v=20261126"></script>
-<script src="food-art.js?v=20261126"></script>
-<script src="teacher.js?v=20261126"></script>
+<script src="config.js?v=20261128"></script>
+<script src="common.js?v=20261128"></script>
+<script src="fraction-data.js?v=20261128"></script>
+<script src="campus-data.js?v=20261128"></script>
+<script src="gaudi-data.js?v=20261128"></script>
+<script src="food-data.js?v=20261128"></script>
+<script src="food-q.js?v=20261128"></script>
+<script src="food-art.js?v=20261128"></script>
+<script src="teacher.js?v=20261128"></script>
 </body>
 </html>

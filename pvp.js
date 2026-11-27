@@ -32,7 +32,7 @@ let L = {};            // 這台平板自己的計時與畫面狀態
 let ticker = null, hbTimer = null, qHbTimer = null;
 
 const $ = id => document.getElementById(id);
-const MON = id => WILD.find(m => m.id === id) || GUARDIANS.find(m => m.id === id) || (id === HERO.id ? HERO : null);
+const MON = id => anyMon(id) || null;
 const monName = id => (MON(id) || { name: "?" }).name;
 const now = () => Date.now();
 const colRef = () => db.collection(COLLECTION_NAME);
@@ -41,21 +41,30 @@ const qRef = () => colRef().doc("_pvpq_" + CLS);
 const openRef = () => colRef().doc("_pvpopen_" + CLS);
 const rid8 = () => Math.random().toString(36).slice(2, 10);
 
+// 高第服裝獎勵（從這次更新開始算，只算公平競技）：
+//   sw = 累積勝場（滿 5 → 高第‧中級 sk2）、st = 目前連勝（滿 5 → 高第‧高級 sk3；輸了歸零、平手不影響）
+const SKIN_NEED = { total: 5, streak: 5 };
 function ensurePvp(s) {
-  const p = Object.assign({ fw: 0, fl: 0, fd: 0, cw: 0, cl: 0, cd: 0, coins: 0, ans: 0, cor: 0, last: 0 }, s.pvp || {});
+  const p = Object.assign({ fw: 0, fl: 0, fd: 0, cw: 0, cl: 0, cd: 0, coins: 0, ans: 0, cor: 0, last: 0, sw: 0, st: 0, sk2: 0, sk3: 0 }, s.pvp || {});
   Object.keys(p).forEach(k => { p[k] = Number(p[k]) || 0; });
   s.pvp = p;
   return p;
 }
-// 可以上場的角色：收服中的怪獸＋打敗過的守護精靈（含紀念夥伴高第）
+// 可以上場的角色：收服中的怪獸＋打敗過的守護精靈（含紀念夥伴，兩個遊戲的都算）
 function myPool() {
   const g = G || {}, caught = g.caught || {}, beaten = g.beaten || {};
   const out = [];
-  if (beaten[HERO.id]) out.push(HERO.id);
-  GUARDIANS.forEach(x => { if (beaten[x.id]) out.push(x.id); });
-  WILD.forEach(x => { if ((Number(caught[x.id]) || 0) > 0) out.push(x.id); });
+  allHeroes().forEach(x => { if (beaten[x.id]) out.push(x.id); });
+  allGuardians().forEach(x => { if (beaten[x.id]) out.push(x.id); });
+  allWild().forEach(x => { if ((Number(caught[x.id]) || 0) > 0) out.push(x.id); });
   return out;
 }
+// 我的高第穿哪一套服裝（要有服裝也要有高第）
+function mySkin() {
+  const lv = Number(G && G.heroSkin) || 1;
+  return (lv === 2 && STU.pvp.sk2) || (lv === 3 && STU.pvp.sk3) ? lv : 1;
+}
+const skinOf = side => (R && R[side] && R[side].skin) || 1;
 const eligible = () => PVP_NEED.every(id => G && G.beaten && G.beaten[id]);
 
 /* ---------------- 交易小幫手：讀一份文件、改好、整份寫回 ---------------- */
@@ -81,6 +90,7 @@ window.onPageReady = async () => {
   renderCoins();
   G = STU.gaudi || {};
   ensurePvp(STU);
+  setHeroSkin(mySkin());
   const t = teacherOfStudent(STU.id);
   $("viewLoading").classList.add("hidden");
   if (!isCloudMode || cloudError) { showBlock("連不上雲端", "PvP 要連上網路才能和同學對戰。請確認網路後重新整理。"); return; }
@@ -115,6 +125,7 @@ function renderLobby() {
   $("recFair").textContent = `${p.fw} 勝 ${p.fl} 敗${p.fd ? ` ${p.fd} 平` : ""}`;
   $("recCustom").textContent = `${p.cw} 勝 ${p.cl} 敗${p.cd ? ` ${p.cd} 平` : ""}`;
   $("recCoins").textContent = p.coins;
+  if ($("recSkin")) $("recSkin").innerHTML = skinProgressHtml();
   const ok = eligible();
   let msg = "";
   if (!OPEN) msg = "🔒 老師還沒開放競技場，等老師打開後就能對戰。";
@@ -125,8 +136,15 @@ function renderLobby() {
   ["btnFair", "btnCreate", "btnJoin"].forEach(id => { $(id).disabled = !can; $(id).style.opacity = can ? "" : ".5"; });
   $("myPoolList").innerHTML = myPool().map(id => monChip(id)).join("") || `<p class="text-sm font-bold text-[#8C9AA6]">還沒有夥伴</p>`;
 }
-function monChip(id, extra = "") {
-  return `<div class="pv-chip ${extra}"><div class="k-mon-img"><img src="${monsterImg(id)}" alt=""/></div>
+function skinProgressHtml() {
+  const p = STU.pvp;
+  const row = (lv, txt, done) => `<div class="flex items-center gap-2"><img src="${heroSkinImg(lv)}" class="w-9 h-9 rounded-lg border-2 border-[#1E2A33] ${done ? "" : "grayscale opacity-60"}" alt=""/>
+    <span class="text-xs font-bold">${HERO_SKINS[lv - 1].name}服裝：${done ? "<b class='text-[#2E9E6A]'>已得到！</b>" : txt}</span></div>`;
+  return row(2, `公平競技累積贏 ${Math.min(p.sw, SKIN_NEED.total)} / ${SKIN_NEED.total} 場`, !!p.sk2) +
+    row(3, `公平競技連贏 ${Math.min(p.st, SKIN_NEED.streak)} / ${SKIN_NEED.streak} 場（輸了重算，平手不影響）`, !!p.sk3);
+}
+function monChip(id, extra = "", skin) {
+  return `<div class="pv-chip ${extra}"><div class="k-mon-img"><img src="${monsterImg(id, skin)}" alt=""/></div>
     <div class="text-[11px] font-black leading-tight mt-0.5">${escapeHtml(monName(id))}</div>
     <div class="text-[10px] font-bold text-[#5B6B78]">攻 ${pvpDmg(id)}・血 ${pvpHp(id)}</div></div>`;
 }
@@ -141,7 +159,7 @@ async function startFair() {
   $("waitText").textContent = "正在找同樣在等待的同學，找到就會開始。";
   $("waitCode").classList.add("hidden");
   L.waiting = "fair";
-  const me = { id: STU.id, name: STU.name || STU.id, t: now(), pool: myPool() };
+  const me = { id: STU.id, name: STU.name || STU.id, t: now(), pool: myPool(), skin: mySkin() };
   let got = null;
   try {
     got = await db.runTransaction(async t => {
@@ -151,7 +169,7 @@ async function startFair() {
       const w = q.w;
       if (w && w.id !== STU.id && now() - w.t < 20000) {
         const rid = "_pvp_f" + rid8();
-        t.set(roomRef(rid), newRoom("fair", { id: w.id, name: w.name }, w.pool, me));
+        t.set(roomRef(rid), newRoom("fair", { id: w.id, name: w.name, skin: w.skin || 1 }, w.pool, me));
         q.w = null; q.m[w.id] = rid;
         t.set(qRef(), q);
         return rid;
@@ -218,7 +236,7 @@ async function createCustom() {
     try {
       const ok = await txDoc(roomRef(id), d => {
         if (d && d.phase !== "end" && now() - (d.created || 0) < 3600000) return { ret: false };
-        const r = newRoom("custom", { id: STU.id, name: STU.name || STU.id }, myPool(), null);
+        const r = newRoom("custom", { id: STU.id, name: STU.name || STU.id, skin: mySkin() }, myPool(), null);
         r.code = code;
         return { write: r, ret: true };
       });
@@ -246,7 +264,7 @@ async function joinCustom() {
       if (!d || d.phase !== "wait") return { ret: "找不到這個房間，或是已經開始對戰了。" };
       if (d.A.id === STU.id) return { ret: "這是你自己建的房間喔！" };
       if (d.cls !== CLS) return { ret: "只能和同班同學對戰喔！" };
-      d.B = { id: STU.id, name: STU.name || STU.id };
+      d.B = { id: STU.id, name: STU.name || STU.id, skin: mySkin() };
       d.pool.B = myPool();
       d.phase = "pick";
       d.hb = { A: now(), B: now() };
@@ -260,7 +278,7 @@ async function joinCustom() {
 function newRoom(mode, a, poolA, b) {
   return {
     mode, cls: CLS, created: now(),
-    A: a, B: b ? { id: b.id, name: b.name } : null,
+    A: a, B: b ? { id: b.id, name: b.name, skin: b.skin || 1 } : null,
     pool: { A: poolA || [], B: b ? b.pool : [] },
     phase: b ? "pick" : "wait",
     pi: 0, picks: { A: [], B: [] }, ban: { A: "", B: "" },
@@ -559,6 +577,14 @@ async function finishMatch() {
   p.last = now();
   let coins = 0;
   if (fair) coins = res === "w" ? PVP_COINS.win : res === "l" ? PVP_COINS.lose : PVP_COINS.draw;
+  // 高第服裝：只算公平競技；輸了連勝歸零，平手不加也不歸零
+  L.newSkin = [];
+  if (fair) {
+    if (res === "w") { p.sw += 1; p.st += 1; }
+    else if (res === "l") p.st = 0;
+    if (!p.sk2 && p.sw >= SKIN_NEED.total) { p.sk2 = 1; L.newSkin.push(2); }
+    if (!p.sk3 && p.st >= SKIN_NEED.streak) { p.sk3 = 1; L.newSkin.push(3); }
+  }
   p.coins += coins;
   L.coins = coins;
   try { await saveGameData(STU, "pvp", coins); } catch (e) { reportError("存檔", e); }
@@ -607,14 +633,14 @@ function renderPick() {
     const id = R.picks[s][cnt[s]++];
     const cur = i === R.pi;
     return `<div class="pv-slot ${s === ME ? "is-me" : "is-op"} ${cur ? "is-cur" : ""}">
-      ${id ? `<img src="${monsterImg(id)}" alt=""/>` : `<span>${s === ME ? "你" : "對手"}</span>`}</div>`;
+      ${id ? `<img src="${monsterImg(id, skinOf(s))}" alt=""/>` : `<span>${s === ME ? "你" : "對手"}</span>`}</div>`;
   }).join("");
   const tk = takenAll();
   $("pickGrid").innerHTML = (R.pool[ME] || []).map(id => {
     const used = tk.includes(id);
     const byMe = R.picks[ME].includes(id);
     return `<button class="pv-pick ${used ? "is-used" : ""} ${byMe ? "is-mine" : ""}" ${!mine || used ? "disabled" : ""} onclick="doPick('${id}')">
-      ${monChip(id)}${used ? `<span class="pv-tag">${byMe ? "已選" : "對手選了"}</span>` : ""}</button>`;
+      ${monChip(id, "", skinOf(ME))}${used ? `<span class="pv-tag">${byMe ? "已選" : "對手選了"}</span>` : ""}</button>`;
   }).join("");
   $("opPool").textContent = `對手有 ${(R.pool[OP] || []).length} 隻夥伴可以選`;
 }
@@ -623,8 +649,8 @@ function renderBan() {
   $("pBan").classList.remove("hidden");
   const done = !!R.ban[ME];
   $("banWho").innerHTML = done ? "等對手禁角…" : "選對手的 <b>1 隻</b>夥伴，讓牠不能上場！";
-  $("banOp").innerHTML = R.picks[OP].map(id => `<button class="pv-pick ${R.ban[ME] === id ? "is-ban" : ""}" ${done ? "disabled" : ""} onclick="doBan('${id}')">${monChip(id)}${R.ban[ME] === id ? `<span class="pv-tag pv-tag--ban">禁</span>` : ""}</button>`).join("");
-  $("banMe").innerHTML = R.picks[ME].map(id => monChip(id)).join("");
+  $("banOp").innerHTML = R.picks[OP].map(id => `<button class="pv-pick ${R.ban[ME] === id ? "is-ban" : ""}" ${done ? "disabled" : ""} onclick="doBan('${id}')">${monChip(id, "", skinOf(OP))}${R.ban[ME] === id ? `<span class="pv-tag pv-tag--ban">禁</span>` : ""}</button>`).join("");
+  $("banMe").innerHTML = R.picks[ME].map(id => monChip(id, "", skinOf(ME))).join("");
 }
 
 function teamHtml(side) {
@@ -632,7 +658,7 @@ function teamHtml(side) {
   return (R.team[side] || []).map((id, i) => {
     const max = pvpHp(id), h = R.hp[side][i];
     return `<div class="pv-mon ${i === f ? "is-front" : ""} ${h <= 0 ? "is-ko" : ""}">
-      <div class="k-mon-img"><img src="${monsterImg(id)}" alt=""/></div>
+      <div class="k-mon-img"><img src="${monsterImg(id, skinOf(side))}" alt=""/></div>
       <div class="text-[11px] font-black truncate">${escapeHtml(monName(id))}</div>
       <div class="pv-hp"><div style="width:${h / max * 100}%" class="${h / max < .35 ? "is-low" : ""}"></div></div>
       <div class="text-[10px] font-bold text-[#5B6B78]">${h} / ${max}</div></div>`;
@@ -704,5 +730,9 @@ function renderEnd() {
       <div>${escapeHtml(R[ME].name)}<div class="k-display text-3xl">${R.score[ME]}</div><div class="text-xs text-[#5B6B78]">答對搶到</div></div>
       <div class="k-display text-2xl self-center">VS</div>
       <div>${escapeHtml(R[OP].name)}<div class="k-display text-3xl">${R.score[OP]}</div><div class="text-xs text-[#5B6B78]">答對搶到</div></div></div>` : ""}
-    <p class="font-bold mt-4">${coinTxt}</p>`;
+    <p class="font-bold mt-4">${coinTxt}</p>
+    ${(L.newSkin || []).map(lv => `<div class="mt-4 p-3 rounded-2xl border-[3px] border-[#1E2A33] bg-[#FFF4CC] flex items-center gap-3 text-left">
+      <img src="${heroSkinImg(lv)}" class="w-16 h-16 rounded-xl border-2 border-[#1E2A33]" alt=""/>
+      <div><div class="k-display text-xl">得到「高第‧${HERO_SKINS[lv - 1].name}」服裝！</div>
+      <div class="text-sm font-bold text-[#5B6B78]">${lv === 2 ? "公平競技累積贏 5 場" : "公平競技連贏 5 場"}。到高第的魔法建築點「高第」就能換上（要先有高第喔）。</div></div></div>`).join("")}`;
 }
