@@ -6,7 +6,7 @@
    - 兩邊同一題，倒數 3、2、1 後搶答，先答對的攻擊；答錯這題就鎖住
    - 一場最多 5 分鐘，時間到比剩下的夥伴數、再比剩下的血量
    資料都存在同一個集合裡，文件名稱用 _ 開頭（不會被當成學生）：
-     _pvpopen_<老師>：老師有沒有開放
+     （老師在教師端一位一位設定開放：學生資料的 pvpOpen）
      _pvpq_<老師>   ：公平競技的配對區
      _pvp_<房間>    ：一場對戰
    ========================================================= */
@@ -38,7 +38,7 @@ const now = () => Date.now();
 const colRef = () => db.collection(COLLECTION_NAME);
 const roomRef = rid => colRef().doc(rid);
 const qRef = () => colRef().doc("_pvpq_" + CLS);
-const openRef = () => colRef().doc("_pvpopen_" + CLS);
+const openRef = () => colRef().doc(STU.id);   // 自己的學生資料：pvpOpen 由老師設定
 const rid8 = () => Math.random().toString(36).slice(2, 10);
 
 // 高第服裝獎勵（從這次更新開始算，只算公平競技）：
@@ -98,7 +98,7 @@ window.onPageReady = async () => {
   CLS = t.id;
   $("viewLobby").classList.remove("hidden");
   unsubOpen = openRef().onSnapshot(s => {
-    OPEN = !!(s.exists && s.data().open);
+    OPEN = !!(s.exists && isPvpOpen(s.data()));
     renderLobby();
   }, e => { console.warn(e); });
   renderLobby();
@@ -128,7 +128,7 @@ function renderLobby() {
   if ($("recSkin")) $("recSkin").innerHTML = skinProgressHtml();
   const ok = eligible();
   let msg = "";
-  if (!OPEN) msg = "🔒 老師還沒開放競技場，等老師打開後就能對戰。";
+  if (!OPEN) msg = "🔒 老師還沒開放競技場給你，等老師開放後就能對戰。";
   else if (!ok) msg = "要先在〈高第的魔法建築〉打敗巴特羅之家的 3 隻守護精靈（解鎖奎爾公園），才能參加對戰。";
   else if (myPool().length < 2) msg = "你的夥伴太少了，先去高第的魔法建築多收服一些吧！";
   $("lobbyMsg").innerHTML = msg ? `<div class="k-note">${msg}</div>` : `<div class="k-note k-note--ok">✅ 競技場開放中！選一種對戰開始吧。</div>`;
@@ -218,7 +218,7 @@ async function cancelWait() {
 async function stillOpen() {
   try {
     const s = await openRef().get();
-    OPEN = !!(s.exists && s.data().open);
+    OPEN = !!(s.exists && isPvpOpen(s.data()));
   } catch (e) { /* 讀不到就照舊 */ }
   if (!OPEN) { renderLobby(); alert("老師還沒開放競技場喔！"); }
   return OPEN;

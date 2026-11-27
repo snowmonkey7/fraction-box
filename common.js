@@ -329,7 +329,7 @@ async function saveStudentProgress(studentObj, coinDelta = 0) {
 // 每個遊戲各自存在學生資料裡的一個欄位（例如高第遊戲存在 gaudi）
 const GAME_FIELDS = ["gaudi", "dress", "food", "pvp", "campus"];
 // 只有老師能改的欄位：gaudiOpen = 高第遊戲開放到第幾棟（0 = 不能進入，1～4 = 開放到第幾棟）
-const TEACHER_ONLY_FIELDS = ["gaudiOpen", "dressOpen", "foodOpen"];
+const TEACHER_ONLY_FIELDS = ["gaudiOpen", "dressOpen", "foodOpen", "campusOpen", "pvpOpen"];
 // dressOpen = 換裝扭蛋開放幾台扭蛋機（0 = 不能玩）
 // 測試帳號：每位老師可以設定「從哪個座號開始是測試帳號」，不列入排行榜和班級統計
 function isTestAccount(id) {
@@ -395,26 +395,9 @@ async function saveGameFields(studentObj, fields, coinDelta = 0) {
   }
 }
 
-// 校園的魔法探險：老師開放全班的開關（雲端存在 _campusopen_<老師>；沒連雲端時存在這台電腦）
-const campusOpenKey = tid => "_campusopen_" + tid;
-async function getCampusOpen(studentOrTeacherId, isTeacher) {
-  const t = isTeacher ? { id: studentOrTeacherId } : teacherOfStudent(studentOrTeacherId);
-  if (!t) return false;
-  try {
-    if (isCloudMode && !cloudError) {
-      const s = await withTimeout(db.collection(COLLECTION_NAME).doc(campusOpenKey(t.id)).get());
-      return !!(s.exists && s.data().open);
-    }
-    return localStorage.getItem("kz" + campusOpenKey(t.id)) === "1";
-  } catch (e) { console.warn(e); return false; }
-}
-async function setCampusOpen(teacherId, open, byName) {
-  if (isCloudMode && !cloudError) {
-    await withTimeout(db.collection(COLLECTION_NAME).doc(campusOpenKey(teacherId)).set({ open: !!open, t: Date.now(), by: byName || "" }));
-  } else {
-    localStorage.setItem("kz" + campusOpenKey(teacherId), open ? "1" : "0");
-  }
-}
+// 校園的魔法探險、PvP 競技場：老師在教師端一位一位（或勾選多位）設定開放（campusOpen、pvpOpen：1 = 開放）
+const isCampusOpen = stu => (Number(stu && stu.campusOpen) || 0) > 0;
+const isPvpOpen = stu => (Number(stu && stu.pvpOpen) || 0) > 0;
 
 // 教師端專用：只更新指定欄位（例如姓名、密碼），不會用舊資料蓋掉學生最新的作答進度
 async function saveStudentFields(studentId, fields) {

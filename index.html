@@ -10,7 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="theme.css?v=20261128" />
+  <link rel="stylesheet" href="theme.css?v=20261128b" />
 </head>
 <body class="k-page select-none" data-title-from-site="1">
 <header class="k-board sticky top-0 z-30">
@@ -75,19 +75,32 @@
     </div>
 
     <div class="grid md:grid-cols-2 gap-8 md:gap-10">
-      <a href="fraction.html" class="k-game k-game--tilt-l k-slap">
+      <a href="campus.html" id="campusCard" class="k-game k-game--tilt-l k-slap">
+        <div id="campusTape" class="k-tape hidden">還沒開放</div>
+        <div class="k-game-top px-6 pt-5 pb-4 flex items-end justify-between" style="background:#BFE8D6">
+          <div class="k-game-icon" aria-hidden="true">🏫</div>
+          <span class="k-chip k-chip--chi mr-12">期中複習</span>
+        </div>
+        <div class="px-6 pt-4 pb-6">
+          <h3 class="k-display text-3xl">校園的魔法探險</h3>
+          <p class="text-sm font-bold text-[#5B6B78] mt-1">國語第一～六課・數學第一～五單元</p>
+          <p class="text-sm mt-3 leading-relaxed">五間教室同時開放！帶著高第的夥伴探索校園、收服新怪獸，最後挑戰終極 Boss 怪獸∞號。</p>
+          <div id="campusBtn" class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
+        </div>
+      </a>
+      <a href="fraction.html" class="k-game k-game--tilt-r k-slap">
         <div class="k-game-top k-game-top--math px-6 pt-5 pb-4 flex items-end justify-between">
           <div class="k-game-icon" aria-hidden="true">🎁</div>
           <span class="k-chip k-chip--math">數學</span>
         </div>
         <div class="px-6 pt-4 pb-6">
-          <h3 class="k-display text-3xl">分數盲盒店</h3>
+          <h3 class="k-display text-3xl">充滿分數的盲盒店</h3>
           <p class="text-sm font-bold text-[#5B6B78] mt-1">異分母分數的加減</p>
           <p class="text-sm mt-3 leading-relaxed">答對 3 題抽 1 個盲盒，把 18 款公仔全部收集起來。抽到重複的會變成碎片和金幣。</p>
           <div class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
         </div>
       </a>
-      <a href="gaudi.html" id="gaudiCard" class="k-game k-game--tilt-r k-slap">
+      <a href="gaudi.html" id="gaudiCard" class="k-game k-game--tilt-l k-slap">
         <div id="gaudiTape" class="k-tape hidden">還沒開放</div>
         <div class="k-game-top k-game-top--chi px-6 pt-5 pb-4 flex items-end justify-between">
           <div class="k-game-icon p-1" aria-hidden="true" id="gaudiIcon">🏛️</div>
@@ -107,23 +120,10 @@
           <span class="k-chip k-chip--chi mr-12">國語＋數學</span>
         </div>
         <div class="px-6 pt-4 pb-6">
-          <h3 class="k-display text-3xl">對稱美食街</h3>
+          <h3 class="k-display text-3xl">對稱的美食街</h3>
           <p class="text-sm font-bold text-[#5B6B78] mt-1">〈嘗嘗我的家鄉味〉・線對稱圖形</p>
           <p class="text-sm mt-3 leading-relaxed">答題轉扭蛋收集食材，在圖鑑裡發現台灣和世界各地的對稱美食，做出一道道料理。</p>
           <div id="foodBtn" class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
-        </div>
-      </a>
-      <a href="campus.html" id="campusCard" class="k-game k-game--tilt-r k-slap">
-        <div id="campusTape" class="k-tape hidden">還沒開放</div>
-        <div class="k-game-top px-6 pt-5 pb-4 flex items-end justify-between" style="background:#BFE8D6">
-          <div class="k-game-icon" aria-hidden="true">🏫</div>
-          <span class="k-chip k-chip--chi mr-12">期中複習</span>
-        </div>
-        <div class="px-6 pt-4 pb-6">
-          <h3 class="k-display text-3xl">校園的魔法探險</h3>
-          <p class="text-sm font-bold text-[#5B6B78] mt-1">國語第一～六課・數學第一～五單元</p>
-          <p class="text-sm mt-3 leading-relaxed">五間教室同時開放！帶著高第的夥伴探索校園、收服新怪獸，最後挑戰終極 Boss 怪獸∞號。</p>
-          <div id="campusBtn" class="mt-5 k-btn k-btn--yellow px-6 py-2.5 text-lg">進入遊戲</div>
         </div>
       </a>
       <a href="pvp.html" id="pvpCard" class="k-game k-game--tilt-l k-slap">
@@ -143,9 +143,9 @@
   </section>
 </main>
 
-<script src="config.js?v=20261128"></script>
-<script src="common.js?v=20261128"></script>
-<script src="gaudi-art.js?v=20261128"></script>
+<script src="config.js?v=20261128b"></script>
+<script src="common.js?v=20261128b"></script>
+<script src="gaudi-art.js?v=20261128b"></script>
 <script>
 /* 首頁：登入與遊戲目錄 */
 async function studentLogin() {
@@ -204,7 +204,7 @@ function showMenu(stu) {
   btn.style.opacity = open ? "" : ".6";
   if (open) card.setAttribute("href", "gaudi.html"); else card.removeAttribute("href");
   card.setAttribute("aria-disabled", open ? "false" : "true");
-  // 對稱美食街
+  // 對稱的美食街
   const fOpen = (Number(stu.foodOpen) || 0) > 0;
   const fCard = document.getElementById("foodCard");
   fCard.classList.toggle("k-game--locked", !fOpen);
@@ -214,16 +214,10 @@ function showMenu(stu) {
   fBtn.classList.toggle("k-btn--yellow", fOpen);
   fBtn.style.opacity = fOpen ? "" : ".6";
   if (fOpen) fCard.setAttribute("href", "food.html"); else fCard.removeAttribute("href");
-  // 校園的魔法探險：老師打開全班的開關才能進去
-  setCampusCard(false);
-  getCampusOpen(stu.id).then(setCampusCard).catch(() => {});
-  // PvP 競技場：老師打開全班的開關才能進去
-  setPvpCard(false);
-  const t = teacherOfStudent(stu.id);
-  if (t && isCloudMode && !cloudError) {
-    db.collection(COLLECTION_NAME).doc("_pvpopen_" + t.id).get()
-      .then(s => setPvpCard(!!(s.exists && s.data().open))).catch(() => {});
-  }
+  // 校園的魔法探險：老師開放的同學才能進去
+  setCampusCard(isCampusOpen(stu));
+  // PvP 競技場：老師開放的同學才能進去
+  setPvpCard(isPvpOpen(stu));
 }
 function setCampusCard(open) {
   const card = document.getElementById("campusCard");

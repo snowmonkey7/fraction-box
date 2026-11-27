@@ -78,7 +78,7 @@ function exitTeacherView() {
 }
 
 function switchTeacherTab(name) {
-  ["fraction", "gaudi", "food", "pvp", "campus"].forEach(t => {
+  ["fraction", "campus", "gaudi", "food", "pvp"].forEach(t => {
     document.getElementById("tchPane_" + t).classList.toggle("hidden", t !== name);
     document.getElementById("tchTabBtn_" + t).className = t === name
       ? "px-4 py-2 rounded-xl font-black text-sm bg-slate-800 text-white shadow"
@@ -492,7 +492,7 @@ function exportClassCSV() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${currentTeacher ? currentTeacher.name : "班級"}_分數盲盒店成績_${new Date().toISOString().slice(0,10)}.csv`;
+  link.download = `${currentTeacher ? currentTeacher.name : "班級"}_充滿分數的盲盒店成績_${new Date().toISOString().slice(0,10)}.csv`;
   link.click();
 }
 
@@ -781,7 +781,7 @@ async function giveCoinsBulkDress() {
 }
 
 
-/* ---------- 對稱美食街 ---------- */
+/* ---------- 對稱的美食街 ---------- */
 const FOOD_MATH_TYPES = { find: "找線對稱圖形", axes: "數對稱軸", isAxis: "判斷對稱軸", pair: "對稱點、邊、角", prop: "線對稱的性質", grid: "方格畫另一半", poly: "多邊形的對稱軸", tf: "觀念是非題", dist: "方格上的對稱點", peri: "對稱邊與周長", tri: "等腰三角形的角", gridPick: "選出正確的另一半", gridPt: "方格上的對稱點", gridSym: "方格圖案是否對稱" };
 function foodTypeName(k) {
   if (k.startsWith("z_")) return "國語・" + ((typeof ZH_TYPE_NAMES !== "undefined" && ZH_TYPE_NAMES[k.slice(2)]) || k.slice(2));
@@ -925,9 +925,11 @@ function renderPvpTeacher(list) {
     const isTest = isTestAccount(s.id);
     if (!isTest) { if (ok) elig += 1; fair += n("fw") + n("fl") + n("fd"); ans += n("ans"); cor += n("cor"); coins += n("coins"); }
     const rec = (w, l, d) => `${n(w)} 勝 ${n(l)} 敗${n(d) ? ` ${n(d)} 平` : ""}`;
-    return `<tr class="hover:bg-slate-50">
+    return `<tr class="hover:bg-slate-50 ${isPvpOpen(s) ? "" : "bg-slate-50/60"}">
+      <td class="py-2.5 px-3"><input type="checkbox" class="pvChk w-4 h-4" value="${escapeHtml(s.id)}" /></td>
       <td class="py-2.5 px-3 font-black">${escapeHtml(s.id)}</td>
       <td class="py-2.5 px-3 font-bold text-slate-600">${escapeHtml(s.name)}${isTest ? ' <span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">測試</span>' : ""}</td>
+      <td class="py-2.5 px-3">${openSelectHtml("pvpOpen", s.id, isPvpOpen(s))}</td>
       <td class="py-2.5 px-3 font-bold ${ok ? "text-emerald-600" : "text-slate-400"}">${ok ? "可以" : "還沒打完巴特羅之家"}</td>
       <td class="py-2.5 px-3 font-bold">${pvpPoolCount(g)} 隻</td>
       <td class="py-2.5 px-3 font-bold">${rec("fw", "fl", "fd")}${n("sk2") || n("sk3") ? `<div class="text-[11px] text-amber-600">服裝：${[n("sk2") ? "中級" : "", n("sk3") ? "高級" : ""].filter(Boolean).join("、")}</div>` : `<div class="text-[11px] text-slate-400">服裝進度：累積 ${Math.min(n("sw"), 5)}/5・連勝 ${Math.min(n("st"), 5)}/5</div>`}</td>
@@ -940,42 +942,30 @@ function renderPvpTeacher(list) {
   document.getElementById("pvStatFair").textContent = `${Math.round(fair / 2)} 場`;
   document.getElementById("pvStatAcc").textContent = `${ans ? Math.round(cor / ans * 100) : 0}%`;
   document.getElementById("pvStatCoins").textContent = coins;
-  document.getElementById("pvTableBody").innerHTML = rows.join("") || `<tr><td colspan="8" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
-  loadPvpOpen();
+  document.getElementById("pvCheckAll").checked = false;
+  document.getElementById("pvTableBody").innerHTML = rows.join("") || `<tr><td colspan="10" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
+  migratePvpOpen(list);
 }
-let PVP_OPEN = false;
-const pvpOpenRef = () => db.collection(COLLECTION_NAME).doc("_pvpopen_" + currentTeacher.id);
-async function loadPvpOpen() {
-  if (!currentTeacher) return;
-  if (!isCloudMode || cloudError) { document.getElementById("pvpOpenState").textContent = "要連上雲端才能使用"; return; }
+// 舊版是「全班一個開關」：如果老師之前已經打開，第一次進新版教師端時，自動改成全班每位同學都開放
+let pvpMigrated = false;
+async function migratePvpOpen(list) {
+  if (pvpMigrated || !currentTeacher || !isCloudMode || cloudError) return;
+  pvpMigrated = true;
   try {
-    const s = await pvpOpenRef().get();
-    PVP_OPEN = !!(s.exists && s.data().open);
+    const ref = db.collection(COLLECTION_NAME).doc("_pvpopen_" + currentTeacher.id);
+    const snap = await ref.get();
+    if (!snap.exists || !snap.data().open) return;
+    if (list.some(x => x.pvpOpen !== undefined && x.pvpOpen !== null)) { await ref.set({ open: false, t: Date.now(), migrated: true }); return; }
+    for (const x of list) await saveStudentFields(x.id, { pvpOpen: 1 });
+    await ref.set({ open: false, t: Date.now(), migrated: true });
+    await refreshTeacherData();
   } catch (e) { console.warn(e); }
-  showPvpOpen();
-}
-function showPvpOpen() {
-  const st = document.getElementById("pvpOpenState"), btn = document.getElementById("pvpOpenBtn");
-  st.textContent = PVP_OPEN ? "🟢 開放中" : "🔒 關閉中";
-  st.className = "text-lg font-black " + (PVP_OPEN ? "text-emerald-600" : "text-slate-500");
-  btn.textContent = PVP_OPEN ? "關閉競技場" : "開放競技場";
-  btn.className = "font-bold px-5 py-2.5 rounded-xl text-white " + (PVP_OPEN ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-600 hover:bg-emerald-700");
-}
-async function togglePvpOpen() {
-  if (!isCloudMode || cloudError) { alert("要連上雲端才能使用競技場。"); return; }
-  const next = !PVP_OPEN;
-  try {
-    await withTimeout(pvpOpenRef().set({ open: next, t: Date.now(), by: currentTeacher.name }));
-    PVP_OPEN = next;
-    showPvpOpen();
-  } catch (e) { reportError("切換競技場開關", e); }
 }
 
 
 /* =========================================================
    校園的魔法探險（期中複習）
    ========================================================= */
-let CAMPUS_OPEN_T = false;
 function renderCampusTeacher(list) {
   if (typeof CAMPUS_WILD === "undefined") return;
   const units = typeof CAMPUS_UNITS !== "undefined" ? CAMPUS_UNITS : {};
@@ -996,9 +986,11 @@ function renderCampusTeacher(list) {
     }
     const d = new Date(), todayKey = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     const today = c.dayKey === todayKey ? Number(c.dayCoins) || 0 : 0;
-    return `<tr class="hover:bg-slate-50">
+    return `<tr class="hover:bg-slate-50 ${isCampusOpen(s) ? "" : "bg-slate-50/60"}">
+      <td class="py-2.5 px-3"><input type="checkbox" class="cpChk w-4 h-4" value="${escapeHtml(s.id)}" /></td>
       <td class="py-2.5 px-3 font-black">${escapeHtml(s.id)}</td>
       <td class="py-2.5 px-3 font-bold text-slate-600">${escapeHtml(s.name)}${isTest ? ' <span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">測試</span>' : ""}</td>
+      <td class="py-2.5 px-3">${openSelectHtml("campusOpen", s.id, isCampusOpen(s))}</td>
       <td class="py-2.5 px-3 font-bold">${a} 題${a ? `・${Math.round(k / a * 100)}%` : ""}</td>
       <td class="py-2.5 px-3 font-bold">${dex} / ${CAMPUS_WILD.length + CAMPUS_GUARDIANS.length}</td>
       <td class="py-2.5 px-3 font-bold">${gN} / ${CAMPUS_GUARDIANS.length}</td>
@@ -1016,27 +1008,44 @@ function renderCampusTeacher(list) {
   $t("cpUnitWrong").innerHTML = top.length
     ? top.map(([u, n]) => `<span class="inline-block bg-rose-50 text-rose-700 border border-rose-200 rounded-lg px-2 py-1 text-xs font-bold mr-1 mb-1">${escapeHtml(units[u] || u)}：答錯 ${n} 次</span>`).join("")
     : `<span class="text-xs text-slate-400">還沒有答錯紀錄。</span>`;
-  $t("cpTableBody").innerHTML = rows.join("") || `<tr><td colspan="7" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
-  loadCampusOpen();
+  $t("cpCheckAll").checked = false;
+  $t("cpTableBody").innerHTML = rows.join("") || `<tr><td colspan="9" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
 }
-async function loadCampusOpen() {
-  if (!currentTeacher) return;
-  CAMPUS_OPEN_T = await getCampusOpen(currentTeacher.id, true);
-  showCampusOpen();
+/* ---------- 開放設定（校園的魔法探險、PvP 共用）：一位一位改，或勾選多位一起改 ---------- */
+const OPEN_CLS = on => "border-2 rounded-lg px-1.5 py-1 font-bold text-xs " + (on ? "border-emerald-400 text-emerald-700" : "border-slate-300 text-slate-500");
+function openSelectHtml(field, id, on) {
+  return `<select onchange="setOpenField('${field}', '${escapeHtml(id)}', this.value, this)" class="${OPEN_CLS(on)}">
+    <option value="0" ${on ? "" : "selected"}>不開放</option><option value="1" ${on ? "selected" : ""}>開放</option></select>`;
 }
-function showCampusOpen() {
-  const st = document.getElementById("campusOpenState"), btn = document.getElementById("campusOpenBtn");
-  if (!st) return;
-  st.textContent = CAMPUS_OPEN_T ? "🟢 開放中" : "🔒 關閉中";
-  st.className = "text-lg font-black " + (CAMPUS_OPEN_T ? "text-emerald-600" : "text-slate-500");
-  btn.textContent = CAMPUS_OPEN_T ? "關閉遊戲" : "開放遊戲";
-  btn.className = "font-bold px-5 py-2.5 rounded-xl text-white " + (CAMPUS_OPEN_T ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-600 hover:bg-emerald-700");
-}
-async function toggleCampusOpen() {
-  const next = !CAMPUS_OPEN_T;
+async function setOpenField(field, id, value, el) {
+  const n = Number(value) ? 1 : 0;
   try {
-    await setCampusOpen(currentTeacher.id, next, currentTeacher.name);
-    CAMPUS_OPEN_T = next;
-    showCampusOpen();
-  } catch (e) { reportError("切換校園的魔法探險開關", e); }
+    await saveStudentFields(id, { [field]: n });
+    const s = cachedAllStudents.find(x => x.id === id);
+    if (s) s[field] = n;
+    if (el) el.className = OPEN_CLS(n);
+  } catch (e) { reportError("儲存開放設定", e); refreshTeacherData(); }
+}
+function checkOpenRange(pre) {
+  const from = document.getElementById(pre + "RangeFrom").value.trim();
+  const to = document.getElementById(pre + "RangeTo").value.trim() || from;
+  if (!from) { alert("請輸入座號，例如 50101"); return; }
+  let n = 0;
+  document.querySelectorAll("." + pre + "Chk").forEach(c => {
+    const hit = c.value >= from && c.value <= to && c.value.length === from.length;
+    c.checked = hit; if (hit) n += 1;
+  });
+  document.getElementById(pre + "BulkMsg").textContent = `已勾選 ${n} 位`;
+}
+async function applyOpenBulk(pre, field) {
+  const ids = [...document.querySelectorAll("." + pre + "Chk:checked")].map(c => c.value);
+  if (!ids.length) { alert("請先勾選同學"); return; }
+  const n = Number(document.getElementById(pre + "BulkOpen").value) ? 1 : 0;
+  const msg = document.getElementById(pre + "BulkMsg");
+  msg.textContent = "儲存中…";
+  try {
+    for (const id of ids) await saveStudentFields(id, { [field]: n });
+    await refreshTeacherData();
+    document.getElementById(pre + "BulkMsg").textContent = `已把 ${ids.length} 位設為${n ? "開放" : "不開放"}`;
+  } catch (e) { reportError("儲存開放設定", e); msg.textContent = ""; }
 }

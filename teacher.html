@@ -10,7 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="theme.css?v=20261128" />
+  <link rel="stylesheet" href="theme.css?v=20261128b" />
   <style>
     /* 直式分數排版 */
     .frac-expr {
@@ -112,24 +112,14 @@
 
     <!-- 遊戲分頁 -->
     <div class="flex flex-wrap gap-2">
-      <button id="tchTabBtn_fraction" onclick="switchTeacherTab('fraction')" class="px-4 py-2 rounded-xl font-black text-sm bg-slate-800 text-white shadow">📋 全班名單・分數盲盒店</button>
-      <button id="tchTabBtn_gaudi" onclick="switchTeacherTab('gaudi')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🏛️ 高第的魔法建築</button>
-      <button id="tchTabBtn_food" onclick="switchTeacherTab('food')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🍱 對稱美食街</button>
-      <button id="tchTabBtn_pvp" onclick="switchTeacherTab('pvp')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">⚔️ PvP 競技場</button>
+      <button id="tchTabBtn_fraction" onclick="switchTeacherTab('fraction')" class="px-4 py-2 rounded-xl font-black text-sm bg-slate-800 text-white shadow">📋 全班名單・充滿分數的盲盒店</button>
       <button id="tchTabBtn_campus" onclick="switchTeacherTab('campus')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🏫 校園的魔法探險</button>
+      <button id="tchTabBtn_gaudi" onclick="switchTeacherTab('gaudi')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🏛️ 高第的魔法建築</button>
+      <button id="tchTabBtn_food" onclick="switchTeacherTab('food')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🍱 對稱的美食街</button>
+      <button id="tchTabBtn_pvp" onclick="switchTeacherTab('pvp')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">⚔️ PvP 競技場</button>
     </div>
 
     <div id="tchPane_campus" class="hidden space-y-6">
-      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h3 class="text-lg font-black text-slate-800">校園的魔法探險開關（全班）</h3>
-          <p class="text-xs text-slate-500 mt-1">期中複習：國語第一～六課、數學第一～五單元。打開後全班都能進入，五間教室同時開放。<br/>夥伴、捕捉道具、薰香和高第的魔法建築共用；每日金幣上限另外計算（每天 50 金幣）。</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <span id="campusOpenState" class="text-lg font-black text-slate-500">讀取中…</span>
-          <button id="campusOpenBtn" onclick="toggleCampusOpen()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-5 py-2.5 rounded-xl">…</button>
-        </div>
-      </div>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">玩過的人數</div><div id="cpStatPlayers" class="text-2xl font-black text-slate-800 mt-1">0 人</div></div>
         <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">全班正確率</div><div id="cpStatAcc" class="text-2xl font-black text-emerald-600 mt-1">0%</div></div>
@@ -142,12 +132,26 @@
         <div id="cpUnitWrong"></div>
       </div>
       <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
-        <h3 class="text-lg font-black text-slate-800">學生進度</h3>
-        <p class="text-xs text-slate-500 mt-1 mb-4">圖鑑一共 50 個（35 種怪獸、15 隻守護精靈），收集 45 個可以挑戰怪獸∞號，打贏 8 次得到紀念夥伴。標示「測試」的帳號不列入上方統計。</p>
+        <h3 class="text-lg font-black text-slate-800">學生進度與開放設定</h3>
+        <p class="text-xs text-slate-500 mt-1 mb-4">期中複習：國語第一～六課、數學第一～五單元。設成「開放」的同學才能進入，五間教室同時開放。夥伴、捕捉道具、薰香和高第的魔法建築共用；每日金幣上限另外計算（每天 50 金幣）。<br/>圖鑑一共 50 個（35 種怪獸、15 隻守護精靈），收集 45 個可以挑戰怪獸∞號，打贏 8 次得到紀念夥伴。改了就會自動儲存。標示「測試」的帳號不列入上方統計。</p>
+        <div class="flex flex-wrap items-center gap-2 mb-2 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+          <span class="text-sm font-bold text-slate-700">把勾選的同學設為</span>
+          <select id="cpBulkOpen" class="border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm"><option value="1">開放</option><option value="0">不開放</option></select>
+          <button onclick="applyOpenBulk('cp', 'campusOpen')" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm px-4 py-2 rounded-xl">套用</button>
+          <span class="text-slate-300 mx-1">|</span>
+          <span class="text-sm font-bold text-slate-700">快速勾選座號</span>
+          <input id="cpRangeFrom" placeholder="50101" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <span class="font-bold text-slate-500">到</span>
+          <input id="cpRangeTo" placeholder="50121" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <button onclick="checkOpenRange('cp')" class="bg-white border-2 border-slate-300 hover:bg-slate-100 font-bold text-sm px-3 py-1.5 rounded-xl">勾選</button>
+        </div>
+        <div id="cpBulkMsg" class="text-sm font-bold text-emerald-600 mb-2 min-h-[1.25rem]"></div>
+
         <div class="overflow-x-auto">
           <table class="w-full text-sm text-left border-collapse">
             <thead><tr class="bg-slate-100 text-slate-700">
-              <th class="py-2.5 px-3">座號</th><th class="py-2.5 px-3">姓名</th><th class="py-2.5 px-3">作答・正確率</th><th class="py-2.5 px-3">圖鑑</th>
+              <th class="py-2.5 px-3"><input type="checkbox" id="cpCheckAll" onchange="document.querySelectorAll('.cpChk').forEach(c => c.checked = this.checked)" class="w-4 h-4" title="全選" /></th>
+              <th class="py-2.5 px-3">座號</th><th class="py-2.5 px-3">姓名</th><th class="py-2.5 px-3">開放</th><th class="py-2.5 px-3">作答・正確率</th><th class="py-2.5 px-3">圖鑑</th>
               <th class="py-2.5 px-3">守護精靈</th><th class="py-2.5 px-3">打贏∞號</th><th class="py-2.5 px-3">今天金幣</th>
             </tr></thead>
             <tbody id="cpTableBody" class="divide-y divide-slate-100"></tbody>
@@ -157,16 +161,6 @@
     </div>
 
     <div id="tchPane_pvp" class="hidden space-y-6">
-      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h3 class="text-lg font-black text-slate-800">競技場開關（全班）</h3>
-          <p class="text-xs text-slate-500 mt-1">打開後，全班同學才能進入競技場配對或建房間。關掉後不能再開新的對戰，正在打的那一場可以打完。<br/>要先在高第的魔法建築打完巴特羅之家（解鎖奎爾公園）的同學才能參加。</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <span id="pvpOpenState" class="text-lg font-black text-slate-500">讀取中…</span>
-          <button id="pvpOpenBtn" onclick="togglePvpOpen()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-5 py-2.5 rounded-xl">…</button>
-        </div>
-      </div>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">可以參加的人數</div><div id="pvStatElig" class="text-2xl font-black text-slate-800 mt-1">0 人</div></div>
         <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">公平競技場數（全班合計）</div><div id="pvStatFair" class="text-2xl font-black text-sky-600 mt-1">0 場</div></div>
@@ -175,12 +169,26 @@
       </div>
       <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
         <h3 class="text-lg font-black text-slate-800">學生戰績</h3>
-        <p class="text-xs text-slate-500 mt-1 mb-4">公平競技贏 7 金幣、輸 3 金幣、平手各 5；自訂對戰不給金幣。「搶答」是按下答案的次數和答對率。標示「測試」的帳號不列入上方統計。</p>
+        <p class="text-xs text-slate-500 mt-1 mb-4">設成「開放」的同學才能進入競技場（還要先打完巴特羅之家）；只有開放的同學之間會互相配對。關掉後不能再開新的對戰，正在打的那一場可以打完。<br/>公平競技贏 7 金幣、輸 3 金幣、平手各 5；自訂對戰不給金幣。公平競技累積贏 5 場得到高第‧中級服裝、連贏 5 場得到高第‧高級服裝。標示「測試」的帳號不列入上方統計。</p>
+        <div class="flex flex-wrap items-center gap-2 mb-2 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+          <span class="text-sm font-bold text-slate-700">把勾選的同學設為</span>
+          <select id="pvBulkOpen" class="border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm"><option value="1">開放</option><option value="0">不開放</option></select>
+          <button onclick="applyOpenBulk('pv', 'pvpOpen')" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm px-4 py-2 rounded-xl">套用</button>
+          <span class="text-slate-300 mx-1">|</span>
+          <span class="text-sm font-bold text-slate-700">快速勾選座號</span>
+          <input id="pvRangeFrom" placeholder="50101" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <span class="font-bold text-slate-500">到</span>
+          <input id="pvRangeTo" placeholder="50121" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <button onclick="checkOpenRange('pv')" class="bg-white border-2 border-slate-300 hover:bg-slate-100 font-bold text-sm px-3 py-1.5 rounded-xl">勾選</button>
+        </div>
+        <div id="pvBulkMsg" class="text-sm font-bold text-emerald-600 mb-2 min-h-[1.25rem]"></div>
+
         <div class="overflow-x-auto">
           <table class="w-full text-sm text-left border-collapse">
             <thead><tr class="bg-slate-100 text-slate-700">
-              <th class="py-2.5 px-3">座號</th><th class="py-2.5 px-3">姓名</th><th class="py-2.5 px-3">可以參加</th><th class="py-2.5 px-3">夥伴數</th>
-              <th class="py-2.5 px-3">公平競技</th><th class="py-2.5 px-3">自訂對戰</th><th class="py-2.5 px-3">賺到金幣</th><th class="py-2.5 px-3">搶答</th>
+              <th class="py-2.5 px-3"><input type="checkbox" id="pvCheckAll" onchange="document.querySelectorAll('.pvChk').forEach(c => c.checked = this.checked)" class="w-4 h-4" title="全選" /></th>
+              <th class="py-2.5 px-3">座號</th><th class="py-2.5 px-3">姓名</th><th class="py-2.5 px-3">開放</th><th class="py-2.5 px-3">可以參加</th><th class="py-2.5 px-3">夥伴數</th>
+              <th class="py-2.5 px-3">公平競技・服裝</th><th class="py-2.5 px-3">自訂對戰</th><th class="py-2.5 px-3">賺到金幣</th><th class="py-2.5 px-3">搶答</th>
             </tr></thead>
             <tbody id="pvTableBody" class="divide-y divide-slate-100"></tbody>
           </table>
@@ -480,14 +488,14 @@
   </div>
 </div>
 
-<script src="config.js?v=20261128"></script>
-<script src="common.js?v=20261128"></script>
-<script src="fraction-data.js?v=20261128"></script>
-<script src="campus-data.js?v=20261128"></script>
-<script src="gaudi-data.js?v=20261128"></script>
-<script src="food-data.js?v=20261128"></script>
-<script src="food-q.js?v=20261128"></script>
-<script src="food-art.js?v=20261128"></script>
-<script src="teacher.js?v=20261128"></script>
+<script src="config.js?v=20261128b"></script>
+<script src="common.js?v=20261128b"></script>
+<script src="fraction-data.js?v=20261128b"></script>
+<script src="campus-data.js?v=20261128b"></script>
+<script src="gaudi-data.js?v=20261128b"></script>
+<script src="food-data.js?v=20261128b"></script>
+<script src="food-q.js?v=20261128b"></script>
+<script src="food-art.js?v=20261128b"></script>
+<script src="teacher.js?v=20261128b"></script>
 </body>
 </html>

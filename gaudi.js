@@ -164,12 +164,12 @@ window.onPageReady = async () => {
   if (!s) return;
   stu = s;
   if (CAMPUS) {
-    if (!(await getCampusOpen(stu.id))) {
+    if (!isCampusOpen(stu)) {
       showResult({ title: "老師還沒開放", text: "校園的魔法探險還沒開放，等老師打開就能玩囉！" }, gBackToMenu);
       return;
     }
   } else if (getGaudiOpen(stu) < 1) {
-    showResult({ title: "老師還沒開放", text: "這個遊戲還沒開放給你，先去玩分數盲盒店吧！" }, gBackToMenu);
+    showResult({ title: "老師還沒開放", text: "這個遊戲還沒開放給你，先去玩其他遊戲吧！" }, gBackToMenu);
     return;
   }
   G = ensureGaudi(stu);
