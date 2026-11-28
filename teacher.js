@@ -78,7 +78,7 @@ function exitTeacherView() {
 }
 
 function switchTeacherTab(name) {
-  ["fraction", "campus", "power", "gaudi", "food", "pvp"].forEach(t => {
+  ["fraction", "campus", "gaudi", "food", "power", "pvp"].forEach(t => {
     document.getElementById("tchPane_" + t).classList.toggle("hidden", t !== name);
     document.getElementById("tchTabBtn_" + t).className = t === name
       ? "px-4 py-2 rounded-xl font-black text-sm bg-slate-800 text-white shadow"
