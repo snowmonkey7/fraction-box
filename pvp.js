@@ -135,8 +135,38 @@ function renderLobby() {
   $("lobbyMsg").innerHTML = msg ? `<div class="k-note">${msg}</div>` : `<div class="k-note k-note--ok">✅ 競技場開放中！選一種對戰開始吧。</div>`;
   const can = OPEN && ok && myPool().length >= 2;
   ["btnFair", "btnCreate", "btnJoin"].forEach(id => { $(id).disabled = !can; $(id).style.opacity = can ? "" : ".5"; });
-  $("myPoolList").innerHTML = myPool().map(id => monChip(id)).join("") || `<p class="text-sm font-bold text-[#8C9AA6]">還沒有夥伴</p>`;
+  $("myPoolList").innerHTML = myPool().map(id => `<button class="pv-pool-btn" onclick="showMonInfo('${id}')" aria-label="看${escapeHtml(monName(id))}的資料">${monChip(id, "", mySkin())}</button>`).join("") || `<p class="text-sm font-bold text-[#8C9AA6]">還沒有夥伴</p>`;
 }
+// 點夥伴：放大看資料和技能
+function showMonInfo(id) {
+  const m = MON(id); if (!m) return;
+  const sk = pvpSkillOf(id);
+  const hero = isHeroIdPvp(id), guard = !hero && id.startsWith("g");
+  const kind = hero ? "紀念夥伴" : guard ? "守護精靈" : `${RARITY[m.rarity].name}怪獸`;
+  const kindColor = hero ? "#E8513F" : guard ? "#E0A21B" : ["#8FA3B3", "#4A90E2", "#B455D6"][m.rarity];
+  const place = hero ? (id === "gInf" ? "校園的魔法探險" : "高第的魔法建築")
+    : ((BUILDINGS.find(b => b.id === m.b) || (typeof ROOMS !== "undefined" && ROOMS.find(r => r.id === m.b)) || {}).name || "");
+  const game = (typeof CAMPUS_WILD !== "undefined" && (CAMPUS_WILD.includes(m) || CAMPUS_GUARDIANS.includes(m))) ? "校園的魔法探險" : "高第的魔法建築";
+  const row = (k, v) => `<div class="flex gap-3 py-2 border-t-2 border-dashed border-[#E3E8ED]"><div class="w-14 shrink-0 font-black text-[#5B6B78]">${k}</div><div class="flex-1 font-bold">${v}</div></div>`;
+  $("monInfoBody").innerHTML = `
+    <div class="k-mon-img border-[3px] border-[#1E2A33] mx-auto" style="width:min(240px,62vw)"><img src="${monsterImg(id, mySkin())}" alt="${escapeHtml(m.name)}"/></div>
+    <h3 class="k-display text-3xl mt-3">${escapeHtml(m.name)}</h3>
+    <div class="mt-1"><span class="k-chip" style="background:${kindColor};color:#fff">${kind}</span>
+      <span class="k-chip">${escapeHtml(hero ? place : game + "・" + place)}</span></div>
+    <div class="mt-4 p-3 rounded-2xl border-[3px] border-[#8A63D2] bg-[#F7F2FF] text-left">
+      <div class="text-xs font-black text-[#8A63D2]">對戰技能</div>
+      <div class="flex items-center gap-2 mt-1"><span class="text-3xl leading-none">${sk.icon}</span><span class="k-display text-2xl">${sk.name}</span></div>
+      <p class="font-bold mt-1">${escapeHtml(sk.desc)}</p>
+      <p class="text-xs font-bold text-[#5B6B78] mt-1">每題出現前的 5 秒可以使用；一場對戰只能用一次。</p>
+    </div>
+    <div class="text-left mt-3">
+      ${row("攻擊", `每次搶到攻擊打 <b>${pvpDmg(id)}</b> 點`)}
+      ${row("血量", `<b>${pvpHp(id)}</b> 點`)}
+    </div>`;
+  $("modalMonInfo").classList.remove("hidden");
+}
+const isHeroIdPvp = id => id === "gHero" || id === "gInf";
+function closeMonInfo() { $("modalMonInfo").classList.add("hidden"); }
 function skinProgressHtml() {
   const p = STU.pvp;
   const row = (lv, txt, done) => `<div class="flex items-center gap-2"><img src="${heroSkinImg(lv)}" class="w-9 h-9 rounded-lg border-2 border-[#1E2A33] ${done ? "" : "grayscale opacity-60"}" alt=""/>
