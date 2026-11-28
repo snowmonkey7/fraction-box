@@ -94,7 +94,7 @@ const HELP_PAGES = [
   { t: "🍽️ 做菜和對稱擺盤", b: `<p>選要做幾份，系統會算出要用多少食材。</p>
       <p class="mt-2">最後把配料擺盤：盤子的一半已經擺好，你要把另一半擺成和它<b>對稱</b>。擺對了就是「<b>完美料理</b>」，賣的價錢是 <b>1.5 倍</b>！擺錯也做得出來，只是「普通」。</p>` },
   { t: "🏪 開店賺家鄉幣", b: `<p>把料理放上<b>菜單</b>，客人會自己來買（小店 2 分鐘一位、中型餐廳 1 分 30 秒、大餐廳 45 秒），沒上線也會賣（最多累積 8 小時）。每天最多賺 1000 家鄉幣。</p>
-      <p class="mt-2">家鄉幣可以轉<b>金幣扭蛋機</b>（100 家鄉幣一次），也可以買裝潢。每件擺出來的裝潢，每賣一份料理人氣就多 +1～+4（越貴加越多）；裝潢擺成<b>左右對稱</b>，人氣再 <b>×2</b>！<b>人氣</b>越高，店就越大！賣完的料理會自動從菜單拿下來。</p>` }
+      <p class="mt-2">家鄉幣可以轉<b>金幣扭蛋機</b>（50 家鄉幣一次，450 家鄉幣十連抽），也可以買裝潢。每件擺出來的裝潢，每賣一份料理人氣就多 +1～+4（越貴加越多）；裝潢擺成<b>左右對稱</b>，人氣再 <b>×2</b>！<b>人氣</b>越高，店就越大！賣完的料理會自動從菜單拿下來。</p>` }
 ];
 let helpPage = 0;
 function openHelp(i) { helpPage = i; document.getElementById("modalHelp").classList.remove("hidden"); renderHelp(); }
@@ -138,6 +138,13 @@ function renderGacha() {
   cb.className = `k-btn ${can ? "k-btn--yellow" : ""} w-full mt-3 py-2.5`;
   cb.style.background = can ? "" : "#fff";
   cb.innerHTML = can ? `用 ${COIN_COST} 家鄉幣轉一次` : `要 ${COIN_COST} 家鄉幣才能轉（現在 ${F.home || 0}）`;
+  const cb10 = document.getElementById("btnCoin10");
+  if (cb10) {
+    const can10 = (F.home || 0) >= COIN_COST10;
+    cb10.className = `k-btn ${can10 ? "k-btn--yellow" : ""} w-full mt-2 py-2.5`;
+    cb10.style.background = can10 ? "" : "#fff";
+    cb10.innerHTML = can10 ? `用 ${COIN_COST10} 家鄉幣十連抽` : `十連抽要 ${COIN_COST10} 家鄉幣`;
+  }
 }
 
 let busy = false;
@@ -741,7 +748,8 @@ const SALE_SEC = [120, 90, 45];        // 客人多久來一位：小店 2 分�
 const saleMs = () => SALE_SEC[curLv()] * 1000;
 const OFFLINE_MAX = 8 * 3600 * 1000;  // 沒上線最多累積 8 小時
 const HOME_CAP = 1000;                // 每天最多賺 1000 家鄉幣
-const COIN_COST = 100;
+const COIN_COST = 50;
+const COIN_COST10 = 450;
 const COIN_TABLE = [[2, 0.50], [3, 0.30], [5, 0.15], [7, 0.04], [10, 0.01]];
 
 function levelOf(pop) { let l = 0; SHOP_LEVELS.forEach((L, i) => { if ((pop || 0) >= L.need) l = i; }); return l; }
@@ -1002,6 +1010,43 @@ async function coinDraw() {
       <div class="flex justify-center"><div id="cap" class="dz-capsule ${big ? "is-R" : ""}" onclick="openCoinCap(${got})">
         <div class="bot"></div><div class="top" style="background:${big ? CAP_COLOR.R : "#FFC83D"}"></div></div></div>
       <p class="font-bold text-[#5B6B78] mt-4">點扭蛋打開它</p>`;
+  }, 1000);
+}
+function rollCoin() {
+  let x = Math.random(), got = COIN_TABLE[0][0];
+  for (const [c, p] of COIN_TABLE) { if (x < p) { got = c; break; } x -= p; }
+  return got;
+}
+async function coinDraw10() {
+  if (busy) return;
+  if ((F.home || 0) < COIN_COST10) { alert(`家鄉幣不夠喔！十連抽要 ${COIN_COST10} 家鄉幣，讓餐廳多賣一些料理吧。`); return; }
+  busy = true;
+  const list = Array.from({ length: 10 }, rollCoin);
+  const total = list.reduce((a, b) => a + b, 0);
+  F.home -= COIN_COST10;
+  F.coinDraws = (F.coinDraws || 0) + 10;
+  F.coinWon = (F.coinWon || 0) + total;
+  const ok = await save(total);
+  busy = false;
+  if (!ok) return;
+  renderGacha();
+  const el = document.getElementById("drawBody");
+  el.innerHTML = `<div class="flex justify-center"><img id="drawMach" src="${FOOD_IMG}machine/coin.webp" alt="" style="width:200px"/></div><p class="k-display text-lg mt-2">十連抽！轉轉轉…</p>`;
+  document.getElementById("modalDraw").classList.remove("hidden");
+  requestAnimationFrame(() => document.getElementById("drawMach").classList.add("dz-shake"));
+  setTimeout(() => {
+    const best = Math.max(...list);
+    el.innerHTML = `
+      <p class="k-display text-xl">十連抽結果</p>
+      <div class="grid grid-cols-5 gap-2 mt-4 mx-auto" style="max-width:320px">
+        ${list.map((g, i) => `<div class="dz-pop flex flex-col items-center rounded-xl py-2 ${g >= 7 ? "bg-[#FFE7A3]" : "bg-[#F4F7FA]"}" style="animation-delay:${i * 60}ms">
+          <span class="k-coin" style="width:34px;height:34px;font-size:1rem"></span>
+          <b class="text-base mt-1">${g}</b></div>`).join("")}
+      </div>
+      <p class="k-display text-3xl mt-4">共 ${total} 金幣</p>
+      ${best >= 7 ? `<p class="font-bold text-[#C2410C] mt-1">抽到大獎 ${best} 金幣！</p>` : ""}
+      <p class="text-sm font-bold text-[#5B6B78] mt-1">現在有 ${STU.coins} 金幣・家鄉幣剩 ${F.home}</p>
+      <div class="flex justify-center gap-2 mt-5"><button onclick="closeModal('modalDraw')" class="k-btn k-btn--yellow px-6 py-2">收下</button></div>`;
   }, 1000);
 }
 function openCoinCap(got) {
