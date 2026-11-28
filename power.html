@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>小小的力量</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="theme.css?v=20261128g" />
+  <style>
+    /* ---- 小小的力量：夜晚與燈火 ---- */
+    :root { --night: #0F1C30; --night2: #18294A; --lamp: #FFC857; --lamp-soft: #FFE6A6; --parch: #FFF7E6; }
+    html { background: #0B1526; }
+    body.pw-page { background: radial-gradient(ellipse at 50% -10%, #23395E 0%, #13213A 45%, #0B1526 100%) fixed; color: var(--ink); min-height: 100vh; }
+    .pw-sky { position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image: radial-gradient(1.2px 1.2px at 12% 18%, #fff8 50%, transparent 51%), radial-gradient(1px 1px at 68% 9%, #fff7 50%, transparent 51%),
+        radial-gradient(1.4px 1.4px at 85% 32%, #fff6 50%, transparent 51%), radial-gradient(1px 1px at 33% 41%, #fff5 50%, transparent 51%),
+        radial-gradient(1.2px 1.2px at 52% 22%, #fff6 50%, transparent 51%), radial-gradient(1px 1px at 22% 72%, #fff4 50%, transparent 51%),
+        radial-gradient(1.3px 1.3px at 92% 78%, #fff5 50%, transparent 51%), radial-gradient(1px 1px at 6% 52%, #fff5 50%, transparent 51%); }
+    main, header { position: relative; z-index: 1; }
+    .pw-card { color: var(--ink); background: var(--parch); border: 3px solid var(--ink); border-radius: 22px; box-shadow: 5px 5px 0 #050B14; }
+    .k-nametag { color: var(--ink); }
+    .pw-dark { background: rgba(14, 26, 46, .82); border: 2px solid #3B5277; border-radius: 22px; color: #E8EEF7; }
+    .pw-fire { display: inline-flex; align-items: center; gap: .4rem; background: #2A1E0E; color: var(--lamp-soft); border: 3px solid var(--ink); border-radius: 999px; padding: .2rem .9rem .2rem .35rem; font-family: var(--display); font-weight: 700; }
+    .pw-flame { width: 1.45em; height: 1.45em; display: inline-block; flex-shrink: 0;
+      background: center / contain no-repeat url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='18' r='14' fill='%23FFC857' opacity='.25'/><path d='M16 4c2 6 8 8 8 15a8 8 0 0 1-16 0c0-4 2-6 4-8 0 3 1 5 3 5-1-4-1-8 1-12z' fill='%23FFB21E' stroke='%231E2A33' stroke-width='2' stroke-linejoin='round'/><path d='M16 15c2 2 4 3 4 6a4 4 0 0 1-8 0c0-2 1-3 2-4 0 1 1 2 2 2-1-1-1-3 0-4z' fill='%23FFF1B8'/></svg>"); }
+    .pw-world, .pw-school { width: 100%; height: auto; display: block; }
+    .pw-pin { cursor: pointer; outline: none; }
+    .pw-pin.is-locked { cursor: not-allowed; }
+    .pw-pin:focus-visible circle:nth-child(2) { stroke: #fff; stroke-width: 3; }
+    .pw-halo { animation: pw-breathe 3.2s ease-in-out infinite; transform-origin: center; }
+    @keyframes pw-breathe { 0%,100% { opacity: .85; } 50% { opacity: .55; } }
+    .pw-sel-ring { animation: pw-spin 6s linear infinite; transform-origin: center; }
+    @keyframes pw-spin { to { transform: rotate(360deg); } }
+    .pw-spot { cursor: pointer; }
+    .pw-spot-glow { animation: pw-breathe 4s ease-in-out infinite; }
+    .pw-bar { height: 16px; border: 3px solid var(--ink); border-radius: 999px; background: #fff; overflow: hidden; }
+    .pw-bar > div { height: 100%; background: linear-gradient(90deg, #FFB21E, #FFE07A); transition: width .5s ease; }
+    .pw-bar--dark { border-color: #6E86AA; background: #0F1C30; }
+    .pw-thumb { aspect-ratio: 1/1; border-radius: 16px; overflow: hidden; border: 3px solid var(--ink); background: #0F1C30; }
+    .pw-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pw-thumb.is-dark img { filter: grayscale(.85) brightness(.35) blur(1px); }
+    .pw-passage { background: #FFFDF3; border: 2px dashed #B9A777; border-radius: 14px; }
+    .k-qtext { font-size: 1.3rem; line-height: 1.7; font-weight: 700; }
+    .k-opt-txt { font-size: 1.1rem; font-weight: 700; line-height: 1.5; }
+    .pw-delta { font-family: var(--display); font-weight: 700; font-size: 1.6rem; }
+    @keyframes pw-rise { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .pw-rise { animation: pw-rise .3s ease both; }
+    @keyframes pw-light { 0% { filter: grayscale(1) brightness(.3); transform: scale(.96); } 60% { filter: brightness(1.25); } 100% { filter: none; transform: scale(1); } }
+    .pw-light-on { animation: pw-light 1.6s ease both; }
+    .pw-badge { color: var(--ink); display: flex; flex-direction: column; align-items: center; text-align: center; gap: .35rem; padding: .8rem .5rem; border-radius: 18px; border: 2px dashed #9AA8B4; background: #fff; }
+    .pw-badge.is-on { border: 3px solid var(--ink); background: #FFF1C9; box-shadow: 3px 3px 0 var(--ink); }
+    .pw-badge svg { width: 64px; height: 64px; }
+    .pw-badge:not(.is-on) svg { filter: grayscale(1) opacity(.35); }
+    .k-tab { background: #2B3E5E; color: #C9D6E6; border-color: var(--ink); }
+    .k-tab:hover { background: #34496D; }
+    .k-tab.is-active { background: var(--lamp); color: var(--ink); }
+    @media (prefers-reduced-motion: reduce) { .pw-halo, .pw-sel-ring, .pw-spot-glow, .pw-rise, .pw-light-on { animation: none; } }
+  </style>
+</head>
+<body class="pw-page select-none">
+<div class="pw-sky" aria-hidden="true"></div>
+<header class="k-board sticky top-0 z-30">
+  <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+    <div class="min-w-0">
+      <h1 class="k-board-title text-2xl md:text-3xl truncate">小小的力量</h1>
+      <p class="k-board-sub text-xs font-medium mt-0.5">國語〈小小力量將世界照亮〉・數學 整數四則運算</p>
+    </div>
+    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <span class="pw-fire text-base" title="火光"><span class="pw-flame"></span><span id="pwFireTop">0</span></span>
+      <span class="k-wallet text-base bg-white"><span class="k-coin"></span><span id="pwCoins">0</span></span>
+      <span id="syncBadge" class="k-chip bg-slate-100 text-slate-600">連線檢查中...</span>
+      <button onclick="location.href='index.html'" class="k-btn k-btn--chalk k-btn--sm">遊戲目錄</button>
+      <button onclick="clearSessionStudent(); location.href='index.html'" class="k-btn k-btn--tomato k-btn--sm">登出</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+  <div id="viewLoading" class="pw-dark p-8 text-center font-bold">讀取中…</div>
+
+  <section id="viewLocked" class="hidden pw-card p-8 text-center">
+    <p class="k-display text-2xl">老師還沒開放這個遊戲</p>
+    <p class="text-[#5B6B78] font-bold mt-2">等老師開放後再回來點亮世界吧！</p>
+    <button onclick="location.href='index.html'" class="k-btn k-btn--yellow px-6 py-2 mt-5">回到遊戲目錄</button>
+  </section>
+
+  <section id="viewGame" class="hidden space-y-5">
+    <!-- 開場：主角與狀態 -->
+    <div class="pw-dark p-4 md:p-5 flex flex-wrap items-center gap-4">
+      <img src="images/power/hero.webp" alt="" class="w-20 h-20 md:w-24 md:h-24 rounded-2xl border-[3px] border-[#1E2A33] object-cover" />
+      <div class="flex-1 min-w-[220px]">
+        <span class="k-nametag text-lg"><span id="pwStuId" class="k-nt-id"></span><span id="pwStuName" class="k-nt-name"></span></span>
+        <p class="text-sm font-bold mt-2 text-[#C9D6E6]">答對一題 <b class="text-[#FFE6A6]">+<span class="jsGain">10</span></b> 火光，答錯 <b class="text-[#FFB3A6]">−<span class="jsLoss">5</span></b> 火光（全班的燈也會 +1 或 −1）。不要用猜的喔！</p>
+        <p class="text-sm font-bold mt-1 text-[#C9D6E6]">我替全班點了 <b id="pwGive" class="text-[#FFE6A6]">0</b> 盞燈（最多 <span class="jsCap">300</span> 盞）・今天金幣 <b id="pwDayCoins">0</b> / 50</p>
+      </div>
+      <button onclick="startMission()" class="k-btn k-btn--yellow px-6 py-3 text-lg">開始行動任務</button>
+    </div>
+
+    <div class="k-tabs" role="tablist">
+      <button class="k-tab is-active" data-tab="world" onclick="pwTab('world')">我的世界地圖</button>
+      <button class="k-tab" data-tab="school" onclick="pwTab('school')">全班的學校地圖</button>
+      <button class="k-tab" data-tab="cards" onclick="pwTab('cards')">故事卡</button>
+      <button class="k-tab" data-tab="badges" onclick="pwTab('badges')">徽章</button>
+    </div>
+
+    <!-- 我的世界地圖 -->
+    <div id="pane_world" class="pw-dark k-tab-panel p-3 md:p-4 space-y-4">
+      <div id="worldMap" class="rounded-2xl overflow-hidden border-2 border-[#3B5277]"></div>
+      <div id="regionBar" class="flex flex-wrap gap-2"></div>
+      <div id="locPanel" class="pw-card p-4 md:p-5"></div>
+    </div>
+
+    <!-- 全班的學校地圖 -->
+    <div id="pane_school" class="hidden pw-dark k-tab-panel p-3 md:p-4">
+      <div class="grid md:grid-cols-[1.7fr_1fr] gap-4">
+        <div id="schoolMap" class="rounded-2xl overflow-hidden border-2 border-[#3B5277]"></div>
+        <div class="space-y-4">
+          <div class="pw-card p-4">
+            <p id="poolTitle" class="k-display text-xl">全班一起點亮學校</p>
+            <p class="text-sm font-bold text-[#5B6B78] mt-1" id="poolInfo"></p>
+            <div class="pw-bar mt-3"><div id="poolBar" style="width:0%"></div></div>
+            <p class="text-sm font-bold mt-2" id="poolNext"></p>
+            <p class="text-sm font-bold mt-1 text-[#C2410C]" id="poolMin"></p>
+          </div>
+          <div class="pw-card p-4">
+            <p class="k-display text-lg">最近的火光</p>
+            <p class="text-xs font-bold text-[#5B6B78]">今天全班點了 <b id="poolToday">0</b> 盞燈</p>
+            <ul id="poolFeed" class="mt-2 space-y-1 text-sm font-bold"></ul>
+          </div>
+          <div class="pw-card p-4">
+            <p class="k-display text-lg">十個地點與小行動</p>
+            <ol id="spotList" class="mt-2 space-y-1.5 text-sm"></ol>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 故事卡 -->
+    <div id="pane_cards" class="hidden pw-dark k-tab-panel p-3 md:p-5">
+      <p class="font-bold text-[#C9D6E6] mb-3">點亮一個地點，就能收下那裡的故事卡。點一下卡片可以看故事。</p>
+      <div id="cardGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3"></div>
+    </div>
+
+    <!-- 徽章 -->
+    <div id="pane_badges" class="hidden pw-dark k-tab-panel p-3 md:p-5">
+      <div id="badgeGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+    </div>
+  </section>
+
+  <!-- 行動任務（答題） -->
+  <section id="viewMission" class="hidden">
+    <div class="pw-card p-4 md:p-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span id="mSub" class="k-chip k-chip--chi">國語</span>
+          <span id="mType" class="k-chip bg-white"></span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="font-bold text-[#5B6B78]">第 <b id="mNo">1</b> / <span class="jsLen">5</span> 題</span>
+          <span class="pw-fire"><span class="pw-flame"></span><span id="mFire">0</span></span>
+        </div>
+      </div>
+      <div id="mPassage" class="hidden pw-passage p-4 mt-4"></div>
+      <p id="mQ" class="k-qtext mt-4"></p>
+      <div id="mOpts" class="grid gap-3 mt-4"></div>
+      <div id="mFeedback" class="hidden mt-4 p-4 rounded-2xl border-[3px] border-[#1E2A33]"></div>
+      <div class="flex justify-between items-center mt-5">
+        <button onclick="quitMission()" class="k-btn k-btn--sm bg-white">先休息</button>
+        <button id="mNext" onclick="nextQuestion()" class="hidden k-btn k-btn--yellow px-6 py-2.5">下一題</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- 通用彈窗 -->
+<div id="modalPw" class="hidden fixed inset-0 z-50 k-overlay flex items-center justify-center p-4" onclick="if(event.target===this) closeModal('modalPw')">
+  <div class="k-modal max-w-xl w-full max-h-[92vh] overflow-y-auto p-5 md:p-6" id="modalPwBody"></div>
+</div>
+
+<script src="config.js?v=20261128g"></script>
+<script src="common.js?v=20261128g"></script>
+<script src="power-data.js?v=20261128g"></script>
+<script src="power-art.js?v=20261128g"></script>
+<script src="power-q.js?v=20261128g"></script>
+<script src="power.js?v=20261128g"></script>
+</body>
+</html>

@@ -78,7 +78,7 @@ function exitTeacherView() {
 }
 
 function switchTeacherTab(name) {
-  ["fraction", "campus", "gaudi", "food", "pvp"].forEach(t => {
+  ["fraction", "campus", "power", "gaudi", "food", "pvp"].forEach(t => {
     document.getElementById("tchPane_" + t).classList.toggle("hidden", t !== name);
     document.getElementById("tchTabBtn_" + t).className = t === name
       ? "px-4 py-2 rounded-xl font-black text-sm bg-slate-800 text-white shadow"
@@ -113,6 +113,7 @@ async function refreshTeacherData() {
   renderFoodTeacher(list);
   renderPvpTeacher(list);
   renderCampusTeacher(list);
+  renderPowerTeacher(list);
 
   // 統計數據
   // 測試帳號不列入班級統計
@@ -1048,4 +1049,115 @@ async function applyOpenBulk(pre, field) {
     await refreshTeacherData();
     document.getElementById(pre + "BulkMsg").textContent = `已把 ${ids.length} 位設為${n ? "開放" : "不開放"}`;
   } catch (e) { reportError("儲存開放設定", e); msg.textContent = ""; }
+}
+
+
+
+/* =========================================================
+   小小的力量
+   全班的燈存在 _power_老師代號：c.座號（每人貢獻）、e.座號、d.座號、cfg（規則）、reset（重設時間）
+   ========================================================= */
+let POWER_CLS = null;
+const powerDocId = () => "_power_" + currentTeacher.id;
+async function loadPowerClassTeacher() {
+  if (isCloudMode) {
+    const doc = await withTimeout(db.collection(COLLECTION_NAME).doc(powerDocId()).get());
+    POWER_CLS = doc.exists ? doc.data() : {};
+  } else POWER_CLS = getLocalStore()[powerDocId()] || {};
+  POWER_CLS = Object.assign({ c: {}, e: {}, d: {}, cfg: {}, reset: {} }, POWER_CLS);
+  return POWER_CLS;
+}
+async function writePowerClass(data) {
+  // data 的 key 可以是 "cfg"、"c.50101" 這種路徑
+  if (isCloudMode) {
+    const ref = db.collection(COLLECTION_NAME).doc(powerDocId());
+    try { await withTimeout(ref.update(data)); }
+    catch (e) {
+      const obj = {};
+      Object.entries(data).forEach(([k, v]) => { const ks = k.split("."); let o = obj; ks.slice(0, -1).forEach(x => { o = o[x] = o[x] || {}; }); o[ks[ks.length - 1]] = v; });
+      await withTimeout(ref.set(obj, { merge: true }));
+    }
+  } else {
+    const store = getLocalStore();
+    const doc = store[powerDocId()] || (store[powerDocId()] = {});
+    Object.entries(data).forEach(([k, v]) => { const ks = k.split("."); let o = doc; ks.slice(0, -1).forEach(x => { o = o[x] = o[x] || {}; }); o[ks[ks.length - 1]] = v; });
+    saveLocalStore(store);
+  }
+}
+function powerPoolSummary(list, test, cfg) {
+  const ids = list.filter(s => isTestAccount(s.id) === test && (Number(s.powerOpen) || 0) > 0).map(s => s.id);
+  const n = Math.max(1, ids.length);
+  const give = id => Math.max(0, Math.min(cfg.cap, Number((POWER_CLS.c || {})[id]) || 0));
+  const total = ids.reduce((a, id) => a + give(id), 0);
+  const goal = cfg.per * n, spots = (typeof POWER_SPOTS !== "undefined" ? POWER_SPOTS.length : 10);
+  const marks = Array.from({ length: spots }, (_, i) => Math.round(goal * (i + 1) / spots));
+  const under = ids.filter(id => give(id) < cfg.min);
+  let lit = 0;
+  for (let i = 0; i < marks.length; i++) { if (total < marks[i]) break; if (i === marks.length - 1 && under.length) break; lit = i + 1; }
+  return { ids, n: ids.length, total, goal, marks, under, lit };
+}
+async function renderPowerTeacher(list) {
+  if (!document.getElementById("pwTableBody") || typeof POWER_DEFAULT_CFG === "undefined") return;
+  try { await loadPowerClassTeacher(); } catch (e) { POWER_CLS = { c: {}, cfg: {}, reset: {} }; }
+  const cfg = Object.assign({}, POWER_DEFAULT_CFG, POWER_CLS.cfg || {});
+  const $t = id => document.getElementById(id);
+  ["Gain", "Loss", "Per", "Cap", "Min"].forEach(k => { $t("pwCfg" + k).value = cfg[k.toLowerCase()]; });
+  let players = 0, zA = 0, zC = 0, mA = 0, mC = 0;
+  const today = (() => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); })();
+  const rows = list.map(s => {
+    const p = s.power || {}, isTest = isTestAccount(s.id), open = (Number(s.powerOpen) || 0) > 0;
+    const za = Number(p.zhA) || 0, zc = Number(p.zhC) || 0, ma = Number(p.mA) || 0, mc = Number(p.mC) || 0;
+    if (!isTest) { if (za + ma) players += 1; zA += za; zC += zc; mA += ma; mC += mc; }
+    const lit = Object.keys(p.lit || {}).length;
+    const give = Math.min(cfg.cap, Number((POWER_CLS.c || {})[s.id]) || 0);
+    const dc = p.dayKey === today ? Number(p.dayCoins) || 0 : 0;
+    const pct = (a, c) => a ? `${a} 題・${Math.round(c / a * 100)}%` : "—";
+    return `<tr class="hover:bg-slate-50 ${open ? "" : "bg-slate-50/60"}">
+      <td class="py-2.5 px-3"><input type="checkbox" class="pwChk w-4 h-4" value="${escapeHtml(s.id)}" /></td>
+      <td class="py-2.5 px-3 font-black">${escapeHtml(s.id)}</td>
+      <td class="py-2.5 px-3 font-bold text-slate-600">${escapeHtml(s.name)}${isTest ? ' <span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">測試</span>' : ""}</td>
+      <td class="py-2.5 px-3">${openSelectHtml("powerOpen", s.id, open)}</td>
+      <td class="py-2.5 px-3 font-bold">${pct(za, zc)}</td>
+      <td class="py-2.5 px-3 font-bold">${pct(ma, mc)}</td>
+      <td class="py-2.5 px-3 font-bold">${lit} / 19</td>
+      <td class="py-2.5 px-3 font-bold">${Number(p.fire) || 0}</td>
+      <td class="py-2.5 px-3 font-bold ${give < cfg.min ? "text-rose-600" : "text-emerald-600"}">${give} 盞</td>
+      <td class="py-2.5 px-3 font-bold text-amber-600">${dc}</td>
+    </tr>`;
+  });
+  $t("pwStatPlayers").textContent = `${players} 人`;
+  $t("pwStatAcc").textContent = `${zA ? Math.round(zC / zA * 100) : 0}%／${mA ? Math.round(mC / mA * 100) : 0}%`;
+  $t("pwStatAns").textContent = `${zA + mA} 題`;
+  const S = powerPoolSummary(list, false, cfg), T = powerPoolSummary(list, true, cfg);
+  $t("pwStatLit").textContent = `${S.lit} / 10`;
+  const poolHtml = (X, label) => `<p>開放的${label}：<b>${X.n}</b> 位・目前 <b>${X.total}</b> / ${X.goal} 盞燈・已點亮 <b>${X.lit}</b> / 10 站</p>
+    <p class="mt-1">${X.lit < 10 ? `下一站還差 <b>${Math.max(0, X.marks[X.lit] - X.total)}</b> 盞` : "全部點亮了！"}</p>
+    <p class="mt-1 ${X.under.length ? "text-rose-600" : "text-emerald-600"} font-bold">還沒達到最低貢獻（${cfg.min} 盞）：${X.under.length ? X.under.map(id => escapeHtml(id)).join("、") : "沒有，大家都達到了"}</p>`;
+  $t("pwPoolS").innerHTML = poolHtml(S, "學生");
+  $t("pwPoolT").innerHTML = T.n ? poolHtml(T, "測試帳號") : `<p class="text-slate-400">目前沒有開放給測試帳號。</p>`;
+  $t("pwCheckAll").checked = false;
+  $t("pwTableBody").innerHTML = rows.join("") || `<tr><td colspan="10" class="py-6 text-center text-slate-400">目前沒有學生。</td></tr>`;
+}
+async function savePowerCfg() {
+  const v = k => Math.max(0, Math.floor(Number(document.getElementById("pwCfg" + k).value) || 0));
+  const cfg = { gain: Math.max(1, v("Gain")), loss: v("Loss"), per: Math.max(10, v("Per")), cap: Math.max(10, v("Cap")), min: v("Min") };
+  if (cfg.cap < cfg.per) { alert("「每人上限」不能小於「每人目標」，不然全班不可能達到目標。"); return; }
+  if (cfg.min > cfg.cap) { alert("「最低貢獻」不能大於「每人上限」。"); return; }
+  try {
+    await writePowerClass({ cfg });
+    document.getElementById("pwCfgMsg").textContent = "已儲存";
+    setTimeout(() => { document.getElementById("pwCfgMsg").textContent = ""; }, 2000);
+    renderPowerTeacher(cachedAllStudents);
+  } catch (e) { reportError("儲存規則", e); }
+}
+async function resetPowerPool(which) {
+  const test = which === "t";
+  if (!confirm(test ? "要重設測試帳號的全班進度嗎？測試帳號替全班點的燈會歸零。" : "要重設學生的全班進度嗎？\n每位學生替全班點的燈都會歸零，學校地圖會重新變暗（個人的世界地圖和火光不會改變）。")) return;
+  try {
+    await loadPowerClassTeacher();
+    const data = { ["reset." + which]: Date.now() };
+    Object.keys(POWER_CLS.c || {}).forEach(id => { if (isTestAccount(id) === test && ownsStudentId(id)) data["c." + id] = 0; });
+    await writePowerClass(data);
+    renderPowerTeacher(cachedAllStudents);
+  } catch (e) { reportError("重設全班進度", e); }
 }

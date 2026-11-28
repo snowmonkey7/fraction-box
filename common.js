@@ -327,9 +327,9 @@ async function saveStudentProgress(studentObj, coinDelta = 0) {
 }
 
 // 每個遊戲各自存在學生資料裡的一個欄位（例如高第遊戲存在 gaudi）
-const GAME_FIELDS = ["gaudi", "dress", "food", "pvp", "campus"];
+const GAME_FIELDS = ["gaudi", "dress", "food", "pvp", "campus", "power"];
 // 只有老師能改的欄位：gaudiOpen = 高第遊戲開放到第幾棟（0 = 不能進入，1～4 = 開放到第幾棟）
-const TEACHER_ONLY_FIELDS = ["gaudiOpen", "dressOpen", "foodOpen", "campusOpen", "pvpOpen"];
+const TEACHER_ONLY_FIELDS = ["gaudiOpen", "dressOpen", "foodOpen", "campusOpen", "pvpOpen", "powerOpen"];
 // dressOpen = 換裝扭蛋開放幾台扭蛋機（0 = 不能玩）
 // 測試帳號：每位老師可以設定「從哪個座號開始是測試帳號」，不列入排行榜和班級統計
 function isTestAccount(id) {
@@ -398,6 +398,7 @@ async function saveGameFields(studentObj, fields, coinDelta = 0) {
 // 校園的魔法探險、PvP 競技場：老師在教師端一位一位（或勾選多位）設定開放（campusOpen、pvpOpen：1 = 開放）
 const isCampusOpen = stu => (Number(stu && stu.campusOpen) || 0) > 0;
 const isPvpOpen = stu => (Number(stu && stu.pvpOpen) || 0) > 0;
+const isPowerOpen = stu => (Number(stu && stu.powerOpen) || 0) > 0;   // 小小的力量
 
 // 教師端專用：只更新指定欄位（例如姓名、密碼），不會用舊資料蓋掉學生最新的作答進度
 async function saveStudentFields(studentId, fields) {

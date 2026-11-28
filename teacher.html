@@ -10,7 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="theme.css?v=20261128b" />
+  <link rel="stylesheet" href="theme.css?v=20261128g" />
   <style>
     /* 直式分數排版 */
     .frac-expr {
@@ -114,9 +114,71 @@
     <div class="flex flex-wrap gap-2">
       <button id="tchTabBtn_fraction" onclick="switchTeacherTab('fraction')" class="px-4 py-2 rounded-xl font-black text-sm bg-slate-800 text-white shadow">📋 全班名單・充滿分數的盲盒店</button>
       <button id="tchTabBtn_campus" onclick="switchTeacherTab('campus')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🏫 校園的魔法探險</button>
+      <button id="tchTabBtn_power" onclick="switchTeacherTab('power')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🕯️ 小小的力量</button>
       <button id="tchTabBtn_gaudi" onclick="switchTeacherTab('gaudi')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🏛️ 高第的魔法建築</button>
       <button id="tchTabBtn_food" onclick="switchTeacherTab('food')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">🍱 對稱的美食街</button>
       <button id="tchTabBtn_pvp" onclick="switchTeacherTab('pvp')" class="px-4 py-2 rounded-xl font-black text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-100">⚔️ PvP 競技場</button>
+    </div>
+
+    <div id="tchPane_power" class="hidden space-y-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">玩過的人數</div><div id="pwStatPlayers" class="text-2xl font-black text-slate-800 mt-1">0 人</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">全班正確率（國語／數學）</div><div id="pwStatAcc" class="text-2xl font-black text-emerald-600 mt-1">0%</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">全班作答題數</div><div id="pwStatAns" class="text-2xl font-black text-sky-600 mt-1">0 題</div></div>
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200"><div class="text-xs font-bold text-slate-500">學校地圖點亮</div><div id="pwStatLit" class="text-2xl font-black text-amber-600 mt-1">0 / 10</div></div>
+      </div>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+          <h3 class="text-lg font-black text-slate-800">全班的燈（學生）</h3>
+          <div id="pwPoolS" class="text-sm text-slate-700 mt-2"></div>
+          <button onclick="resetPowerPool('s')" class="mt-3 bg-white border-2 border-rose-300 text-rose-600 hover:bg-rose-50 font-bold text-sm px-3 py-1.5 rounded-xl">重設學生的全班進度</button>
+        </div>
+        <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+          <h3 class="text-lg font-black text-slate-800">測試帳號的燈</h3>
+          <div id="pwPoolT" class="text-sm text-slate-700 mt-2"></div>
+          <button onclick="resetPowerPool('t')" class="mt-3 bg-white border-2 border-slate-300 hover:bg-slate-100 font-bold text-sm px-3 py-1.5 rounded-xl">重設測試帳號的進度</button>
+        </div>
+      </div>
+      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+        <h3 class="text-lg font-black text-slate-800">規則設定</h3>
+        <p class="text-xs text-slate-500 mt-1 mb-3">全班目標＝每人目標 × 開放的學生人數（不算測試帳號），平均分成 10 站；最後一站「校門口」還要每個人都達到最低貢獻。答錯扣分可以避免亂猜。</p>
+        <div class="flex flex-wrap items-end gap-3">
+          <label class="text-sm font-bold text-slate-700">答對 +<input id="pwCfgGain" type="number" min="1" class="w-16 border-2 border-slate-300 rounded-lg px-2 py-1 ml-1" /> 火光</label>
+          <label class="text-sm font-bold text-slate-700">答錯 −<input id="pwCfgLoss" type="number" min="0" class="w-16 border-2 border-slate-300 rounded-lg px-2 py-1 ml-1" /> 火光</label>
+          <label class="text-sm font-bold text-slate-700">每人目標 <input id="pwCfgPer" type="number" min="10" class="w-20 border-2 border-slate-300 rounded-lg px-2 py-1 ml-1" /> 盞</label>
+          <label class="text-sm font-bold text-slate-700">每人上限 <input id="pwCfgCap" type="number" min="10" class="w-20 border-2 border-slate-300 rounded-lg px-2 py-1 ml-1" /> 盞</label>
+          <label class="text-sm font-bold text-slate-700">最低貢獻 <input id="pwCfgMin" type="number" min="0" class="w-20 border-2 border-slate-300 rounded-lg px-2 py-1 ml-1" /> 盞</label>
+          <button onclick="savePowerCfg()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm px-4 py-2 rounded-xl">儲存規則</button>
+          <span id="pwCfgMsg" class="text-sm font-bold text-emerald-600"></span>
+        </div>
+        <p class="text-xs text-slate-500 mt-2">全班的燈：答對 +1、答錯 −1（每人最多「每人上限」盞）。</p>
+      </div>
+      <div class="bg-white rounded-3xl p-6 shadow border border-slate-200">
+        <h3 class="text-lg font-black text-slate-800">學生進度與開放設定</h3>
+        <p class="text-xs text-slate-500 mt-1 mb-4">國語第九課〈小小力量將世界照亮〉＋課外閱讀＋常識、數學第八單元 整數四則運算。設成「開放」的同學才能進入。每日金幣上限另外計算（每天 50 金幣，全班里程碑的獎勵不算在內）。測試帳號有自己的一份全班進度，不會影響學生。</p>
+        <div class="flex flex-wrap items-center gap-2 mb-2 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+          <span class="text-sm font-bold text-slate-700">把勾選的同學設為</span>
+          <select id="pwBulkOpen" class="border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm"><option value="1">開放</option><option value="0">不開放</option></select>
+          <button onclick="applyOpenBulk('pw', 'powerOpen')" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm px-4 py-2 rounded-xl">套用</button>
+          <span class="text-slate-300 mx-1">|</span>
+          <span class="text-sm font-bold text-slate-700">快速勾選座號</span>
+          <input id="pwRangeFrom" placeholder="50101" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <span class="font-bold text-slate-500">到</span>
+          <input id="pwRangeTo" placeholder="50121" class="w-20 border-2 border-slate-300 rounded-xl px-2 py-1.5 font-bold text-sm text-center" />
+          <button onclick="checkOpenRange('pw')" class="bg-white border-2 border-slate-300 hover:bg-slate-100 font-bold text-sm px-3 py-1.5 rounded-xl">勾選</button>
+        </div>
+        <div id="pwBulkMsg" class="text-sm font-bold text-emerald-600 mb-2 min-h-[1.25rem]"></div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left border-collapse">
+            <thead><tr class="bg-slate-100 text-slate-700">
+              <th class="py-2.5 px-3"><input type="checkbox" id="pwCheckAll" onchange="document.querySelectorAll('.pwChk').forEach(c => c.checked = this.checked)" class="w-4 h-4" title="全選" /></th>
+              <th class="py-2.5 px-3">座號</th><th class="py-2.5 px-3">姓名</th><th class="py-2.5 px-3">開放</th><th class="py-2.5 px-3">國語</th><th class="py-2.5 px-3">數學</th>
+              <th class="py-2.5 px-3">點亮地點</th><th class="py-2.5 px-3">火光</th><th class="py-2.5 px-3">替全班點燈</th><th class="py-2.5 px-3">今天金幣</th>
+            </tr></thead>
+            <tbody id="pwTableBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <div id="tchPane_campus" class="hidden space-y-6">
@@ -488,14 +550,15 @@
   </div>
 </div>
 
-<script src="config.js?v=20261128b"></script>
-<script src="common.js?v=20261128b"></script>
-<script src="fraction-data.js?v=20261128b"></script>
-<script src="campus-data.js?v=20261128b"></script>
-<script src="gaudi-data.js?v=20261128b"></script>
-<script src="food-data.js?v=20261128b"></script>
-<script src="food-q.js?v=20261128b"></script>
-<script src="food-art.js?v=20261128b"></script>
-<script src="teacher.js?v=20261128b"></script>
+<script src="config.js?v=20261128g"></script>
+<script src="common.js?v=20261128g"></script>
+<script src="fraction-data.js?v=20261128g"></script>
+<script src="campus-data.js?v=20261128g"></script>
+<script src="power-data.js?v=20261128g"></script>
+<script src="gaudi-data.js?v=20261128g"></script>
+<script src="food-data.js?v=20261128g"></script>
+<script src="food-q.js?v=20261128g"></script>
+<script src="food-art.js?v=20261128g"></script>
+<script src="teacher.js?v=20261128g"></script>
 </body>
 </html>
